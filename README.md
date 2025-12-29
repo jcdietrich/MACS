@@ -41,7 +41,7 @@ All of this is expressed through:
 
 
 <br><br>
-## 🧠 Design Philosophy
+## 🎨 Design Philosophy
 MACS is not a control panel.
 
 It is:
@@ -59,7 +59,7 @@ Perfect for:
 
 
 <br><br>
-## 🎛️ Manual & Automation Control
+## 🤖 Manual & Automation Control
 MACS exposes a custom service: macs.set_mood
 
 This allows any Home Assistant automation to directly control MACS’s mood.
@@ -80,12 +80,11 @@ This makes MACS fully scriptable and system-driven, not just reactive to Assist.
 
 
 <br><br>
-## Installation
+## 📦 Installation
 - Install the Macs Card. 
 - Obtain the Assistant Pipeline ID. 
 - Add the ID to the Macs Card.
 - (HACS instructions coming once published.)
-
 
 
 ### Add to a Dashboard
@@ -100,7 +99,7 @@ to the display.
 
 
 <br><br>
-## 🧭 Roadmap
+## 🎯 Roadmap
 Macs is very much in Beta stage and as of JDecember 29th, 2025, is under heavy development.
 
 Feedback is welcome and valuable:
