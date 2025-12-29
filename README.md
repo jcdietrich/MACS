@@ -49,7 +49,7 @@ It is:
 - A status glance
 - A confidence signal that your home heard you and is doing something
 
-![Concept sketches for Macs](https://github.com/glyndavidson/MACS/blob/main/art-philosophy.png)
+![Concept sketches for Macs](https://github.com/glyndavidson/MACS/blob/main/resources/art-philosophy.png?raw=true)
 
 Perfect for:
 - Wall tablets
