@@ -17,6 +17,7 @@
     mode: "postMessage",
     param: "mood",
     cache_bust: false,
+    assist_pipeline_enabled: false,
     pipeline_id: "",
     max_turns: 2,
   };
@@ -37,9 +38,10 @@
   }
 
   class MacsCard extends HTMLElement {
-    static getStubConfig() {
-      return { type: "custom:macs-card", pipeline_id: "" };
+    static getStubConfig() { 
+      return { type: "custom:macs-card", assist_pipeline_enabled: false, pipeline_id: "", max_turns: 2 }; 
     }
+
 
     static getConfigElement() {
       return document.createElement("macs-card-editor");
@@ -95,9 +97,12 @@
       try { this._iframe.contentWindow.postMessage(payload, "*"); } catch (_) {}
     }
 
+    _pipelineEnabled() { return !!this._config?.assist_pipeline_enabled && !!(this._config?.pipeline_id || "").toString().trim(); }
+
     _sendConfigToIframe() {
-      const pipeline_id = (this._config.pipeline_id || "").toString().trim();
-      this._postToIframe({ type: "macs:config", pipeline_id: pipeline_id || "" });
+      const enabled = !!this._config.assist_pipeline_enabled;
+      const pipeline_id = enabled ? (this._config.pipeline_id || "").toString().trim() : "";
+      this._postToIframe({ type: "macs:config", pipeline_id });
     }
 
     _sendMoodToIframe(mood) {
@@ -179,6 +184,7 @@
 
     async _fetchNewest() {
       if (!this._hass) return;
+      if (!this._pipelineEnabled()) return;
 
       const pid = (this._config.pipeline_id || "").toString().trim();
       if (!pid) return;
@@ -212,16 +218,25 @@
     }
 
     _ensureSubscriptions() {
-      if (!this._hass || this._unsubStateChanged) return;
+      if (!this._hass) return;
 
-      // Listen for changes to conversation.home_assistant; that’s our “new run likely happened” signal.
-      this._unsubStateChanged = this._hass.connection.subscribeEvents((ev) => {
-        try {
-          if (ev?.data?.entity_id !== CONVERSATION_ENTITY_ID) return;
-          this._triggerFetchNewest();
-        } catch (_) {}
-      }, "state_changed");
+      const shouldSub = this._pipelineEnabled();
+
+      if (shouldSub && !this._unsubStateChanged) {
+        this._unsubStateChanged = this._hass.connection.subscribeEvents((ev) => {
+          try {
+            if (ev?.data?.entity_id !== CONVERSATION_ENTITY_ID) return;
+            this._triggerFetchNewest();
+          } catch (_) {}
+        }, "state_changed");
+      }
+
+      if (!shouldSub && this._unsubStateChanged) {
+        try { this._unsubStateChanged(); } catch (_) {}
+        this._unsubStateChanged = null;
+      }
     }
+
 
     /* ---------- hass hook ---------- */
 
@@ -298,68 +313,159 @@
       if (this._rendered) this._sync();
     }
 
+    async _loadPipelines() {
+      if (!this._hass) return { pipelines: [], preferred: "" };
+
+      const res = await this._hass.callWS({ type: "assist_pipeline/pipeline/list" });
+
+      const pipelines = Array.isArray(res?.pipelines) ? res.pipelines : [];
+      const preferred = (res?.preferred_pipeline || "").toString();
+
+      return {
+        preferred,
+        pipelines: pipelines
+          .map(p => ({ id: (p.id || "").toString(), name: (p.name || p.id || "Unnamed").toString() }))
+          .filter(p => p.id),
+      };
+    }
+
     _render() {
       if (!this.shadowRoot) this.attachShadow({ mode: "open" });
 
       this.shadowRoot.innerHTML = `
-        <style>
-          .row { display: grid; gap: 12px; }
+      <style>
+          :host { display:block; }
+          .row { display: flex; flex-direction: column; gap: 14px; }
+
+          /* Force HA form controls to behave as blocks */
+          ha-switch, ha-select, ha-textfield { display: block; width: 100%; }
+
+          /* Prevent label/value overlap issues in some HA themes */
+          ha-select { --mdc-theme-text-primary-on-background: var(--primary-text-color); }
+          mwc-list-item { line-height: 1.4; }
+
           .hint { opacity: 0.8; font-size: 12px; line-height: 1.35; }
+
+          .advanced[hidden] { display: none !important; }
         </style>
 
         <div class="row">
-          <ha-textfield id="pipeline_id" label="Assist pipeline ID" placeholder="01k..."></ha-textfield>
+          <ha-switch id="assist_pipeline_enabled"></ha-switch>
+          <div class="hint">Enable Assist pipeline (Allow Macs to react to interactions with the assistant)</div>
+
+          <div class="advanced" id="advanced_fields" hidden>
+            <ha-select id="pipeline_select" label="Assistant (pipeline)">
+              <mwc-list-item value="">None / Custom Automations Only</mwc-list-item>
+            </ha-select>
+
+            <ha-textfield id="pipeline_id" label="Pipeline ID (manual fallback)" placeholder="01k..."></ha-textfield>
+          </div>
 
           <ha-textfield id="max_turns" label="Max turns to show" inputmode="numeric"></ha-textfield>
 
-          <div class="hint">
-            Bridge mode: this card listens to Home Assistant and sends updates to the iframe via <code>postMessage</code>.<br>
-            The iframe never receives or stores any Home Assistant tokens.
-          </div>
+          <div class="hint">For custom automations, use macs.set_mood.</div>
         </div>
       `;
 
       this._rendered = true;
+
+      // Wire once per render (safe because render rebuilds DOM)
       this._wire();
+
+      // Sync UI from config
       this._sync();
     }
 
-    _sync() {
+    async _sync() {
       if (!this.shadowRoot) return;
 
-      const pipeline = this.shadowRoot.getElementById("pipeline_id");
-      if (pipeline) pipeline.value = this._config.pipeline_id ?? DEFAULTS.pipeline_id;
+      const enabled = !!this._config.assist_pipeline_enabled;
 
+      const sw = this.shadowRoot.getElementById("assist_pipeline_enabled");
+      const adv = this.shadowRoot.getElementById("advanced_fields");
+      const sel = this.shadowRoot.getElementById("pipeline_select");
+      const tf  = this.shadowRoot.getElementById("pipeline_id");
       const maxTurns = this.shadowRoot.getElementById("max_turns");
-      if (maxTurns) maxTurns.value = (this._config.max_turns ?? DEFAULTS.max_turns).toString();
+
+      // Toggle state
+      if (sw && sw.checked !== enabled) sw.checked = enabled;
+
+      // Hide/show advanced block
+      if (adv) adv.hidden = !enabled;
+
+      // Also disable inputs when hidden (optional but nice)
+      if (sel) sel.disabled = !enabled;
+      if (tf) tf.disabled = !enabled;
+
+      // Populate dropdown once (only when enabled + hass exists)
+      if (enabled && sel && this._hass && !this._pipelinesLoaded) {
+        const { pipelines, preferred } = await this._loadPipelines();
+
+        sel.innerHTML =
+          `<mwc-list-item value="">None / Custom Automations Only</mwc-list-item>` +
+          pipelines.map(p => `<mwc-list-item value="${p.id}">${this._esc(p.name)}</mwc-list-item>`).join("");
+
+        // If user hasn't set a pipeline yet, pick HA's preferred
+        const currentPid = (this._config.pipeline_id ?? "").toString().trim();
+        if (!currentPid && preferred) {
+          // Update config so the card gets the pipeline id too
+          const next = { type: "custom:macs-card", ...this._config, pipeline_id: preferred };
+          this._config = next;
+          this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true }));
+        }
+
+        this._pipelinesLoaded = true;
+      }
+
+
+      // Sync values (only write if changed)
+      const pid = (this._config.pipeline_id ?? "").toString();
+      if (sel && sel.value !== pid) sel.value = pid;
+      if (tf && tf.value !== pid) tf.value = pid;
+
+      const mt = (this._config.max_turns ?? DEFAULTS.max_turns).toString();
+      if (maxTurns && maxTurns.value !== mt) maxTurns.value = mt;
     }
+
 
     _wire() {
       const onChange = () => {
-        const pipeline_id = this.shadowRoot.getElementById("pipeline_id")?.value || "";
+        const assist_pipeline_enabled = !!this.shadowRoot.getElementById("assist_pipeline_enabled")?.checked;
+        const selVal = this.shadowRoot.getElementById("pipeline_select")?.value || "";
+        const manualVal = this.shadowRoot.getElementById("pipeline_id")?.value || "";
         const max_turns_raw = this.shadowRoot.getElementById("max_turns")?.value || "";
-
         const max_turns = Math.max(1, parseInt(max_turns_raw, 10) || DEFAULTS.max_turns);
 
-        const next = { type: "custom:macs-card", pipeline_id, max_turns };
+        // If dropdown has a value, prefer it; otherwise use manual field
+        const pipeline_id = selVal || manualVal;
+
+        const next = { type: "custom:macs-card", assist_pipeline_enabled, pipeline_id, max_turns };
 
         this._config = { ...DEFAULTS, ...next };
 
-        this.dispatchEvent(
-          new CustomEvent("config-changed", {
-            detail: { config: next },
-            bubbles: true,
-            composed: true,
-          })
-        );
+        // IMPORTANT: do NOT call this._sync() here (HA will call setConfig again)
+        this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true }));
       };
 
-      ["pipeline_id", "max_turns"].forEach((id) => {
+      // Change-only listeners (avoid input storm)
+      ["assist_pipeline_enabled", "pipeline_select", "pipeline_id", "max_turns"].forEach((id) => {
         const el = this.shadowRoot.getElementById(id);
         if (!el) return;
         el.addEventListener("change", onChange);
-        el.addEventListener("input", onChange);
       });
+    }
+
+    // escape helper (used when rendering pipeline names)
+    _esc(s) {
+      return (s ?? "")
+        .toString()
+        .replace(/[&<>"']/g, (c) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        }[c]));
     }
   }
 
