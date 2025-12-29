@@ -1,0 +1,19 @@
+set_mood:
+  name: Set mood
+  description: Set Macs mood (updates select.macs_mood).
+  fields:
+    mood:
+      name: Mood
+      description: One of bored, confused, happy, idle, listening, sleeping, surprised, thinking
+      required: true
+      selector:
+        select:
+          options:
+            - bored
+            - confused
+            - happy
+            - idle
+            - listening
+            - sleeping
+            - surprised
+            - thinking

@@ -1,0 +1,7 @@
+{
+  "name": "Macs Card",
+  "content_in_root": false,
+  "render_readme": true,
+  "domains": [],
+  "homeassistant": "2024.6.0"
+}
