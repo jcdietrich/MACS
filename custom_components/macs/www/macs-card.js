@@ -427,8 +427,8 @@
 					.row{display:block;width:100%;margin-bottom:16px;}
 					.hint{opacity:0.7;font-size:90%;margin-top:4px;}
 					#pipeline_select, #pipeline_id, #max_turns { width: 100%; }
-					.about{margin-top25px;border-top:1px solid var(--divider-color);padding-top:10px;}
-					.about-toggle{cursor:pointer;opacity:0.8;}
+					.about{margin-top:40px;border:1px solid var(--divider-color);border-left:none;border-right:none;padding:10px 0;}
+					.about-toggle{cursor:pointer;opacity:0.6;}
 					.about-content{padding-left:10px;opacity:0.9;}
 				</style>
 
@@ -443,7 +443,7 @@
 				</div>
 
 				<div class="row">
-					<ha-textfield id="pipeline_id" label="Pipeline ID (manual fallback)" placeholder="01k..."></ha-textfield>
+					<ha-textfield id="pipeline_id" label="Assistant Pipeline ID" placeholder="01k..."></ha-textfield>
 				</div>
 	
 				<div class="row about">
