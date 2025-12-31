@@ -86,7 +86,7 @@
     runId: "boot",
     heard: "",
     reply: "",
-    error: "Ready (bridge mode)",
+    error: "Ready...",
     ts: new Date().toISOString()
   }];
   renderChat();

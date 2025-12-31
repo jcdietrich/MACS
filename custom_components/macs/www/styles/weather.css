@@ -5,12 +5,24 @@ body.weather-hot  .fx-hot{  opacity: calc(0.9 * var(--weather-intensity)); }
 body.weather-cold .fx-cold{ opacity: calc(0.9 * var(--weather-intensity)); }
 
 /* Rain */
-.drop{ fill: rgba(190,240,255,0.35); filter: blur(0.2px); animation: rainFall 1.2s linear infinite; }
+:root{
+	--rain-drift: -40px;   /* horizontal wind */
+	--rain-tilt: 8deg;  /* visual tilt */
+}
+.drop{ fill: rgb(82 172 249 / 65%); filter: blur(0.2px); animation: rainFall 1.2s linear infinite; }
 .drop.d2{ animation-duration: 1.6s; opacity:0.25; }
 .drop.d3{ animation-duration: 1.9s; opacity:0.22; }
 @keyframes rainFall{
-	from{ transform: translateY(-40%); }
-	to{ transform: translateY(140%); }
+	from{
+		transform:
+			translate(calc(-1 * var(--rain-drift)), -40%)
+			rotate(var(--rain-tilt));
+	}
+	to{
+		transform:
+			translate(var(--rain-drift), 140%)
+			rotate(var(--rain-tilt));
+	}
 }
 
 /* Wind */
