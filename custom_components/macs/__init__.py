@@ -10,7 +10,15 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import entity_registry as er
 from homeassistant.components.http import StaticPathConfig
 
-from .const import DOMAIN, MOODS, SERVICE_SET_MOOD, ATTR_MOOD
+from .const import (
+    DOMAIN,
+    MOODS,
+    WEATHERS,
+    SERVICE_SET_MOOD,
+    SERVICE_SET_WEATHER,
+    ATTR_MOOD,
+    ATTR_WEATHER,
+)
 
 
 from homeassistant.helpers import config_validation as cv
@@ -93,12 +101,42 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         await hass.services.async_call("select", "select_option", {"entity_id": entity_id, "option": mood}, blocking=True)
 
+    async def handle_set_weather(call: ServiceCall) -> None:
+        weather = str(call.data.get(ATTR_WEATHER, "")).strip().lower()
+        if weather not in WEATHERS:
+            raise vol.Invalid(f"Invalid weather '{weather}'. Must be one of: {', '.join(WEATHERS)}")
+
+        registry = er.async_get(hass)
+        entity_id = None
+        for ent in registry.entities.values():
+            if ent.platform == DOMAIN and ent.unique_id == f"{DOMAIN}_weather":
+                entity_id = ent.entity_id
+                break
+
+        if not entity_id:
+            raise vol.Invalid("Macs weather entity not found (select not created)")
+
+        await hass.services.async_call(
+            "select",
+            "select_option",
+            {"entity_id": entity_id, "option": weather},
+            blocking=True,
+        )
+
     if not hass.services.has_service(DOMAIN, SERVICE_SET_MOOD):
         hass.services.async_register(
             DOMAIN,
             SERVICE_SET_MOOD,
             handle_set_mood,
             schema=vol.Schema({vol.Required(ATTR_MOOD): vol.In(MOODS)}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER,
+            handle_set_weather,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER): vol.In(WEATHERS)}),
         )
 
     # Auto-add/update Lovelace resource (storage mode)
@@ -111,5 +149,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok and not hass.config_entries.async_entries(DOMAIN):
         hass.services.async_remove(DOMAIN, SERVICE_SET_MOOD)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER)
         hass.data.get(DOMAIN, {}).pop("static_path_registered", None)
     return unload_ok
