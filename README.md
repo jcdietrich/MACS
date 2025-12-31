@@ -1,4 +1,3 @@
-
 # M.A.C.S. – Mood-Aware Character SVG
 
 M.A.C.S. is a playful, expressive, animated companion for Home Assistant. 
@@ -8,9 +7,16 @@ It visualises Assist interactions and broader system context using a living SVG 
 Rather than showing buttons and graphs, MACS shows state, mood, and intent, giving your smart home a friendly, readable presence.
 
 ![Screenshot of Macs in Home Assistant Dashboard](https://github.com/glyndavidson/MACS/blob/main/resources/screenshot.png)
-
-
 <br><br>
+
+
+## Buy me a Coffee
+If you find Macs useful, please consider [buying me a coffee](https://buymeacoffee.com/glyndavidson) to support my work.<br>
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-%F0%9F%8D%BA-yellow)](https://buymeacoffee.com/glyndavidson)
+<br><br>
+
+
 ## ✨ What MACS Does
 
 MACS reacts visually to multiple layers of Home Assistant context:
@@ -38,9 +44,9 @@ All of this is expressed through:
 - Facial expression
 - Animation
 - Subtle visual cues (eyes, posture, motion)
-
-
 <br><br>
+
+
 ## 🎨 Design Philosophy
 MACS is not a control panel.
 
@@ -56,9 +62,9 @@ Perfect for:
 - Old iPads
 - Kiosk dashboards
 - Ambient displays
-
-
 <br><br>
+
+
 ## 🤖 Manual & Automation Control
 MACS exposes a custom service: macs.set_mood
 
@@ -73,13 +79,9 @@ You can trigger mood changes based on:
 - Any HA state, event, or condition
 
 This makes MACS fully scriptable and system-driven, not just reactive to Assist.
-
-
-
-
-
-
 <br><br>
+
+
 ## 📦 Installation
 - Install the Macs Card. 
 - Obtain the Assistant Pipeline ID. 
@@ -96,9 +98,9 @@ The card automatically sends:
 - System context
 - Event triggers  
 to the display.
-
-
 <br><br>
+
+
 ## 🎯 Roadmap
 Macs is very much in Beta stage and as of JDecember 29th, 2025, is under heavy development.
 
@@ -108,12 +110,18 @@ Feedback is welcome and valuable:
 - Platform quirks → especially tablets
 
 This project is evolving by use, not speculation.
-
-
-
 <br><br>
+
+
 ## 📜 License
 MIT License  
 Fork it. Modify it. Improve it.  
 Just don’t be a dick.
+<br><br>
 
+
+## Buy me a Coffee
+If you find Macs useful, please consider [buying me a coffee](https://buymeacoffee.com/glyndavidson) to support my work.<br>
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-%F0%9F%8D%BA-yellow)](https://buymeacoffee.com/glyndavidson)
+<br><br>
