@@ -35,6 +35,17 @@ import {
 } from "./validators.js";
 
 
+// map assistant state to mood
+function assistStateToMood(state) {
+    state = (state || "").toString().trim().toLowerCase();
+    if (state === "listening") return "listening";
+    if (state === "processing") return "thinking";
+    if (state === "responding") return "thinking";
+    if (state === "idle") return "idle";
+    return "idle";
+}
+
+
 export class MacsCard extends HTMLElement {
     static getStubConfig() { 
         return { type: "custom:macs-card", assist_pipeline_enabled: false, pipeline_id: "", pipeline_custom: false, max_turns: 2, preview_image: DEFAULTS.preview_image }; 
@@ -80,6 +91,17 @@ export class MacsCard extends HTMLElement {
 
             this._unsubStateChanged = null;
 
+
+
+            // automatically respond to satellite assistant states
+            this._assistOverrideMood = null;     // "happy" / "confused" / etc.
+            this._assistOverrideUntil = 0;       // ms timestamp
+            this._assistOverrideTimer = null;
+            this._lastAssistState = null;
+
+
+
+
             // Listen for iframe requests
             this._onMessage = this._onMessage.bind(this);
             window.addEventListener("message", this._onMessage);
@@ -100,13 +122,15 @@ export class MacsCard extends HTMLElement {
         }
     }
 
-    disconnectedCallback() {
-        // Cleanup event handlers / subscriptions
-        try { window.removeEventListener("message", this._onMessage); } catch (_) {}
-        try { window.removeEventListener("click", this._onOutsideSelectClick, true); } catch (_) {}
-        try { if (this._unsubStateChanged) this._unsubStateChanged(); } catch (_) {}
-        this._unsubStateChanged = null;
-    }
+		disconnectedCallback() {
+			// Cleanup event handlers / subscriptions
+			try { window.removeEventListener("message", this._onMessage); } catch (_) {}
+			try { window.removeEventListener("click", this._onOutsideSelectClick, true); } catch (_) {}
+			try { if (this._unsubStateChanged) this._unsubStateChanged(); } catch (_) {}
+			this._unsubStateChanged = null;
+			try { if (this._assistOverrideTimer) clearTimeout(this._assistOverrideTimer); } catch (_) {}
+			this._assistOverrideTimer = null;
+		}
 
 
 
@@ -123,6 +147,23 @@ export class MacsCard extends HTMLElement {
     _pipelineEnabled() { 
         return !!this._config?.assist_pipeline_enabled && !!(this._config?.pipeline_id || "").toString().trim(); 
     }
+
+
+    _setAssistOverride(mood, ms) {
+        this._assistOverrideMood = mood;
+        this._assistOverrideUntil = Date.now() + Math.max(250, ms || 0);
+        try { 
+            if (this._assistOverrideTimer) clearTimeout(this._assistOverrideTimer); 
+        } 
+        catch (_) {
+        }
+
+        this._assistOverrideTimer = setTimeout(() => {
+            this._assistOverrideMood = null;
+            this._assistOverrideUntil = 0;
+        }, Math.max(250, ms || 0));
+    }
+
 
     _sendConfigToIframe() {
         const enabled = !!this._config.assist_pipeline_enabled;
@@ -300,7 +341,23 @@ export class MacsCard extends HTMLElement {
         this._ensureSubscriptions();
 
         const moodState = hass.states[MOOD_ENTITY_ID] || null;
-        const mood = normMood(moodState?.state);
+        //const mood = normMood(moodState?.state);
+        const baseMood = normMood(moodState?.state);
+        // Optional: auto mood from selected satellite state
+        let assistMood = null;
+        let satState = ""; // add this
+
+        if (this._config?.assist_states_enabled) {
+            const satId = (this._config.assist_satellite_entity || "").toString().trim();
+            if (satId) {
+                const satStateObj = hass.states[satId] || null;
+                satState = (satStateObj?.state || "").toString().trim().toLowerCase(); // add this
+                assistMood = assistStateToMood(satState);
+            }
+        }
+        const mood = (this._config?.assist_states_enabled && assistMood) ? assistMood : baseMood;
+
+
 
         const weatherState = hass.states[WEATHER_ENTITY_ID] || null;
         const weather = normWeather(weatherState?.state);
