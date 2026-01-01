@@ -20,6 +20,7 @@
  * - add seasons: christmas, halloween etc.
  * - create a "charging" mood.
  * - add global debug flag in constant.js
+ * - train "Hey Macs" wakeword
  */
 
 
