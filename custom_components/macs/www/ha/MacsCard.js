@@ -17,7 +17,6 @@
  * and the M.A.C.S. frontend character.
  */
 
-
 import {
   DEFAULTS,
   MOOD_ENTITY_ID,
