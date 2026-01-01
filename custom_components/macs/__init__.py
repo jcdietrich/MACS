@@ -29,7 +29,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 # user dropdown/select and number entities
 PLATFORMS: list[str] = ["select", "number"]
 
-RESOURCE_BASE_URL = "/macs/macs-card.js"
+RESOURCE_BASE_URL = "/macs/ha.js"
 RESOURCE_TYPE = "module"
 
 
@@ -45,7 +45,7 @@ def _integration_version() -> str:
 
 async def _ensure_lovelace_resource(hass: HomeAssistant) -> None:
     """
-    Auto-register/update the Lovelace resource for macs-card.js in storage mode.
+    Auto-register/update the Lovelace resource for ha.js in storage mode.
 
     In YAML mode, HA doesn't expose a writable resources collection, so we just no-op.
     """
