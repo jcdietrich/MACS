@@ -38,7 +38,13 @@ function setBrightness(userBrightness){
     if (brightness < 0 || brightness > 100) return;
 
 	// convert to 0–1 for opacity
-	const opacity = brightness / 100;
+    let opacity = 100;
+    if (brightness === 0){
+        opacity = 0;
+    }
+    else if (brightness < 100){
+	    opacity = brightness / 100;
+    }
 
 	document.documentElement.style.setProperty(
 		'--brightness-level',
@@ -46,17 +52,11 @@ function setBrightness(userBrightness){
 	);
 }
 
-// function setWeatherIntensity(intensity){
-//     if (intensity === null || intensity === undefined) return;
-//     const v = Math.max(0, Math.min(1, parseFloat(intensity)));
-//     if (!Number.isNaN(v)) document.documentElement.style.setProperty('--weather-intensity', v.toString());
-// }
 
 const qs = new URLSearchParams(location.search);
 setMood(qs.get('mood') || 'idle');
 setWeather(qs.get('weather') || 'none');
-// setWeatherIntensity(qs.get('int'));
-setBrightness(qs.get('brightness') || '100');
+setBrightness(qs.get('brightness') ?? '100');
 
 window.addEventListener('message', (e) => {
     if (!e.data || typeof e.data !== 'object') return;
@@ -69,12 +69,8 @@ window.addEventListener('message', (e) => {
         setWeather(e.data.weather || 'none');
         return;
     }
-    // if (e.data.type === 'macs:weather_intensity') {
-    //     setWeatherIntensity(e.data.intensity);
-    //     return;
-    // }
     if (e.data.type === 'macs:brightness') {
-        setBrightness(e.data.brightness || '100');
+        setBrightness(e.data.brightness ?? '100');
         return;
     }
 });
