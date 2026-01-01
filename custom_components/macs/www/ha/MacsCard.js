@@ -98,7 +98,7 @@ export class MacsCard extends HTMLElement {
             this._assistOverrideUntil = 0;       // ms timestamp
             this._assistOverrideTimer = null;
             this._lastAssistState = null;
-
+            this._assistRun = null; // { startedAt, sawListening, sawProcessing, sawResponding }
 
 
 
@@ -122,15 +122,15 @@ export class MacsCard extends HTMLElement {
         }
     }
 
-		disconnectedCallback() {
-			// Cleanup event handlers / subscriptions
-			try { window.removeEventListener("message", this._onMessage); } catch (_) {}
-			try { window.removeEventListener("click", this._onOutsideSelectClick, true); } catch (_) {}
-			try { if (this._unsubStateChanged) this._unsubStateChanged(); } catch (_) {}
-			this._unsubStateChanged = null;
-			try { if (this._assistOverrideTimer) clearTimeout(this._assistOverrideTimer); } catch (_) {}
-			this._assistOverrideTimer = null;
-		}
+    disconnectedCallback() {
+        // Cleanup event handlers / subscriptions
+        try { window.removeEventListener("message", this._onMessage); } catch (_) {}
+        try { window.removeEventListener("click", this._onOutsideSelectClick, true); } catch (_) {}
+        try { if (this._unsubStateChanged) this._unsubStateChanged(); } catch (_) {}
+        this._unsubStateChanged = null;
+        try { if (this._assistOverrideTimer) clearTimeout(this._assistOverrideTimer); } catch (_) {}
+        this._assistOverrideTimer = null;
+    }
 
 
 
@@ -203,6 +203,52 @@ export class MacsCard extends HTMLElement {
             this._sendTurnsToIframe();
         }
     }
+
+
+// Monitor the satellite state. 
+// If the assistant understood a voice request, satellite goes idle > listening > processing > responding > idle. 
+// If the state goes idle > listening > idle, then it hasn't understood.
+// this functions keeps track of the satellite's state.
+_updateAssistOutcome(satState) {
+    const now = Date.now();
+    const state = (satState || "").toString().trim().toLowerCase();
+
+    // If no run yet, create on first "listening"
+    if (!this._assistRun) this._assistRun = { startedAt: 0, sawListening: false, sawProcessing: false, sawResponding: false };
+
+    // Safety: reset stale runs (e.g. satellite gets stuck)
+    if (this._assistRun.startedAt && (now - this._assistRun.startedAt) > 15000) this._assistRun = { startedAt: 0, sawListening: false, sawProcessing: false, sawResponding: false };
+
+    // Detect transitions
+    const prev = this._lastAssistState;
+    this._lastAssistState = state;
+
+    // Start a run when we enter listening (from idle or anything else)
+    if (state === "listening" && prev !== "listening") {
+        this._assistRun = { startedAt: now, sawListening: true, sawProcessing: false, sawResponding: false };
+        return;
+    }
+
+    // If a run is active, record milestones
+    if (this._assistRun.startedAt) {
+        if (state === "processing") this._assistRun.sawProcessing = true;
+        if (state === "responding") this._assistRun.sawResponding = true;
+
+        // End of run: return to idle
+        if (state === "idle" && prev !== "idle") {
+            const ok = this._assistRun.sawListening && this._assistRun.sawProcessing && this._assistRun.sawResponding;
+
+            // Your requested rule:
+            // - full sequence => happy
+            // - anything else that ends early => confused
+            this._setAssistOverride(ok ? "happy" : "confused", 2500);
+
+            // reset run
+            this._assistRun = { startedAt: 0, sawListening: false, sawProcessing: false, sawResponding: false };
+        }
+    }
+}
+
 
 
 
@@ -353,10 +399,13 @@ export class MacsCard extends HTMLElement {
                 const satStateObj = hass.states[satId] || null;
                 satState = (satStateObj?.state || "").toString().trim().toLowerCase(); // add this
                 assistMood = assistStateToMood(satState);
+                if (this._config?.assist_states_enabled && satState) this._updateAssistOutcome(satState);
             }
         }
-        const mood = (this._config?.assist_states_enabled && assistMood) ? assistMood : baseMood;
 
+        const now = Date.now();
+        const overrideActive = this._assistOverrideMood && now < (this._assistOverrideUntil || 0);
+        const mood = overrideActive ? this._assistOverrideMood : ((this._config?.assist_states_enabled && assistMood) ? assistMood : baseMood);
 
 
         const weatherState = hass.states[WEATHER_ENTITY_ID] || null;
