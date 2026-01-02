@@ -6,24 +6,29 @@ import {DEFAULTS, DEFAULT_MAX_TEMP_C, DEFAULT_MIN_TEMP_C, DEFAULT_MAX_WIND_MPH, 
 
 
 
-
-
-// normalize mood string
-export function normMood(v) {
-    return (typeof v === "string" ? v : "idle").trim().toLowerCase() || "idle";
-}
-export function normBrightness(v) {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return 100;
-    return Math.max(0, Math.min(100, n));
-}
+// ###################################################################################################################//
+//                                                                                                                    //
+//                                              URLS                                                                  //
+//                                                                                                                    //
+// ###################################################################################################################//
 
 export function safeUrl(baseUrl) {
     return new URL(baseUrl || DEFAULTS.url, window.location.origin);
 }
-
 export function getTargetOrigin(absoluteUrlString) {
     try { return new URL(absoluteUrlString).origin; } catch { return window.location.origin; }
+}
+
+
+// ###################################################################################################################//
+//                                                                                                                    //
+//                                              MOODS                                                                 //
+//                                                                                                                    //
+// ###################################################################################################################//
+
+// normalize mood string
+export function normMood(v) {
+    return (typeof v === "string" ? v : "idle").trim().toLowerCase() || "idle";
 }
 
 // map assistant state to mood
@@ -37,6 +42,27 @@ export function assistStateToMood(state) {
     if (state === "idle") return "idle";
     return "idle";
 }
+
+// ###################################################################################################################//
+//                                                                                                                    //
+//                                              BRIGHTNESS                                                            //
+//                                                                                                                    //
+// ###################################################################################################################//
+
+export function normBrightness(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 100;
+    return Math.max(0, Math.min(100, n));
+}
+
+
+
+
+// ###################################################################################################################//
+//                                                                                                                    //
+//                                              WEATHER                                                               //
+//                                                                                                                    //
+// ###################################################################################################################//
 
 // Weather Unit Conversters
 function celsiusToFahrenheit(celsius) {
