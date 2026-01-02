@@ -35,7 +35,9 @@ import {
 } from "./validators.js";
 
 import { SatelliteTracker } from "./assistSatellite.js";
+import { AssistPipelineTracker } from "./assistPipeline.js";
 
+import {debug} from "./debugger.js";
 
 
 export class MacsCard extends HTMLElement {
@@ -66,6 +68,7 @@ export class MacsCard extends HTMLElement {
 
         // merge defaults with user config. Todo, remove mode?
         this._config = { ...DEFAULTS, ...config}; //, mode };
+        debug("CARD CONFIG: " + JSON.stringify(this._config));
 
         // Only run the first time setConfig is called
         if (!this._root) {
@@ -106,21 +109,16 @@ export class MacsCard extends HTMLElement {
             // Keep home assistant state
             this._hass = null;
 
-            // Keep assistant conversation history
-            // newest first: [{runId, heard, reply, error, ts}]
-            this._turns = []; 
-            // Remember which message we saw last to prevent processing the same message again
-            this._lastSeen = { runId: null, ts: null };
-
-            // Prevents fetching calls when HA is updating rapidly
-            this._fetchDebounce = null;
-
-            // Keep an unsubscribe function so we can clean up later
-            this._unsubStateChanged = null;
-
-
-
             this._assistSatelliteOutcome = new SatelliteTracker({});
+
+            this._pipelineTracker = new AssistPipelineTracker({
+                onTurns: (turns) => {
+                    if (!this._iframe) return;
+                    this._postToIframe({ type: "macs:turns", turns });
+                }
+            });
+            if (this._pipelineTracker) this._pipelineTracker.setConfig(this._config);
+
 
             // Listen for messages from HA to the iframe
             this._onMessage = this._onMessage.bind(this);
@@ -130,18 +128,36 @@ export class MacsCard extends HTMLElement {
 
     // make sure we remove event listeners when unloaded
     disconnectedCallback() {
+        debug("got disconnected");
         try { window.removeEventListener("message", this._onMessage); } catch (_) {} 
 
-        try { if (this._unsubStateChanged) this._unsubStateChanged(); } catch (_) {}
-
-        try { if (this._fetchDebounce) clearTimeout(this._fetchDebounce); } catch (_) {}
-        this._fetchDebounce = null;
+       try { this._pipelineTracker?.dispose?.(); } catch (_) {}
+       this._pipelineTracker  = null;
 
         // remove the assist satellite class
         try { this._assistSatelliteOutcome?.dispose?.(); } catch (_) {}
         this._assistSatelliteOutcome = null;
 
-        this._unsubStateChanged = null;
+    }
+
+    connectedCallback() {
+        // If HA disconnected and reconnected the same instance, rebuild trackers
+        if (this._config && !this._pipelineTracker) {
+            debug("Recreating AssistPipelineTracker (reconnect)");
+            this._pipelineTracker = new AssistPipelineTracker({
+            onTurns: (turns) => {
+                if (!this._iframe) return;
+                this._postToIframe({ type: "macs:turns", turns });
+            }
+            });
+            this._pipelineTracker.setConfig(this._config);
+            if (this._hass) this._pipelineTracker.setHass(this._hass);
+        }
+
+        if (this._config && !this._assistSatelliteOutcome) {
+            debug("Recreating SatelliteTracker (reconnect)");
+            this._assistSatelliteOutcome = new SatelliteTracker({});
+        }
     }
 
 
@@ -156,9 +172,7 @@ export class MacsCard extends HTMLElement {
         try { this._iframe.contentWindow.postMessage(payload, "*"); } catch (_) {}
     }
 
-    _pipelineEnabled() { 
-        return !!this._config?.assist_pipeline_enabled && !!(this._config?.pipeline_id || "").toString().trim(); 
-    }
+
 
 
     _sendConfigToIframe() {
@@ -179,7 +193,8 @@ export class MacsCard extends HTMLElement {
 
     _sendTurnsToIframe() {
         // Turns are kept newest-first in the card, but sent as-is
-        this._postToIframe({ type: "macs:turns", turns: this._turns.slice() });
+        const turns = this._pipelineTracker?.getTurns?.() || [];
+        this._postToIframe({ type: "macs:turns", turns });
     }
 
     _onMessage(e) {
@@ -201,143 +216,16 @@ export class MacsCard extends HTMLElement {
     }
 
 
-
-
-
-
-    /* ---------- Capture assist messages - uses assist pipeline websockets, and HASS auth ---------- */
-
-    // a turn is one user message and following system response consisting of: 
-    // runId, heard, reply, error, ts
-
-    // Keep only the most recent N turns.
-    _upsertTurn(t) {
-        // Deduplicate by runId and keep newest-first, capped by max_turns
-        const maxTurns = Math.max(1, parseInt(this._config.max_turns ?? DEFAULTS.max_turns, 10) || DEFAULTS.max_turns);
-
-        const idx = this._turns.findIndex(x => x.runId === t.runId);
-
-        if (idx === 0) { this._turns[0] = { ...this._turns[0], ...t }; return; }
-
-        if (idx > 0) {
-            const merged = { ...this._turns[idx], ...t };
-            this._turns.splice(idx, 1);
-            this._turns.unshift(merged);
-        } else {
-            this._turns.unshift(t);
-            if (this._turns.length > maxTurns) this._turns.length = maxTurns;
-        }
-    }
-
-    _extract(events) {
-        // Pull just the pieces we render from pipeline debug events
-        let heard = "", reply = "", error = "", ts = "";
-        for (const ev of (events || [])) {
-            if (!ts && ev.timestamp) ts = ev.timestamp;
-
-            if (!heard && ev.type === "intent-start") heard = ev.data?.intent_input || "";
-            if (ev.type === "stt-end") heard = ev.data?.stt_output?.text || heard;
-
-            if (ev.type === "intent-end") reply = ev.data?.intent_output?.response?.speech?.plain?.speech || reply;
-
-            if (ev.type === "error") error = `${ev.data?.code || "error"}: ${ev.data?.message || ""}`.trim();
-        }
-        return { heard, reply, error, ts };
-    }
-
-    async _listRuns() {
-        // Pipeline debug list call (frontend-authenticated)
-        const pid = (this._config.pipeline_id || "").toString().trim();
-        if (!pid) return null;
-        // Uses frontend auth automatically
-        return await this._hass.callWS({ type: "assist_pipeline/pipeline_debug/list", pipeline_id: pid });
-    }
-
-    async _getRun(runId) {
-        // Fetch a single pipeline run for detailed events
-        const pid = (this._config.pipeline_id || "").toString().trim();
-        if (!pid || !runId) return null;
-        return await this._hass.callWS({ type: "assist_pipeline/pipeline_debug/get", pipeline_id: pid, pipeline_run_id: runId });
-    }
-
-    _triggerFetchNewest() {
-        if (this._fetchDebounce) return;
-        this._fetchDebounce = setTimeout(() => { this._fetchDebounce = null; this._fetchNewest().catch(() => {}); }, 160);
-    }
-
-    async _fetchNewest() {
-        // user must be authenticated
-        if (!this._hass) return;
-
-        // ignore if pipeline not enabled
-        if (!this._pipelineEnabled()) return;
-
-        // make sure we have a pipeline id
-        const pid = (this._config.pipeline_id || "").toString().trim();
-        if (!pid) return;
-
-        // List runs and find newest
-        const listed = await this._listRuns();
-        const newest = listed?.pipeline_runs?.at?.(-1) || (Array.isArray(listed?.pipeline_runs) ? listed.pipeline_runs[listed.pipeline_runs.length - 1] : null);
-        if (!newest) return;
-
-        // Check if the newest run has changed
-        const changed = newest.pipeline_run_id !== this._lastSeen.runId || newest.timestamp !== this._lastSeen.ts;
-        if (!changed) return;
-
-        // Remember last seen
-        this._lastSeen = { runId: newest.pipeline_run_id, ts: newest.timestamp };
-
-        // Fetch multiple times because pipeline events can arrive late
-        const runId = this._lastSeen.runId;
-        for (const delay of [0, 250, 700]) {
-            setTimeout(async () => {
-                try {
-                    const got = await this._getRun(runId);
-                    const events = got?.events || null;
-                    if (!events) return;
-
-                    // Extract turn data and upsert
-                    const parsed = { ...this._extract(events), runId };
-                    if (parsed.heard || parsed.reply || parsed.error) {
-                        this._upsertTurn(parsed);
-                        this._sendTurnsToIframe();
-                    }
-                } catch (_) {}
-            }, delay);
-        }
-    }
-
-    // // Subscribe to conversation entity changes to trigger pipeline refresh
-    _ensureSubscriptions() {
-        if (!this._hass) return;
-        const shouldSub = this._pipelineEnabled();
-        
-        if (shouldSub && !this._unsubStateChanged) {
-            this._unsubStateChanged = this._hass.connection.subscribeEvents((ev) => {
-                try {
-                    if (ev?.data?.entity_id !== CONVERSATION_ENTITY_ID) return;
-                    this._triggerFetchNewest();
-                } catch (_) {}
-            }, "state_changed");
-        }
-
-        if (!shouldSub && this._unsubStateChanged) {
-            try { this._unsubStateChanged(); } catch (_) {}
-            this._unsubStateChanged = null;
-        }
-    }
-
-
-
     /* ---------- hass hook ---------- */
 
     set hass(hass) {
         if (!this._config || !this._iframe) return;
 
         this._hass = hass;
-        if (this._thumb && this._iframe) { this._thumb.classList.add("hidden"); this._iframe.classList.remove("hidden"); }
-        this._ensureSubscriptions();
+        this._pipelineTracker?.setHass?.(hass);
+        this._pipelineTracker?.setConfig?.(this._config);
+
+        //this._ensureSubscriptions();
 
         const moodState = hass.states[MOOD_ENTITY_ID] || null;
         //const mood = normMood(moodState?.state);
@@ -389,7 +277,11 @@ export class MacsCard extends HTMLElement {
             this._iframe.onload = () => {
                 sendAll();
                 // First fetch after iframe is alive
-                this._triggerFetchNewest();
+                this._pipelineTracker?.triggerFetchNewest?.();
+                if (this._thumb){
+                    this._thumb.classList.add("hidden");
+                    this._iframe.classList.remove("hidden");
+                }
             };
 
             if (src !== this._lastSrc) {
@@ -399,6 +291,7 @@ export class MacsCard extends HTMLElement {
 
             this._loadedOnce = true;
             this._lastMood = mood;
+            this._lastBrightness = brightness;
             this._lastWeather = undefined;
 
             setTimeout(sendAll, 0);
