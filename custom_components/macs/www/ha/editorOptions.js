@@ -50,6 +50,9 @@ function comboValue(el, e) {
 	if (e?.currentTarget === el && e?.detail && typeof e.detail.value !== "undefined") {
 		return e.detail.value;
 	}
+	if (el?.selectedItem && typeof el.selectedItem.id !== "undefined") {
+		return el.selectedItem.id;
+	}
 	return el?.value ?? "";
 }
 
@@ -328,13 +331,19 @@ function readSingleWeather(root, e, ids, config, enabledKey, entityKey, customKe
 	if (min) min.disabled = !enabled;
 	if (max) max.disabled = !enabled;
 
+	const parseNumber = (value) => {
+		if (value === "" || value === null || typeof value === "undefined") return "";
+		const num = Number(value);
+		return Number.isFinite(num) ? num : "";
+	};
+
 	return {
 		[enabledKey]: enabled,
 		[entityKey]: entityVal,
 		[customKey]: isCustom,
-		[unitKey]: (unit?.value ?? config?.[unitKey] ?? "").toString(),
-		[minKey]: (min?.value ?? config?.[minKey] ?? "").toString(),
-		[maxKey]: (max?.value ?? config?.[maxKey] ?? "").toString(),
+		[unitKey]: (comboValue(unit, e) ?? config?.[unitKey] ?? "").toString(),
+		[minKey]: parseNumber(min?.value ?? config?.[minKey] ?? ""),
+		[maxKey]: parseNumber(max?.value ?? config?.[maxKey] ?? ""),
 	};
 }
 

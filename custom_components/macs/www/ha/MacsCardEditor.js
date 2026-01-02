@@ -4,7 +4,7 @@
  * Home Assistant Lovelace card editor for M.A.C.S. (Mood-Aware Character SVG).
  *
  * This file defines the custom editor UI shown in the Lovelace card configuration
- * panel. It allows users to configure how M.A.C.S. integrates with Home Assistant’s
+ * panel. It allows users to configure how M.A.C.S. integrates with Home Assistant's
  * Assist system, including:
  * - Enabling automatic mood changes based on assistant state
  * - Enabling or disabling dialogue display from the assistant
@@ -137,8 +137,8 @@ export class MacsCardEditor extends HTMLElement {
 					</div>
 
 					<div class="row">
-						<ha-textfield id="temperature_min" label="Min value" placeholder="Leave empty for defaults"></ha-textfield>
-						<ha-textfield id="temperature_max" label="Max value" placeholder="Leave empty for defaults"></ha-textfield>
+						<ha-textfield id="temperature_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
+						<ha-textfield id="temperature_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 					</div>
 				</div>
 
@@ -162,8 +162,8 @@ export class MacsCardEditor extends HTMLElement {
 					</div>
 
 					<div class="row">
-						<ha-textfield id="wind_min" label="Min value" placeholder="Leave empty for defaults"></ha-textfield>
-						<ha-textfield id="wind_max" label="Max value" placeholder="Leave empty for defaults"></ha-textfield>
+						<ha-textfield id="wind_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
+						<ha-textfield id="wind_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 					</div>
 				</div>
 
@@ -187,8 +187,8 @@ export class MacsCardEditor extends HTMLElement {
 					</div>
 
 					<div class="row">
-						<ha-textfield id="precipitation_min" label="Min value" placeholder="Leave empty for defaults"></ha-textfield>
-						<ha-textfield id="precipitation_max" label="Max value" placeholder="Leave empty for defaults"></ha-textfield>
+						<ha-textfield id="precipitation_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
+						<ha-textfield id="precipitation_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 					</div>
 				</div>
 
@@ -337,8 +337,8 @@ export class MacsCardEditor extends HTMLElement {
             if (temperatureUnitSelect) {
                 temperatureUnitSelect.items = [
                     { id: "", name: "Auto" },
-                    { id: "c", name: "Celsius (�C)" },
-                    { id: "f", name: "Fahrenheit (�F)" },
+                    { id: "c", name: "Celsius (°C)" },
+                    { id: "f", name: "Fahrenheit (°F)" },
                 ];
                 temperatureUnitSelect.itemLabelPath = "name";
                 temperatureUnitSelect.itemValuePath = "id";
@@ -398,7 +398,7 @@ export class MacsCardEditor extends HTMLElement {
 				toggle.addEventListener("click", () => {
 					const open = !content.hasAttribute("hidden");
 					content.toggleAttribute("hidden", open);
-					arrow.textContent = open ? "›" : "▾";
+					arrow.textContent = open ? ">" : "v";
 				});
 			}
 
@@ -459,9 +459,21 @@ export class MacsCardEditor extends HTMLElement {
 		// wire up event listeners for user config changes
 		_wire() {
 			const onChange = (e) => {
+				const target = e?.currentTarget;
+				if (target?.id && target.id.endsWith("_unit")) {
+					debug("unit-change", {
+						id: target.id,
+						type: e?.type,
+						detailValue: e?.detail?.value,
+						value: target.value,
+						selectedItemId: target.selectedItem?.id
+					});
+				}
+
 				const assistConfig = readAssistStateInputs(this.shadowRoot, e, this._config);
 				const pipelineConfig = readPipelineInputs(this.shadowRoot, e, this._config);
 				const weatherConfig = readWeatherInputs(this.shadowRoot, e, this._config);
+				debug("weather-config", weatherConfig);
 
 				// Commit new config
 				const next = {
