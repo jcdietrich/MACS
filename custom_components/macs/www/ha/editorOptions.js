@@ -406,12 +406,14 @@ function syncSingleWeather(
 		unit.value = unitVal;
 	}
 
-	if (min && min.value !== (config && config[minKey])) {
-		min.value = (config && config[minKey]) || "";
-	}
-	if (max && max.value !== (config && config[maxKey])) {
-		max.value = (config && config[maxKey]) || "";
-	}
+    var cfgMin = config && config[minKey];
+    if (min && min.value !== cfgMin) {
+        min.value = cfgMin === null || typeof cfgMin === "undefined" ? "" : String(cfgMin);
+    }
+    var cfgMax = config && config[maxKey];
+    if (max && max.value !== cfgMax) {
+        max.value = cfgMax === null || typeof cfgMax === "undefined" ? "" : String(cfgMax);
+    }
 }
 
 export function syncWeatherControls(root, config, items) {
@@ -509,23 +511,32 @@ function readSingleWeather(
 	if (min) min.disabled = !enabled;
 	if (max) max.disabled = !enabled;
 
-	// Parse numeric values only if they are valid numbers.
-	var parseNumber = function (value) {
-		if (value === "" || value === null || typeof value === "undefined") {
-			return "";
-		}
-		var num = Number(value);
-		return Number.isFinite(num) ? num : "";
-	};
+    // Parse numeric values only if they are valid numbers.
+    var parseNumber = function (value) {
+        if (value === "" || value === null || typeof value === "undefined") {
+            return "";
+        }
+        var num = Number(value);
+        return Number.isFinite(num) ? num : "";
+    };
+
+    var rawMin = min ? min.value : undefined;
+    if (rawMin === "" || rawMin === null || typeof rawMin === "undefined") {
+        rawMin = config && config[minKey];
+    }
+    var rawMax = max ? max.value : undefined;
+    if (rawMax === "" || rawMax === null || typeof rawMax === "undefined") {
+        rawMax = config && config[maxKey];
+    }
 
 	return {
 		[enabledKey]: enabled,
 		[entityKey]: entityVal,
 		[customKey]: isCustom,
 		[unitKey]: String(comboValue(unit, e) || (config && config[unitKey]) || ""),
-		[minKey]: parseNumber((min && min.value) || (config && config[minKey]) || ""),
-		[maxKey]: parseNumber((max && max.value) || (config && config[maxKey]) || ""),
-	};
+        [minKey]: parseNumber(rawMin),
+        [maxKey]: parseNumber(rawMax),
+    };
 }
 
 export function readWeatherInputs(root, e, config) {
