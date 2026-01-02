@@ -25,7 +25,6 @@ SERVICE_SET_MOOD = "set_mood"
 ATTR_MOOD = "mood"
 
 
-
 # WEATHERS = (
 #     "none",
 #     "rain",

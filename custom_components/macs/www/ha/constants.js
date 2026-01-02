@@ -43,6 +43,14 @@ export const DEFAULTS = {
     precipitation_max: "",
 };
 
+export const DEFAULT_MAX_TEMP_C = 30;
+export const DEFAULT_MIN_TEMP_C = 5;
+export const DEFAULT_MAX_WIND_MPH = 50;
+export const DEFAULT_MIN_WIND_MPH = 10;
+export const DEFAULT_MAX_RAIN_MM = 10; // todo - what is sensible value?
+export const DEFAULT_MIN_RAIN_MM = 0; // todo - what is sensible value?
+
+
 // HA entity IDs this card listens to
 export const MOOD_ENTITY_ID = "select.macs_mood";
 export const BRIGHTNESS_ENTITY_ID = "number.macs_brightness";

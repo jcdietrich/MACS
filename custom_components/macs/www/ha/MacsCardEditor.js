@@ -322,7 +322,7 @@ export class MacsCardEditor extends HTMLElement {
 				rainSel.value = isCustom ? "custom" : rid;
 			}
 
-			            // Weather: temperature sensor units
+			// Weather: temperature sensor units
             const temperatureUnitSelect = this.shadowRoot.getElementById("temperature_unit");
             if (temperatureUnitSelect) {
                 temperatureUnitSelect.items = [
@@ -341,8 +341,9 @@ export class MacsCardEditor extends HTMLElement {
                 windUnitSelect.items = [
                     { id: "", name: "Auto" },
                     { id: "mph", name: "Miles per hour (mph)" },
-                    { id: "km/h", name: "Kilometres per hour (km/h)" },
-                    { id: "m/s", name: "Metres per second (m/s)" },
+                    { id: "kph", name: "Kilometres per hour (kph)" },
+                    { id: "mps", name: "Metres per second (m/s)" },
+                    { id: "knots", name: "Knots" },
                 ];
                 windUnitSelect.itemLabelPath = "name";
                 windUnitSelect.itemValuePath = "id";
