@@ -3,9 +3,16 @@
 // If the state goes idle > listening > idle, then it hasn't understood.
 // this functions keeps track of the satellite's state.
 
-import {
-  DEFAULTS,
-} from "./constants.js";
+import {DEFAULTS} from "./constants.js";
+import {debug} from "./debugger.js";
+
+const DEBUG = false;
+function maybeDebug(msg){
+    if (DEBUG){
+        debug(msg, DEBUG);
+    }
+}
+
 
 export class SatelliteTracker{
     //Todo - Allow user config timeout

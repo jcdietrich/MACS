@@ -39,6 +39,13 @@ import { AssistPipelineTracker } from "./assistPipeline.js";
 
 import {debug} from "./debugger.js";
 
+const DEBUG = false;
+function maybeDebug(msg){
+    if (DEBUG){
+        debug(msg, DEBUG);
+    }
+}
+
 
 export class MacsCard extends HTMLElement {
     // returns the minimum valid config Home Assistant needs to add the card to a dashboard before the user configures anything.
@@ -68,7 +75,7 @@ export class MacsCard extends HTMLElement {
 
         // merge defaults with user config. Todo, remove mode?
         this._config = { ...DEFAULTS, ...config}; //, mode };
-        debug("CARD CONFIG: " + JSON.stringify(this._config));
+        maybeDebug("CARD CONFIG: " + JSON.stringify(this._config));
 
         // Only run the first time setConfig is called
         if (!this._root) {
@@ -128,7 +135,7 @@ export class MacsCard extends HTMLElement {
 
     // make sure we remove event listeners when unloaded
     disconnectedCallback() {
-        debug("got disconnected");
+        maybeDebug("got disconnected");
         try { window.removeEventListener("message", this._onMessage); } catch (_) {} 
 
        try { this._pipelineTracker?.dispose?.(); } catch (_) {}
@@ -143,7 +150,7 @@ export class MacsCard extends HTMLElement {
     connectedCallback() {
         // If HA disconnected and reconnected the same instance, rebuild trackers
         if (this._config && !this._pipelineTracker) {
-            debug("Recreating AssistPipelineTracker (reconnect)");
+            maybeDebug("Recreating AssistPipelineTracker (reconnect)");
             this._pipelineTracker = new AssistPipelineTracker({
             onTurns: (turns) => {
                 if (!this._iframe) return;
@@ -155,7 +162,7 @@ export class MacsCard extends HTMLElement {
         }
 
         if (this._config && !this._assistSatelliteOutcome) {
-            debug("Recreating SatelliteTracker (reconnect)");
+            maybeDebug("Recreating SatelliteTracker (reconnect)");
             this._assistSatelliteOutcome = new SatelliteTracker({});
         }
     }
@@ -222,8 +229,18 @@ export class MacsCard extends HTMLElement {
         if (!this._config || !this._iframe) return;
 
         this._hass = hass;
+
+        // Always keep hass fresh (safe + cheap)
         this._pipelineTracker?.setHass?.(hass);
-        this._pipelineTracker?.setConfig?.(this._config);
+               
+        // Only re-apply config if the pipeline settings changed since last time we applied it
+        const enabled = !!this._config?.assist_pipeline_enabled;
+        const pid = this._config?.pipeline_id || "";
+        if (!this._lastPipelineCfg || this._lastPipelineCfg.enabled !== enabled || this._lastPipelineCfg.pid !== pid) {
+            this._lastPipelineCfg = { enabled, pid};
+            this._pipelineTracker?.setConfig?.(this._config);
+        }
+        
 
         //this._ensureSubscriptions();
 
@@ -241,7 +258,7 @@ export class MacsCard extends HTMLElement {
                 satState = (satStateObj?.state || "").toString().trim().toLowerCase(); 
                 assistMood = assistStateToMood(satState);
                 const tracker = this._assistSatelliteOutcome;
-                debug(tracker);
+                maybeDebug(tracker);
                 if (this._config?.assist_states_enabled && satState && tracker) tracker.update(satState);
             }
         }
