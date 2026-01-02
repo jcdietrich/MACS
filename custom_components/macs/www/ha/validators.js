@@ -99,15 +99,17 @@ function normalizeRange(value, minValue, maxValue) {
 
 function normalizeTempUnit(unit) {
     const u = (unit || "").toString().trim().toLowerCase();
-    if (u === "f" || u === "°f" || u === "fahrenheit") return "f";
+    if (!u) return "c";
+    if (u.indexOf("f") !== -1) return "f";
+    if (u.indexOf("c") !== -1) return "c";
     return "c";
 }
 
 function normalizeWindUnit(unit) {
     const u = (unit || "").toString().trim().toLowerCase();
-    if (u === "km/h" || u === "kph") return "km/h";
-    if (u === "m/s" || u === "mps") return "m/s";
-    if (u === "kn" || u === "kt" || u === "kt/h") return "kn";
+    if (u === "kph" || u === "km/h") return "kph";
+    if (u === "mps" || u === "m/s") return "mps";
+    if (u === "knots" || u === "kn" || u === "kt" || u === "kt/h") return "knots";
     return "mph";
 }
 
@@ -129,19 +131,19 @@ function getDefaultTempRange(unit) {
 }
 
 function getDefaultWindRange(unit) {
-    if (unit === "km/h") {
+    if (unit === "kph" || unit === "km/h") {
         return {
             min: convertMphToKph(DEFAULT_MIN_WIND_MPH),
             max: convertMphToKph(DEFAULT_MAX_WIND_MPH),
         };
     }
-    if (unit === "m/s") {
+    if (unit === "mps" || unit === "m/s") {
         return {
             min: convertMphToMetersPerSecond(DEFAULT_MIN_WIND_MPH),
             max: convertMphToMetersPerSecond(DEFAULT_MAX_WIND_MPH),
         };
     }
-    if (unit === "kn") {
+    if (unit === "knots" || unit === "kn") {
         return {
             min: convertMphToKnots(DEFAULT_MIN_WIND_MPH),
             max: convertMphToKnots(DEFAULT_MAX_WIND_MPH),
@@ -195,3 +197,4 @@ export function normalizeRain(value, unit, minValue, maxValue) {
     const v = toNumber(value);
     return normalizeRange(v, effectiveMin, effectiveMax);
 }
+

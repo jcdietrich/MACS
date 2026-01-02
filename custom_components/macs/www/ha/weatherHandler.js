@@ -1,7 +1,7 @@
 import { normalizeTemperature, normalizeWind, normalizeRain } from "./validators.js";
 import { createDebugger } from "./debugger.js";
 
-const DEBUG_ENABLED = true;
+const DEBUG_ENABLED = false;
 const debug = createDebugger("weatherHandler", DEBUG_ENABLED);
 
 function toNumber(value) {
@@ -38,13 +38,14 @@ export class WeatherHandler {
         if (cfg) return cfg;
         const su = (sensorUnit || "").toString().trim().toLowerCase();
         if (kind === "temp") {
-            if (su.includes("f")) return "f";
+            if (su.indexOf("f") !== -1) return "f";
+            if (su.indexOf("c") !== -1) return "c";
             return "c";
         }
         if (kind === "wind") {
-            if (su === "km/h" || su === "kph") return "km/h";
-            if (su === "m/s" || su === "mps") return "m/s";
-            if (su === "kn" || su === "kt" || su === "kt/h") return "kn";
+            if (su === "km/h" || su === "kph") return "kph";
+            if (su === "m/s" || su === "mps") return "mps";
+            if (su === "knots" || su === "kn" || su === "kt" || su === "kt/h") return "knots";
             return "mph";
         }
         if (kind === "rain") {

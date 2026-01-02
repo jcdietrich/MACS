@@ -280,9 +280,9 @@ function collectSensors(hass, predicate) {
 }
 
 // Unit sets used for sensor matching.
-const TEMP_UNITS = new Set(["ļøc", "c", "celsius", "ļøf", "f", "fahrenheit"]);
-const WIND_UNITS = new Set(["m/s", "mps", "km/h", "kph", "mph", "kn", "kt", "kt/h"]);
-const RAIN_UNITS = new Set(["mm", "mm/h", "in", "in/h", "inch", "inches"]);
+const TEMP_UNITS = new Set(["�c", "c", "celsius", "�f", "f", "fahrenheit"]);
+const WIND_UNITS = new Set(["mph", "kph", "mps", "knots", "km/h", "m/s", "kn", "kt", "kt/h"]);
+const RAIN_UNITS = new Set(["mm", "in", "%", "mm/h", "in/h", "inch", "inches"]);
 const PERCENT_UNITS = new Set(["%"]);
 
 function hasUnit(st, allowed) {
@@ -624,3 +624,4 @@ export function readWeatherInputs(root, e, config) {
 		),
 	};
 }
+
