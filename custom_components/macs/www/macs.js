@@ -21,6 +21,8 @@
  * - create a "charging" mood.
  * - add global debug flag in constant.js
  * - train "Hey Macs" wakeword
+ * - change happy trigger from idle to responding. Actually, idle OR responding, whichever comes first.
+ * - update readme screenshot
  */
 
 

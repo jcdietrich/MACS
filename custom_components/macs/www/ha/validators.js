@@ -24,3 +24,15 @@ export function safeUrl(baseUrl) {
 export function getTargetOrigin(absoluteUrlString) {
     try { return new URL(absoluteUrlString).origin; } catch { return window.location.origin; }
 }
+
+// map assistant state to mood
+export function assistStateToMood(state) {
+    state = (state || "").toString().trim().toLowerCase();
+    if (state === "listening") return "listening";
+    if (state === "thinking") return "thinking";
+    if (state === "processing") return "thinking";
+    if (state === "responding") return "thinking";
+    if (state === "speaking") return "thinking";
+    if (state === "idle") return "idle";
+    return "idle";
+}

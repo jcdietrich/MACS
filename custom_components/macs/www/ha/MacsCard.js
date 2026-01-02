@@ -30,41 +30,50 @@ import {
 	normWeather,
 	normBrightness,
 	safeUrl,
-	getTargetOrigin
+	getTargetOrigin,
+    assistStateToMood
 } from "./validators.js";
 
+import { SatelliteTracker } from "./assistSatellite.js";
 
-// map assistant state to mood
-function assistStateToMood(state) {
-    state = (state || "").toString().trim().toLowerCase();
-    if (state === "listening") return "listening";
-    if (state === "thinking") return "thinking";
-    if (state === "processing") return "thinking";
-    if (state === "responding") return "thinking";
-    if (state === "speaking") return "thinking";
-    if (state === "idle") return "idle";
-    return "idle";
-}
 
 
 export class MacsCard extends HTMLElement {
+    // returns the minimum valid config Home Assistant needs to add the card to a dashboard before the user configures anything.
     static getStubConfig() { 
-        return { type: "custom:macs-card", assist_pipeline_enabled: false, pipeline_id: "", pipeline_custom: false, max_turns: 2, preview_image: DEFAULTS.preview_image }; 
+        return { 
+            type: "custom:macs-card", 
+            assist_pipeline_enabled: false, 
+            pipeline_custom: false, 
+            preview_image: DEFAULTS.preview_image
+        }; 
     }
 
+    // create the card editor
     static getConfigElement() {
         return document.createElement("macs-card-editor");
     }
 
+    // Load the Macs Card and Configs
     setConfig(config) {
-        if (!config || typeof config !== "object") throw new Error("macs-card: invalid config");
+        // ensure we have a valid config object
+        if (!config || typeof config !== "object"){
+            throw new Error("macs-card: invalid config");
+        }
 
-        const mode = "postMessage"; // locked
-        this._config = { ...DEFAULTS, ...config, mode };
+        // locked to postmessage mode - todo, remove this option
+        //const mode = "postMessage";
 
+        // merge defaults with user config. Todo, remove mode?
+        this._config = { ...DEFAULTS, ...config}; //, mode };
+
+        // Only run the first time setConfig is called
         if (!this._root) {
             // Shadow DOM wrapper + iframe shell
+            // (Creating a Shadow Root so CSS styles don’t mess with HA, and HA styles don’t mess with Macs.)
             this._root = this.attachShadow({ mode: "open" });
+
+            // the iframe (hidden whilst loading - display thumbnail instead)
             this._root.innerHTML = `
                 <style>
                     :host { display: block; height: 100%; }
@@ -76,61 +85,63 @@ export class MacsCard extends HTMLElement {
                 </style>
                 <ha-card><div class="wrap"><img class="thumb" /><iframe class="hidden"></iframe></div></ha-card>
             `;
-
             this._iframe = this._root.querySelector("iframe");
+
+            // preview image (shown before iframe is ready)
             this._thumb = this._root.querySelector("img.thumb");
-            if (this._thumb) this._thumb.src = (this._config.preview_image || DEFAULTS.preview_image).toString();
+            if (this._thumb) {   
+                if (this._config.preview_image){
+                    this._thumb.src = this._config.preview_image.toString();
+                }
+                else {
+                    this._thumb.src = DEFAULTS.preview_image;
+                }
+            }
+
+            // keep load/render state
             this._loadedOnce = false;
             this._lastMood = undefined;
             this._lastSrc = undefined;
 
+            // Keep home assistant state
             this._hass = null;
 
-            this._turns = []; // newest first: [{runId, heard, reply, error, ts}]
+            // Keep assistant conversation history
+            // newest first: [{runId, heard, reply, error, ts}]
+            this._turns = []; 
+            // Remember which message we saw last to prevent processing the same message again
             this._lastSeen = { runId: null, ts: null };
+
+            // Prevents fetching calls when HA is updating rapidly
             this._fetchDebounce = null;
 
+            // Keep an unsubscribe function so we can clean up later
             this._unsubStateChanged = null;
 
 
 
-            // automatically respond to satellite assistant states
-            this._assistOverrideMood = null;     // "happy" / "confused" / etc.
-            this._assistOverrideUntil = 0;       // ms timestamp
-            this._assistOverrideTimer = null;
-            this._lastAssistState = "idle";
-            this._assistRun = null; // { startedAt, sawListening, sawProcessing, sawResponding }
+            this._assistSatelliteOutcome = new SatelliteTracker({});
 
-
-
-            // Listen for iframe requests
+            // Listen for messages from HA to the iframe
             this._onMessage = this._onMessage.bind(this);
             window.addEventListener("message", this._onMessage);
-
-            // Prevent outside-clicks from closing the HA editor dialog while menu is open
-            this._onOutsideSelectClick = (e) => {
-                if (!this._menuOpen) return;
-                const path = e.composedPath ? e.composedPath() : [];
-                const isMenuEl = (el) => {
-                    const tag = el && el.tagName;
-                    return tag === "HA-SELECT" || tag === "MWC-MENU" || tag === "MWC-MENU-SURFACE" || tag === "MWC-LIST" || tag === "MWC-LIST-ITEM";
-                };
-                if (path.some(isMenuEl)) return;
-                this._closeSelectMenu();
-                e.stopPropagation();
-            };
-            window.addEventListener("click", this._onOutsideSelectClick, true);
         }
     }
 
+    // make sure we remove event listeners when unloaded
     disconnectedCallback() {
-        // Cleanup event handlers / subscriptions
-        try { window.removeEventListener("message", this._onMessage); } catch (_) {}
-        try { window.removeEventListener("click", this._onOutsideSelectClick, true); } catch (_) {}
+        try { window.removeEventListener("message", this._onMessage); } catch (_) {} 
+
         try { if (this._unsubStateChanged) this._unsubStateChanged(); } catch (_) {}
+
+        try { if (this._fetchDebounce) clearTimeout(this._fetchDebounce); } catch (_) {}
+        this._fetchDebounce = null;
+
+        // remove the assist satellite class
+        try { this._assistSatelliteOutcome?.dispose?.(); } catch (_) {}
+        this._assistSatelliteOutcome = null;
+
         this._unsubStateChanged = null;
-        try { if (this._assistOverrideTimer) clearTimeout(this._assistOverrideTimer); } catch (_) {}
-        this._assistOverrideTimer = null;
     }
 
 
@@ -147,22 +158,6 @@ export class MacsCard extends HTMLElement {
 
     _pipelineEnabled() { 
         return !!this._config?.assist_pipeline_enabled && !!(this._config?.pipeline_id || "").toString().trim(); 
-    }
-
-
-    _setAssistOverride(mood, ms) {
-        this._assistOverrideMood = mood;
-        this._assistOverrideUntil = Date.now() + Math.max(250, ms || 0);
-        try { 
-            if (this._assistOverrideTimer) clearTimeout(this._assistOverrideTimer); 
-        } 
-        catch (_) {
-        }
-
-        this._assistOverrideTimer = setTimeout(() => {
-            this._assistOverrideMood = null;
-            this._assistOverrideUntil = 0;
-        }, Math.max(250, ms || 0));
     }
 
 
@@ -206,49 +201,6 @@ export class MacsCard extends HTMLElement {
     }
 
 
-    // Monitor the satellite state. 
-    // If the assistant understood a voice request, satellite goes idle > listening > processing > responding > idle. 
-    // If the state goes idle > listening > idle, then it hasn't understood.
-    // this functions keeps track of the satellite's state.
-    _updateAssistOutcome(satState) {
-        const now = Date.now();
-        const state = (satState || "").toString().trim().toLowerCase();
-
-        // If no run yet, create on first "listening"
-        if (!this._assistRun) this._assistRun = { startedAt: 0, sawListening: false, sawProcessing: false, sawResponding: false };
-
-        // Safety: reset stale runs (e.g. satellite gets stuck)
-        if (this._assistRun.startedAt && (now - this._assistRun.startedAt) > 15000) this._assistRun = { startedAt: 0, sawListening: false, sawProcessing: false, sawResponding: false };
-
-        // Detect transitions
-        const prev = this._lastAssistState;
-        this._lastAssistState = state;
-
-        // Start a run when we enter listening (from idle or anything else)
-        if (state === "listening" && prev !== "listening") {
-            this._assistRun = { startedAt: now, sawListening: true, sawProcessing: false, sawResponding: false };
-            return;
-        }
-
-        // If a run is active, record milestones
-        if (this._assistRun.startedAt) {
-            if (state === "processing") this._assistRun.sawProcessing = true;
-            if (state === "responding") this._assistRun.sawResponding = true;
-
-            // End of run: return to idle
-            if (state === "idle" && prev !== "idle") {
-                const ok = this._assistRun.sawListening && this._assistRun.sawProcessing && this._assistRun.sawResponding;
-
-                // Your requested rule:
-                // - full sequence => happy
-                // - anything else that ends early => confused
-                this._setAssistOverride(ok ? "happy" : "confused", DEFAULTS.assist_outcome_duration_ms);
-
-                // reset run
-                this._assistRun = { startedAt: 0, sawListening: false, sawProcessing: false, sawResponding: false };
-            }
-        }
-    }
 
 
 
@@ -400,13 +352,16 @@ export class MacsCard extends HTMLElement {
                 const satStateObj = hass.states[satId] || null;
                 satState = (satStateObj?.state || "").toString().trim().toLowerCase(); 
                 assistMood = assistStateToMood(satState);
-                if (this._config?.assist_states_enabled && satState) this._updateAssistOutcome(satState);
+                const tracker = this._assistSatelliteOutcome;
+                debug(tracker);
+                if (this._config?.assist_states_enabled && satState && tracker) tracker.update(satState);
             }
         }
 
-        const now = Date.now();
-        const overrideActive = this._assistOverrideMood && now < (this._assistOverrideUntil || 0);
-        const mood = overrideActive ? this._assistOverrideMood : ((this._config?.assist_states_enabled && assistMood) ? assistMood : baseMood);
+        // const now = Date.now();
+        const overrideMood = this._assistSatelliteOutcome?.getOverrideMood?.();
+        const mood = overrideMood ? overrideMood : ((this._config?.assist_states_enabled && assistMood) ? assistMood : baseMood);
+
 
 
         const weatherState = hass.states[WEATHER_ENTITY_ID] || null;
