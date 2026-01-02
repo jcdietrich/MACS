@@ -21,10 +21,13 @@ import {
 } from "./constants.js";
 import {
 	loadAssistantOptions,
+	loadWeatherOptions,
 	readAssistStateInputs,
 	readPipelineInputs,
+	readWeatherInputs,
 	syncAssistStateControls,
-	syncPipelineControls
+	syncPipelineControls,
+	syncWeatherControls
 } from "./editorOptions.js";
 
 
@@ -46,6 +49,7 @@ export class MacsCardEditor extends HTMLElement {
 			if (!this.shadowRoot) this.attachShadow({ mode: "open" });
 
 			const { satItems, pipelineItems, preferred } = await loadAssistantOptions(this._hass);
+			const weatherItems = await loadWeatherOptions(this._hass);
 
 			// Build DOM
 			this.shadowRoot.innerHTML = `
@@ -54,7 +58,10 @@ export class MacsCardEditor extends HTMLElement {
 					.row{display:block;width:100%;margin-bottom:12px;}
 					label{display:block;font-weight:500;margin-bottom:6px;}
 					.hint{opacity:0.7;font-size:90%;margin-top:4px;}
-					#satellite_select, #satellite_entity, #pipeline_select, #pipeline_id { width: 100%; }
+					#satellite_select, #satellite_entity, #pipeline_select, #pipeline_id,
+					#temperature_select, #temperature_entity, #temperature_unit, #temperature_min, #temperature_max,
+					#wind_select, #wind_entity, #wind_unit, #wind_min, #wind_max,
+					#precipitation_select, #precipitation_entity, #precipitation_unit, #precipitation_min, #precipitation_max { width: 100%; }
 					.entity-grid {display: grid;grid-template-columns: 1fr 1fr;gap: 6px 12px;}
 					.entity-grid .header {font-weight: 600;border-bottom: 1px solid var(--divider-color);padding-bottom: 4px;}
 					.entity-grid > div {white-space: nowrap;}
@@ -93,6 +100,81 @@ export class MacsCardEditor extends HTMLElement {
 
 					<div class="row">
 						<ha-textfield id="pipeline_id" label="Assistant Pipeline ID" placeholder="01k..."></ha-textfield>
+					</div>
+				</div>
+
+				<!-- Temperature sensor -->
+				<div class="group">
+					<div class="row">
+						<label for="temperature_sensor_enabled">Use temperature sensor?</label>
+						<ha-switch id="temperature_sensor_enabled"></ha-switch>
+					</div>
+
+					<div class="row">
+						<ha-combo-box id="temperature_select" label="Temperature sensor"></ha-combo-box>
+					</div>
+
+					<div class="row">
+						<ha-textfield id="temperature_entity" label="Temperature Sensor ID" placeholder="sensor.my_temperature"></ha-textfield>
+					</div>
+
+					<div class="row">
+						<ha-combo-box id="temperature_unit" label="Temperature units"></ha-combo-box>
+					</div>
+
+					<div class="row">
+						<ha-textfield id="temperature_min" label="Min value" placeholder="Leave empty for defaults"></ha-textfield>
+						<ha-textfield id="temperature_max" label="Max value" placeholder="Leave empty for defaults"></ha-textfield>
+					</div>
+				</div>
+
+				<!-- Wind sensor -->
+				<div class="group">
+					<div class="row">
+						<label for="wind_sensor_enabled">Use wind sensor?</label>
+						<ha-switch id="wind_sensor_enabled"></ha-switch>
+					</div>
+
+					<div class="row">
+						<ha-combo-box id="wind_select" label="Wind speed sensor"></ha-combo-box>
+					</div>
+
+					<div class="row">
+						<ha-textfield id="wind_entity" label="Wind Speed Sensor ID" placeholder="sensor.my_wind_speed"></ha-textfield>
+					</div>
+
+					<div class="row">
+						<ha-combo-box id="wind_unit" label="Wind speed units"></ha-combo-box>
+					</div>
+
+					<div class="row">
+						<ha-textfield id="wind_min" label="Min value" placeholder="Leave empty for defaults"></ha-textfield>
+						<ha-textfield id="wind_max" label="Max value" placeholder="Leave empty for defaults"></ha-textfield>
+					</div>
+				</div>
+
+				<!-- Rain / precipitation sensor -->
+				<div class="group">
+					<div class="row">
+						<label for="precipitation_sensor_enabled">Use rainfall sensor?</label>
+						<ha-switch id="precipitation_sensor_enabled"></ha-switch>
+					</div>
+
+					<div class="row">
+						<ha-combo-box id="precipitation_select" label="Rainfall sensor"></ha-combo-box>
+					</div>
+
+					<div class="row">
+						<ha-textfield id="precipitation_entity" label="Rainfall Sensor ID" placeholder="sensor.my_rain"></ha-textfield>
+					</div>
+
+					<div class="row">
+						<ha-combo-box id="precipitation_unit" label="Rainfall units"></ha-combo-box>
+					</div>
+
+					<div class="row">
+						<ha-textfield id="precipitation_min" label="Min value" placeholder="Leave empty for defaults"></ha-textfield>
+						<ha-textfield id="precipitation_max" label="Max value" placeholder="Leave empty for defaults"></ha-textfield>
 					</div>
 				</div>
 
@@ -191,6 +273,89 @@ export class MacsCardEditor extends HTMLElement {
 				sel.value = isCustom ? "custom" : pid;
 			}
 
+			// Weather sensors: temperature
+			const tempSel = this.shadowRoot.getElementById("temperature_select");
+			if (tempSel) {
+				tempSel.items = weatherItems.temperatureItems;
+				tempSel.itemLabelPath = "name";
+				tempSel.itemValuePath = "id";
+			}
+			this._temperatureItems = weatherItems.temperatureItems;
+			if (tempSel) {
+				const tid = (this._config.temperature_sensor_entity ?? "").toString();
+				const known = weatherItems.temperatureItems.some(s => s.id === tid && s.id !== "custom");
+				const isCustom = !!this._config.temperature_sensor_custom || (!known && tid);
+				tempSel.value = isCustom ? "custom" : tid;
+			}
+
+			// Weather sensors: wind
+			const windSel = this.shadowRoot.getElementById("wind_select");
+			if (windSel) {
+				windSel.items = weatherItems.windItems;
+				windSel.itemLabelPath = "name";
+				windSel.itemValuePath = "id";
+			}
+			this._windItems = weatherItems.windItems;
+			if (windSel) {
+				const wid = (this._config.wind_sensor_entity ?? "").toString();
+				const known = weatherItems.windItems.some(s => s.id === wid && s.id !== "custom");
+				const isCustom = !!this._config.wind_sensor_custom || (!known && wid);
+				windSel.value = isCustom ? "custom" : wid;
+			}
+
+			// Weather sensors: precipitation
+			const rainSel = this.shadowRoot.getElementById("precipitation_select");
+			if (rainSel) {
+				rainSel.items = weatherItems.precipitationItems;
+				rainSel.itemLabelPath = "name";
+				rainSel.itemValuePath = "id";
+			}
+			this._precipitationItems = weatherItems.precipitationItems;
+			if (rainSel) {
+				const rid = (this._config.precipitation_sensor_entity ?? "").toString();
+				const known = weatherItems.precipitationItems.some(s => s.id === rid && s.id !== "custom");
+				const isCustom = !!this._config.precipitation_sensor_custom || (!known && rid);
+				rainSel.value = isCustom ? "custom" : rid;
+			}
+
+			// Weather: temperature sensor units
+			const temperatureUnitSelect = this.shadowRoot.getElementById("temperature_unit");
+			if (temperatureUnitSelect) {
+				temperatureUnitSelect.items = [
+					{ id: "", name: "Auto" },
+					{ id: "c", name: "Celsius (°C)" },
+					{ id: "f", name: "Fahrenheit (°F)" },
+				];
+				temperatureUnitSelect.itemLabelPath = "name";
+				temperatureUnitSelect.itemValuePath = "id";
+			}
+
+			// Weather: wind units
+			const windUnitSelect = this.shadowRoot.getElementById("wind_unit");
+			if (windUnitSelect) {
+				windUnitSelect.items = [
+					{ id: "", name: "Auto" },
+					{ id: "mph", name: "Miles per hour (mph)" },
+					{ id: "km/h", name: "Kilometres per hour (km/h)" },
+					{ id: "m/s", name: "Metres per second (m/s)" },
+				];
+				windUnitSelect.itemLabelPath = "name";
+				windUnitSelect.itemValuePath = "id";
+			}
+
+			// Weather: precipitation units
+			const precipitationUnitSelect = this.shadowRoot.getElementById("precipitation_unit");
+			if (precipitationUnitSelect) {
+				precipitationUnitSelect.items = [
+					{ id: "", name: "Auto" },
+					{ id: "mm", name: "Millimetres (mm)" },
+					{ id: "%", name: "Chance of rain (%)" },
+					{ id: "in", name: "Inches (in)" },
+				];
+				precipitationUnitSelect.itemLabelPath = "name";
+				precipitationUnitSelect.itemValuePath = "id";
+			}
+
 
 			// About/Support toggle
 			const toggle = this.shadowRoot.querySelector(".about-toggle");
@@ -249,6 +414,11 @@ export class MacsCardEditor extends HTMLElement {
 
 			syncAssistStateControls(this.shadowRoot, this._config, this._satelliteItems);
 			syncPipelineControls(this.shadowRoot, this._config, this._pipelineItems);
+			syncWeatherControls(this.shadowRoot, this._config, {
+				temperatureItems: this._temperatureItems || [],
+				windItems: this._windItems || [],
+				precipitationItems: this._precipitationItems || []
+			});
 		}
 
 		
@@ -259,13 +429,15 @@ export class MacsCardEditor extends HTMLElement {
 			const onChange = (e) => {
 				const assistConfig = readAssistStateInputs(this.shadowRoot, e, this._config);
 				const pipelineConfig = readPipelineInputs(this.shadowRoot, e, this._config);
+				const weatherConfig = readWeatherInputs(this.shadowRoot, e, this._config);
 
 				// Commit new config
 				const next = {
 					...this._config,
 					type: "custom:macs-card",
 					...assistConfig,
-					...pipelineConfig
+					...pipelineConfig,
+					...weatherConfig
 				};
 
 				this._config = { ...DEFAULTS, ...next };
@@ -279,6 +451,17 @@ export class MacsCardEditor extends HTMLElement {
 				if (!el) return;
 				el.addEventListener("change", onChange);
 				if (id === "pipeline_select" || id === "satellite_select") el.addEventListener("value-changed", onChange);
+			});
+
+			[
+				"temperature_sensor_enabled","temperature_select","temperature_entity","temperature_unit","temperature_min","temperature_max",
+				"wind_sensor_enabled","wind_select","wind_entity","wind_unit","wind_min","wind_max",
+				"precipitation_sensor_enabled","precipitation_select","precipitation_entity","precipitation_unit","precipitation_min","precipitation_max"
+			].forEach((id) => {
+				const el = this.shadowRoot.getElementById(id);
+				if (!el) return;
+				el.addEventListener("change", onChange);
+				if (id.endsWith("_select") || id.endsWith("_unit")) el.addEventListener("value-changed", onChange);
 			});
 
 			// Change-only listeners (avoid input storm)

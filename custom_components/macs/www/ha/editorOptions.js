@@ -140,3 +140,279 @@ export function readPipelineInputs(root, e, config = {}) {
 		pipeline_custom
 	};
 }
+
+function collectSensors(hass, predicate) {
+	if (!hass?.states) return [];
+	const out = [];
+	for (const [id, st] of Object.entries(hass.states)) {
+		if (!id.startsWith("sensor.")) continue;
+		if (predicate(id, st)) {
+			const name = (st?.attributes?.friendly_name || id).toString();
+			out.push({ id, name });
+		}
+	}
+	return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const TEMP_UNITS = new Set(["°c", "c", "celsius", "°f", "f", "fahrenheit"]);
+const WIND_UNITS = new Set(["m/s", "mps", "km/h", "kph", "mph", "kn", "kt", "kt/h"]);
+const RAIN_UNITS = new Set(["mm", "mm/h", "in", "in/h", "inch", "inches", "%"]);
+
+function hasUnit(st, allowed) {
+	const u = (st?.attributes?.unit_of_measurement || "").toString().toLowerCase();
+	return allowed.has(u);
+}
+
+function hasDeviceClass(st, expected) {
+	return (st?.attributes?.device_class || "").toString().toLowerCase() === expected;
+}
+
+function matchesName(id, st, keywords) {
+	const hay = `${id} ${(st?.attributes?.friendly_name || "")}`.toLowerCase();
+	return keywords.some((k) => hay.includes(k));
+}
+
+export async function loadWeatherOptions(hass) {
+	const temps = collectSensors(
+		hass,
+		(id, st) =>
+			hasDeviceClass(st, "temperature") ||
+			hasUnit(st, TEMP_UNITS) ||
+			matchesName(id, st, ["temp", "temperature"])
+	);
+
+	const winds = collectSensors(
+		hass,
+		(id, st) =>
+			hasDeviceClass(st, "wind_speed") ||
+			hasUnit(st, WIND_UNITS) ||
+			matchesName(id, st, ["wind"])
+	);
+
+	const rains = collectSensors(
+		hass,
+		(id, st) =>
+			hasDeviceClass(st, "precipitation") ||
+			hasDeviceClass(st, "precipitation_intensity") ||
+			hasDeviceClass(st, "precipitation_probability") ||
+			hasUnit(st, RAIN_UNITS) ||
+			matchesName(id, st, ["rain", "rainfall", "precip", "precipitation"])
+	);
+
+	const temperatureItems = [{ id: "custom", name: "Custom" }, ...temps];
+	const windItems = [{ id: "custom", name: "Custom" }, ...winds];
+	const precipitationItems = [{ id: "custom", name: "Custom" }, ...rains];
+
+	return {
+		temperatureItems,
+		windItems,
+		precipitationItems,
+	};
+}
+
+function syncSingleWeather(root, config, items, ids, customFlagKey, entityKey, enabledKey, unitKey, minKey, maxKey) {
+	if (!root) return;
+	const enabled = !!config?.[enabledKey];
+	const enabledToggle = root.getElementById(ids.enabled);
+	const select = root.getElementById(ids.select);
+	const entity = root.getElementById(ids.entity);
+	const unit = root.getElementById(ids.unit);
+	const min = root.getElementById(ids.min);
+	const max = root.getElementById(ids.max);
+
+	if (enabledToggle && enabledToggle.checked !== enabled) enabledToggle.checked = enabled;
+
+	if (select) select.disabled = !enabled;
+	if (entity) entity.disabled = !enabled;
+	if (unit) unit.disabled = !enabled;
+	if (min) min.disabled = !enabled;
+	if (max) max.disabled = !enabled;
+
+	const eid = (config?.[entityKey] ?? "").toString();
+	const known = Array.isArray(items) && items.some((s) => s.id === eid && s.id !== "custom");
+	const isCustom = !!config?.[customFlagKey] || !known;
+	const nextSelect = isCustom ? "custom" : eid;
+	if (select && select.value !== nextSelect) select.value = nextSelect;
+	if (entity && entity.value !== eid && (!isCustom || !entity.matches(":focus-within"))) entity.value = eid;
+	if (entity) entity.disabled = !enabled || !isCustom;
+
+	const unitVal = (config?.[unitKey] ?? "").toString();
+	if (unit && unit.value !== unitVal) unit.value = unitVal;
+
+	if (min && min.value !== (config?.[minKey] ?? "")) min.value = config?.[minKey] ?? "";
+	if (max && max.value !== (config?.[maxKey] ?? "")) max.value = config?.[maxKey] ?? "";
+}
+
+export function syncWeatherControls(root, config, items) {
+	syncSingleWeather(
+		root,
+		config,
+		items.temperatureItems,
+		{
+			enabled: "temperature_sensor_enabled",
+			select: "temperature_select",
+			entity: "temperature_entity",
+			unit: "temperature_unit",
+			min: "temperature_min",
+			max: "temperature_max",
+		},
+		"temperature_sensor_custom",
+		"temperature_sensor_entity",
+		"temperature_sensor_enabled",
+		"temperature_unit",
+		"temperature_min",
+		"temperature_max"
+	);
+
+	syncSingleWeather(
+		root,
+		config,
+		items.windItems,
+		{
+			enabled: "wind_sensor_enabled",
+			select: "wind_select",
+			entity: "wind_entity",
+			unit: "wind_unit",
+			min: "wind_min",
+			max: "wind_max",
+		},
+		"wind_sensor_custom",
+		"wind_sensor_entity",
+		"wind_sensor_enabled",
+		"wind_unit",
+		"wind_min",
+		"wind_max"
+	);
+
+	syncSingleWeather(
+		root,
+		config,
+		items.precipitationItems,
+		{
+			enabled: "precipitation_sensor_enabled",
+			select: "precipitation_select",
+			entity: "precipitation_entity",
+			unit: "precipitation_unit",
+			min: "precipitation_min",
+			max: "precipitation_max",
+		},
+		"precipitation_sensor_custom",
+		"precipitation_sensor_entity",
+		"precipitation_sensor_enabled",
+		"precipitation_unit",
+		"precipitation_min",
+		"precipitation_max"
+	);
+}
+
+function readSingleWeather(root, e, ids, config, enabledKey, entityKey, customKey, unitKey, minKey, maxKey) {
+	const enabled = !!root.getElementById(ids.enabled)?.checked;
+	const select = root.getElementById(ids.select);
+	const entityInput = root.getElementById(ids.entity);
+	const unit = root.getElementById(ids.unit);
+	const min = root.getElementById(ids.min);
+	const max = root.getElementById(ids.max);
+
+	const selectValue = comboValue(select, e);
+	const manualVal = entityInput?.value || "";
+	const isCustom = selectValue === "custom";
+	const entityVal = isCustom ? manualVal : selectValue;
+
+	if (entityInput) entityInput.disabled = !enabled || !isCustom;
+	if (select) select.disabled = !enabled;
+	if (unit) unit.disabled = !enabled;
+	if (min) min.disabled = !enabled;
+	if (max) max.disabled = !enabled;
+
+	return {
+		[enabledKey]: enabled,
+		[entityKey]: entityVal,
+		[customKey]: isCustom,
+		[unitKey]: unit?.value ?? "",
+		[minKey]: min?.value ?? "",
+		[maxKey]: max?.value ?? "",
+	};
+}
+
+export function readWeatherInputs(root, e, config = {}) {
+	if (!root) return {
+		temperature_sensor_enabled: !!config.temperature_sensor_enabled,
+		temperature_sensor_entity: (config.temperature_sensor_entity ?? "").toString(),
+		temperature_sensor_custom: !!config.temperature_sensor_custom,
+		temperature_unit: (config.temperature_unit ?? "").toString(),
+		temperature_min: (config.temperature_min ?? "").toString(),
+		temperature_max: (config.temperature_max ?? "").toString(),
+		wind_sensor_enabled: !!config.wind_sensor_enabled,
+		wind_sensor_entity: (config.wind_sensor_entity ?? "").toString(),
+		wind_sensor_custom: !!config.wind_sensor_custom,
+		wind_unit: (config.wind_unit ?? "").toString(),
+		wind_min: (config.wind_min ?? "").toString(),
+		wind_max: (config.wind_max ?? "").toString(),
+		precipitation_sensor_enabled: !!config.precipitation_sensor_enabled,
+		precipitation_sensor_entity: (config.precipitation_sensor_entity ?? "").toString(),
+		precipitation_sensor_custom: !!config.precipitation_sensor_custom,
+		precipitation_unit: (config.precipitation_unit ?? "").toString(),
+		precipitation_min: (config.precipitation_min ?? "").toString(),
+		precipitation_max: (config.precipitation_max ?? "").toString(),
+	};
+
+	return {
+		...readSingleWeather(
+			root,
+			e,
+			{
+				enabled: "temperature_sensor_enabled",
+				select: "temperature_select",
+				entity: "temperature_entity",
+				unit: "temperature_unit",
+				min: "temperature_min",
+				max: "temperature_max",
+			},
+			config,
+			"temperature_sensor_enabled",
+			"temperature_sensor_entity",
+			"temperature_sensor_custom",
+			"temperature_unit",
+			"temperature_min",
+			"temperature_max"
+		),
+		...readSingleWeather(
+			root,
+			e,
+			{
+				enabled: "wind_sensor_enabled",
+				select: "wind_select",
+				entity: "wind_entity",
+				unit: "wind_unit",
+				min: "wind_min",
+				max: "wind_max",
+			},
+			config,
+			"wind_sensor_enabled",
+			"wind_sensor_entity",
+			"wind_sensor_custom",
+			"wind_unit",
+			"wind_min",
+			"wind_max"
+		),
+		...readSingleWeather(
+			root,
+			e,
+			{
+				enabled: "precipitation_sensor_enabled",
+				select: "precipitation_select",
+				entity: "precipitation_entity",
+				unit: "precipitation_unit",
+				min: "precipitation_min",
+				max: "precipitation_max",
+			},
+			config,
+			"precipitation_sensor_enabled",
+			"precipitation_sensor_entity",
+			"precipitation_sensor_custom",
+			"precipitation_unit",
+			"precipitation_min",
+			"precipitation_max"
+		),
+	};
+}
