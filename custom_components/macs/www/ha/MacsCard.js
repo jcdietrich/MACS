@@ -21,8 +21,7 @@ import {
   DEFAULTS,
   MOOD_ENTITY_ID,
   WEATHER_ENTITY_ID,
-  BRIGHTNESS_ENTITY_ID,
-  CONVERSATION_ENTITY_ID
+  BRIGHTNESS_ENTITY_ID
 } from "./constants.js";
 
 import {
@@ -37,14 +36,8 @@ import {
 import { SatelliteTracker } from "./assistSatellite.js";
 import { AssistPipelineTracker } from "./assistPipeline.js";
 
-import {debug} from "./debugger.js";
-
-const DEBUG = false;
-function maybeDebug(msg){
-    if (DEBUG){
-        debug(msg, DEBUG);
-    }
-}
+import { createDebugger } from "./debugger.js";
+const debug = createDebugger("macsCard", false);
 
 
 export class MacsCard extends HTMLElement {
@@ -75,7 +68,7 @@ export class MacsCard extends HTMLElement {
 
         // merge defaults with user config. Todo, remove mode?
         this._config = { ...DEFAULTS, ...config}; //, mode };
-        maybeDebug("CARD CONFIG: " + JSON.stringify(this._config));
+        debug("CARD CONFIG: " + JSON.stringify(this._config));
 
         // Only run the first time setConfig is called
         if (!this._root) {
@@ -135,7 +128,7 @@ export class MacsCard extends HTMLElement {
 
     // make sure we remove event listeners when unloaded
     disconnectedCallback() {
-        maybeDebug("got disconnected");
+        debug("got disconnected");
         try { window.removeEventListener("message", this._onMessage); } catch (_) {} 
 
        try { this._pipelineTracker?.dispose?.(); } catch (_) {}
@@ -150,7 +143,7 @@ export class MacsCard extends HTMLElement {
     connectedCallback() {
         // If HA disconnected and reconnected the same instance, rebuild trackers
         if (this._config && !this._pipelineTracker) {
-            maybeDebug("Recreating AssistPipelineTracker (reconnect)");
+            debug("Recreating AssistPipelineTracker (reconnect)");
             this._pipelineTracker = new AssistPipelineTracker({
             onTurns: (turns) => {
                 if (!this._iframe) return;
@@ -162,7 +155,7 @@ export class MacsCard extends HTMLElement {
         }
 
         if (this._config && !this._assistSatelliteOutcome) {
-            maybeDebug("Recreating SatelliteTracker (reconnect)");
+            debug("Recreating SatelliteTracker (reconnect)");
             this._assistSatelliteOutcome = new SatelliteTracker({});
         }
     }
@@ -258,7 +251,7 @@ export class MacsCard extends HTMLElement {
                 satState = (satStateObj?.state || "").toString().trim().toLowerCase(); 
                 assistMood = assistStateToMood(satState);
                 const tracker = this._assistSatelliteOutcome;
-                maybeDebug(tracker);
+                debug(tracker);
                 if (this._config?.assist_states_enabled && satState && tracker) tracker.update(satState);
             }
         }

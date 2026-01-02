@@ -4,15 +4,9 @@
 // this functions keeps track of the satellite's state.
 
 import {DEFAULTS} from "./constants.js";
-import {debug} from "./debugger.js";
 
-const DEBUG = false;
-function maybeDebug(msg){
-    if (DEBUG){
-        debug(msg, DEBUG);
-    }
-}
-
+import { createDebugger } from "./debugger.js";
+const debug = createDebugger("assistSatellite", false);
 
 export class SatelliteTracker{
     //Todo - Allow user config timeout
@@ -41,6 +35,8 @@ export class SatelliteTracker{
         // Detect transitions
         const prev = this._lastAssistState;
         this._lastAssistState = state;
+
+        debug(`assist satellite state: ${prev} -> ${state}`);
 
         // Start a run when we enter listening (from idle or anything else)
         if (state === "listening" && prev !== "listening") {

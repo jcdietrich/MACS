@@ -1,7 +1,12 @@
-import {DEBUGGING} from "./constants.js";
+import { DEBUGGING } from "./constants.js";
 
-export function debug(msg, enabled = DEBUGGING){
-    if (enabled){
-        console.log(msg);
+export function createDebugger(namespace, enabled = DEBUGGING) {
+    if (enabled && DEBUGGING) {
+        const ns = (namespace || "general").toString();
+        return (...args) => {
+            console.log(`[MACS:${ns}]`, ...args);
+        };
     }
+
+    return () => {};
 }

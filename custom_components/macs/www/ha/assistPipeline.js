@@ -1,18 +1,12 @@
 import { DEFAULTS, CONVERSATION_ENTITY_ID } from "./constants.js";
-import {debug} from "./debugger.js";
+import { createDebugger } from "./debugger.js";
 
+const debug = createDebugger("assistPipeline", false);
 
-const DEBUG = false;
-
-function maybeDebug(msg){
-    if (DEBUG){
-        debug(msg, DEBUG);
-    }
-}
 
 export class AssistPipelineTracker {
     constructor({ onTurns } = {}) {
-        maybeDebug ("Creating new AssistPipelineTracker");
+        debug ("Creating new AssistPipelineTracker");
         this._onTurns = typeof onTurns === "function" ? onTurns : null;
 
         this._hass = null;
@@ -42,7 +36,7 @@ export class AssistPipelineTracker {
     }
 
     setConfig(config) {
-        //maybeDebug("Setting pipeline config: " + JSON.stringify(config));
+        //debug("Setting pipeline config: " + JSON.stringify(config));
 
         const enabled = !!config?.assist_pipeline_enabled;
         const pid = enabled ? (config?.pipeline_id || "").toString().trim() : "";
@@ -62,8 +56,8 @@ export class AssistPipelineTracker {
         if (!this._enabled || !this._pipelineId) this.clearTurns();
 
         
-        maybeDebug("setConfig: enabled = " + this._enabled);
-        maybeDebug("setConfig: pid = " + this._pipelineId);
+        debug("setConfig: enabled = " + this._enabled);
+        debug("setConfig: pid = " + this._pipelineId);
     }
 
     getTurns() {
@@ -71,7 +65,7 @@ export class AssistPipelineTracker {
     }
 
     dispose() {
-        maybeDebug("disposing...");
+        debug("disposing...");
         this._disposed = true;
 
         try {
@@ -93,13 +87,13 @@ export class AssistPipelineTracker {
 
     pipelineEnabled() {
         let pipeEnabled = !!this._enabled && !!this._pipelineId;
-        maybeDebug("pipelineEnabled: " + pipeEnabled);
+        debug("pipelineEnabled: " + pipeEnabled);
         return pipeEnabled;
     }
 
     clearTurns() {
-        maybeDebug("Clearing turns...");
-        maybeDebug("Pipline ID is now [" + this._pipelineId + "]");
+        debug("Clearing turns...");
+        debug("Pipline ID is now [" + this._pipelineId + "]");
         this._turns = [];
         this._lastSeen = { runId: null, ts: null };
         if (this._onTurns) this._onTurns(this.getTurns());
@@ -109,7 +103,7 @@ export class AssistPipelineTracker {
     // runId, heard, reply, error, ts
     // Keep only the most recent N turns.
     upsertTurn(t) {
-        maybeDebug("upsert turn...");
+        debug("upsert turn...");
         const idx = this._turns.findIndex(x => x.runId === t.runId);
 
         if (idx === 0) {
@@ -126,7 +120,7 @@ export class AssistPipelineTracker {
     }
 
     extract(events) {
-        maybeDebug("Extracting");
+        debug("Extracting");
         // Pull just the pieces we render from pipeline debug events
         let heard = "", reply = "", error = "", ts = "";
         for (const ev of (events || [])) {
@@ -143,7 +137,7 @@ export class AssistPipelineTracker {
     }
 
     async listRuns() {
-        maybeDebug("List runs...");
+        debug("List runs...");
         if (!this._hass) return null;
         // Pipeline debug list call (frontend-authenticated)
         const pid = this._pipelineId;
@@ -153,7 +147,7 @@ export class AssistPipelineTracker {
     }
 
     async getRun(runId) {
-        maybeDebug("get run...");
+        debug("get run...");
         if (!this._hass) return null;
         // Fetch a single pipeline run for detailed events
         const pid = this._pipelineId;
@@ -162,13 +156,13 @@ export class AssistPipelineTracker {
     }
 
     triggerFetchNewest() {
-        maybeDebug("trigger fetchNewest this=" + (this?.constructor?.name || typeof this) + " keys=" + Object.keys(this || {}).join(","));
+        debug("trigger fetchNewest this=" + (this?.constructor?.name || typeof this) + " keys=" + Object.keys(this || {}).join(","));
         if (this._fetchDebounce) return;
         this._fetchDebounce = setTimeout(() => { this._fetchDebounce = null; this.fetchNewest().catch(() => {}); }, 160);
     }
 
     async fetchNewest() {
-        maybeDebug("fetchNewest ran, enabled=" + this._enabled + " pid=" + this._pipelineId);
+        debug("fetchNewest ran, enabled=" + this._enabled + " pid=" + this._pipelineId);
         // user must be authenticated
         if (!this._hass) return;
 
@@ -213,7 +207,7 @@ export class AssistPipelineTracker {
 
     // Subscribe to conversation entity changes to trigger pipeline refresh
     ensureSubscriptions() {       
-        maybeDebug("ensure subscriptions...");
+        debug("ensure subscriptions...");
 
         if (!this._hass || this._disposed) return;
 

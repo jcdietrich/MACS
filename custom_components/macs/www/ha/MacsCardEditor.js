@@ -20,6 +20,8 @@ import {
   DEFAULTS,
 } from "./constants.js";
 
+
+
 export class MacsCardEditor extends HTMLElement {
 	// get the defaults, and apply user's config
 	setConfig(config) {
@@ -182,7 +184,7 @@ export class MacsCardEditor extends HTMLElement {
 
 			// Page has rendered
 			this._rendered = true;
-			this._pipelinesLoaded = false;
+			//this._pipelinesLoaded = false;
 
 
 			// Add satellites to combobox
@@ -240,7 +242,7 @@ export class MacsCardEditor extends HTMLElement {
 
 			// Sync UI from config
 			this._sync();
-			this._pipelinesLoaded = true;
+			//this._pipelinesLoaded = true;
 
 			// If user hasn't set a pipeline yet, pick HA's preferred
 			const currentPid = (this._config.pipeline_id ?? "").toString().trim();
@@ -251,26 +253,26 @@ export class MacsCardEditor extends HTMLElement {
 			}
 		}
 		
-		_bindSelectOpenState() {
-			const sel = this.shadowRoot?.getElementById("pipeline_select");
-			if (!sel) return;
-			this._selectEl = sel;
-			this._menuOpen = false;
-			const onOpened = () => { this._menuOpen = true; };
-			const onClosed = () => { this._menuOpen = false; };
-			sel.addEventListener("opened", onOpened);
-			sel.addEventListener("closed", onClosed);
-			sel.addEventListener("change", onClosed);
-		}
+		// _bindSelectOpenState() {
+		// 	const sel = this.shadowRoot?.getElementById("pipeline_select");
+		// 	if (!sel) return;
+		// 	this._selectEl = sel;
+		// 	this._menuOpen = false;
+		// 	const onOpened = () => { this._menuOpen = true; };
+		// 	const onClosed = () => { this._menuOpen = false; };
+		// 	sel.addEventListener("opened", onOpened);
+		// 	sel.addEventListener("closed", onClosed);
+		// 	sel.addEventListener("change", onClosed);
+		// }
 
-		_closeSelectMenu() {
-			const sel = this._selectEl || this.shadowRoot?.getElementById("pipeline_select");
-			if (!sel) return;
-			const menu = sel.menu || sel.shadowRoot?.querySelector("mwc-menu");
-			if (menu) menu.open = false;
-			if ("open" in sel) sel.open = false;
-			this._menuOpen = false;
-		}
+		// _closeSelectMenu() {
+		// 	const sel = this._selectEl || this.shadowRoot?.getElementById("pipeline_select");
+		// 	if (!sel) return;
+		// 	const menu = sel.menu || sel.shadowRoot?.querySelector("mwc-menu");
+		// 	if (menu) menu.open = false;
+		// 	if ("open" in sel) sel.open = false;
+		// 	this._menuOpen = false;
+		// }
 
 		// sync UI state from this._config
 		async _sync() {
@@ -349,6 +351,7 @@ export class MacsCardEditor extends HTMLElement {
 
 				// Commit new config
 				const next = {
+					...this._config,
 					type: "custom:macs-card",
 					assist_states_enabled: assistStateAutoMood,
 					assist_satellite_entity: assistSatelliteEntity,
@@ -384,15 +387,15 @@ export class MacsCardEditor extends HTMLElement {
 		}
 
 		// escape helper (used when rendering pipeline names)
-		_esc(s) {
-			return (s ?? "")
-				.toString()
-				.replace(/[&<>"']/g, (c) => ({
-					"&": "&amp;",
-					"<": "&lt;",
-					">": "&gt;",
-					'"': "&quot;",
-					"'": "&#39;",
-				}[c]));
-		}
+		// _esc(s) {
+		// 	return (s ?? "")
+		// 		.toString()
+		// 		.replace(/[&<>"']/g, (c) => ({
+		// 			"&": "&amp;",
+		// 			"<": "&lt;",
+		// 			">": "&gt;",
+		// 			'"': "&quot;",
+		// 			"'": "&#39;",
+		// 		}[c]));
+		// }
 	}

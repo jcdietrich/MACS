@@ -15,14 +15,13 @@
  *    - after N idle minutes, starting turning display brightness to X, over a duration of T
  *    - on wake, return display brightness to B
  * - test non-admin user
- * - separate pipeline and satellite functions into external js files
  * - split weather into separate numeric entities: wind, temperature, rain, snow
  * - add seasons: christmas, halloween etc.
  * - create a "charging" mood.
- * - add global debug flag in constant.js
  * - train "Hey Macs" wakeword
  * - change happy trigger from idle to responding. Actually, idle OR responding, whichever comes first.
  * - update readme screenshot
+ * - create bored / sleep sequence
  */
 
 
