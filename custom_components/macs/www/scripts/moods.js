@@ -42,6 +42,13 @@ const clampPercent = (value, fallback = 0) => {
 
 const toIntensity = (value, fallback = 0) => clampPercent(value, fallback) / 100;
 const clamp01 = (value) => Math.max(0, Math.min(1, value));
+const shuffle = (items) => {
+	for (let i = items.length - 1; i > 0; i -= 1) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[items[i], items[j]] = [items[j], items[i]];
+	}
+	return items;
+};
 
 // applies a css class to the body so that we can style based on mood
 function applyBodyClass(prefix, value, allowed, fallback){
@@ -113,47 +120,48 @@ const updateRainDrops = (intensity, forceUpdate = false) => {
 	rainDropCount = targetCount;
 	rainIntensity = normalized;
 
-	const xPositions = [];
-	if (targetCount > 0) {
-		for (let i = 0; i < targetCount; i += 1) {
-			xPositions.push(((i + Math.random()) / targetCount) * rainViewWidth);
-		}
-		for (let i = xPositions.length - 1; i > 0; i -= 1) {
-			const j = Math.floor(Math.random() * (i + 1));
-			[xPositions[i], xPositions[j]] = [xPositions[j], xPositions[i]];
-		}
-	}
+	const slots = shuffle([...Array(targetCount).keys()]);
 
-	container.replaceChildren();
-	for (let i = 0; i < targetCount; i += 1) {
-		const drop = document.createElementNS(SVG_NS, "ellipse");
+	const configureDrop = (drop, slotIndex) => {
+		const slot = Number.isFinite(slotIndex) ? slotIndex : Math.floor(Math.random() * Math.max(1, targetCount));
 		const sizeBias = clamp01(normalized + ((Math.random() * 2) - 1) * RAIN_SIZE_VARIATION);
 		const size = RAIN_DROP_SIZE_MIN + (sizeBias * (RAIN_DROP_SIZE_MAX - RAIN_DROP_SIZE_MIN));
 		const opacityBias = clamp01(normalized + ((Math.random() * 2) - 1) * RAIN_OPACITY_VARIATION);
 		const baseOpacity = RAIN_OPACITY_MIN + (opacityBias * (RAIN_OPACITY_MAX - RAIN_OPACITY_MIN));
-		const rx = 1.5 + (size * 1.2);
+		const rx = 1 + (size * 1.2);
 		const ry = 12 + (size * 18);
-		const cx = Math.round(xPositions[i] ?? (Math.random() * rainViewWidth));
+		const cx = Math.round(((slot + Math.random()) / Math.max(1, targetCount)) * rainViewWidth);
 		const cy = Math.round(Math.random() * rainViewHeight);
-
-		drop.setAttribute("class", "drop");
-		drop.setAttribute("rx", rx.toFixed(2));
-		drop.setAttribute("ry", ry.toFixed(2));
-		drop.setAttribute("cx", cx.toString());
-		drop.setAttribute("cy", cy.toString());
 		const divergence = (Math.random() * 2) - 1;
 		const drift = RAIN_DRIFT_BASE + (divergence * RAIN_DRIFT_VARIATION);
 		const tilt = -Math.atan2(drift, travelDistance) * (180 / Math.PI);
 		const startY = -(rainViewHeight + (ry * 2));
+
+		drop.setAttribute("rx", rx.toFixed(2));
+		drop.setAttribute("ry", ry.toFixed(2));
+		drop.setAttribute("cx", cx.toString());
+		drop.setAttribute("cy", cy.toString());
 		drop.style.setProperty("--rain-drift", `${drift.toFixed(1)}px`);
 		drop.style.setProperty("--rain-tilt", `${tilt.toFixed(2)}deg`);
 		drop.style.setProperty("--rain-start-y", `${startY.toFixed(1)}px`);
 		drop.style.setProperty("--rain-end-y", `${rainViewHeight.toFixed(1)}px`);
 		drop.style.transform = `translate(${(-drift).toFixed(1)}px, ${startY.toFixed(1)}px) rotate(${tilt.toFixed(2)}deg)`;
-		drop.dataset.size = size.toFixed(3);
-		drop.style.animationDelay = `${(Math.random() * 2).toFixed(2)}s`;
 		drop.style.opacity = Math.min(RAIN_OPACITY_MAX, baseOpacity * (0.7 + (size * 0.3))).toFixed(2);
+		drop.dataset.size = size.toFixed(3);
+		drop.dataset.slot = slot.toString();
 		setDropSpeed(drop, size);
+	};
+
+	container.replaceChildren();
+	for (let i = 0; i < targetCount; i += 1) {
+		const drop = document.createElementNS(SVG_NS, "ellipse");
+
+		drop.setAttribute("class", "drop");
+		drop.style.animationDelay = `${(Math.random() * 2).toFixed(2)}s`;
+		configureDrop(drop, slots[i]);
+		drop.addEventListener("animationiteration", () => {
+			configureDrop(drop, Number(drop.dataset.slot));
+		});
 		container.appendChild(drop);
 	}
 };
