@@ -24,20 +24,6 @@ MOODS = (
 SERVICE_SET_MOOD = "set_mood"
 ATTR_MOOD = "mood"
 
-
-# WEATHERS = (
-#     "none",
-#     "rain",
-#     "wind",
-#     "hot",
-#     "cold",
-# )
-# SERVICE_SET_WEATHER = "set_weather"
-# ATTR_WEATHER = "weather"
-# #ATTR_INTENSITY = "intensity"
-
-
-
 SERVICE_SET_BRIGHTNESS = "set_brightness"
 ATTR_BRIGHTNESS = "brightness"
 
@@ -49,3 +35,6 @@ ATTR_WINDSPEED = "windspeed"
 
 SERVICE_SET_RAINFALL = "set_rainfall"
 ATTR_RAINFALL = "rainfall"
+
+SERVICE_SET_RAINFALL = "set_snowfall"
+ATTR_RAINFALL = "snowfall"

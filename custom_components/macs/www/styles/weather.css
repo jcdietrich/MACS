@@ -27,13 +27,13 @@ body.weather-cold .fx-cold{ opacity: calc(0.9 * var(--weather-intensity)); }
 @keyframes rainFall{
 	from{
 		transform:
-			translate(calc(-1 * var(--rain-drift, -100px)), var(--rain-start-y, -100px))
-			rotate(var(--rain-tilt, 8deg));
+			translate(var(--rain-start-x, 0px), var(--rain-start-y, -100px))
+			rotate(var(--rain-tilt, 0deg));
 	}
 	to{
 		transform:
-			translate(var(--rain-drift, -100px), var(--rain-end-y, 100px))
-			rotate(var(--rain-tilt, 8deg));
+			translate(var(--rain-end-x, 0px), var(--rain-end-y, 100px))
+			rotate(var(--rain-tilt, 0deg));
 	}
 }
 

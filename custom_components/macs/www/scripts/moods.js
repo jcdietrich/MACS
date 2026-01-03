@@ -9,7 +9,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const RAIN_MAX_DROPS = 50;
 
 const RAIN_MIN_SPEED = 0.8;
-const RAIN_MAX_SPEED = 1.8;
+const RAIN_MAX_SPEED = 4;
 
 const RAIN_DROP_SIZE_MIN = 0.6;
 const RAIN_DROP_SIZE_MAX = 1.3;
@@ -22,8 +22,10 @@ const RAIN_OPACITY_VARIATION = 10;
 const RAIN_SPEED_JITTER_MIN = -0.2;
 const RAIN_SPEED_JITTER_MAX = 0.2;
 
-const RAIN_DRIFT_BASE = -100;
-const RAIN_DRIFT_VARIATION = 60;
+const RAIN_WIND_TILT_MAX = 89;
+const RAIN_TILT_VARIATION = 1;
+const RAIN_PATH_PADDING = 60;
+const RAIN_WIND_SPEED_MULTIPLIER = 1.7;
 
 
 
@@ -31,6 +33,7 @@ let rainDropCount = -1;
 let rainIntensity = -1;
 let rainViewWidth = 1000;
 let rainViewHeight = 1000;
+let windIntensity = 0;
 
 const clampPercent = (value, fallback = 0) => {
 	const num = Number(value);
@@ -48,6 +51,35 @@ const shuffle = (items) => {
 		[items[i], items[j]] = [items[j], items[i]];
 	}
 	return items;
+};
+
+const getLineRectIntersections = (point, dir, rect) => {
+	const hits = [];
+	const { xMin, xMax, yMin, yMax } = rect;
+
+	if (dir.x !== 0) {
+		const tLeft = (xMin - point.x) / dir.x;
+		const yLeft = point.y + tLeft * dir.y;
+		if (yLeft >= yMin && yLeft <= yMax) hits.push({ x: xMin, y: yLeft, t: tLeft });
+
+		const tRight = (xMax - point.x) / dir.x;
+		const yRight = point.y + tRight * dir.y;
+		if (yRight >= yMin && yRight <= yMax) hits.push({ x: xMax, y: yRight, t: tRight });
+	}
+
+	if (dir.y !== 0) {
+		const tTop = (yMin - point.y) / dir.y;
+		const xTop = point.x + tTop * dir.x;
+		if (xTop >= xMin && xTop <= xMax) hits.push({ x: xTop, y: yMin, t: tTop });
+
+		const tBottom = (yMax - point.y) / dir.y;
+		const xBottom = point.x + tBottom * dir.x;
+		if (xBottom >= xMin && xBottom <= xMax) hits.push({ x: xBottom, y: yMax, t: tBottom });
+	}
+
+	if (hits.length < 2) return null;
+	hits.sort((a, b) => a.t - b.t);
+	return { start: hits[0], end: hits[hits.length - 1] };
 };
 
 // applies a css class to the body so that we can style based on mood
@@ -84,8 +116,6 @@ const setRainViewBoxFromSvg = () => {
 	rainViewWidth = width;
 	rainViewHeight = height;
 	svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-	svg.style.setProperty("--rain-start-y", `${-height}px`);
-	svg.style.setProperty("--rain-end-y", `${height}px`);
 	rainDropCount = -1;
 };
 
@@ -96,15 +126,25 @@ const updateRainDrops = (intensity, forceUpdate = false) => {
 
 	const normalized = clamp01(intensity);
 	const targetCount = Math.ceil(normalized * RAIN_MAX_DROPS);
-	const baseSpeed = RAIN_MIN_SPEED + ((RAIN_MAX_SPEED - RAIN_MIN_SPEED) * normalized);
+	const baseSpeed = (RAIN_MIN_SPEED + ((RAIN_MAX_SPEED - RAIN_MIN_SPEED) * normalized)) * (1 + (windIntensity * RAIN_WIND_SPEED_MULTIPLIER));
 	const travelDistance = Math.max(1, rainViewHeight);
+	const rect = {
+		xMin: -RAIN_PATH_PADDING,
+		xMax: rainViewWidth + RAIN_PATH_PADDING,
+		yMin: -RAIN_PATH_PADDING,
+		yMax: rainViewHeight + RAIN_PATH_PADDING
+	};
+	const refDistance = Math.max(1, rect.yMax - rect.yMin);
 
 	const setDropSpeed = (drop, size) => {
 		const jitter = RAIN_SPEED_JITTER_MIN + (Math.random() * (RAIN_SPEED_JITTER_MAX - RAIN_SPEED_JITTER_MIN));
 		const speedFactor = 0.7 + size;
 		const unclamped = (baseSpeed * speedFactor) * (1 + jitter);
 		const speed = Math.min(RAIN_MAX_SPEED, Math.max(RAIN_MIN_SPEED, unclamped));
-		const duration = 1 / speed;
+		const pathLength = Number(drop.dataset.pathLength);
+		const distance = Number.isFinite(pathLength) ? pathLength : refDistance;
+		const distanceRatio = Math.sqrt(distance / refDistance);
+		const duration = distanceRatio / speed;
 		drop.style.animationDuration = `${duration.toFixed(2)}s`;
 	};
 
@@ -130,25 +170,34 @@ const updateRainDrops = (intensity, forceUpdate = false) => {
 		const baseOpacity = RAIN_OPACITY_MIN + (opacityBias * (RAIN_OPACITY_MAX - RAIN_OPACITY_MIN));
 		const rx = 1 + (size * 1.2);
 		const ry = 12 + (size * 18);
-		const cx = Math.round(((slot + Math.random()) / Math.max(1, targetCount)) * rainViewWidth);
-		const cy = Math.round(Math.random() * rainViewHeight);
 		const divergence = (Math.random() * 2) - 1;
-		const drift = RAIN_DRIFT_BASE + (divergence * RAIN_DRIFT_VARIATION);
-		const tilt = -Math.atan2(drift, travelDistance) * (180 / Math.PI);
-		const startY = -(rainViewHeight + (ry * 2));
+		const tiltDeg = (windIntensity * RAIN_WIND_TILT_MAX) + (divergence * RAIN_TILT_VARIATION);
+		const tiltCss = -tiltDeg;
+		const tiltRad = tiltDeg * (Math.PI / 180);
+		const dir = { x: Math.sin(tiltRad), y: Math.cos(tiltRad) };
+		const perp = { x: -dir.y, y: dir.x };
+		const maxOffset = (Math.abs(perp.x) * rainViewWidth + Math.abs(perp.y) * rainViewHeight) / 2;
+		const offset = (((slot + Math.random()) / Math.max(1, targetCount)) - 0.5) * 2 * maxOffset;
+		const center = { x: rainViewWidth / 2, y: rainViewHeight / 2 };
+		const point = { x: center.x + (perp.x * offset), y: center.y + (perp.y * offset) };
+		const segment = getLineRectIntersections(point, dir, rect);
+		const start = segment?.start ?? { x: center.x, y: rect.yMin };
+		const end = segment?.end ?? { x: center.x, y: rect.yMax };
 
 		drop.setAttribute("rx", rx.toFixed(2));
 		drop.setAttribute("ry", ry.toFixed(2));
-		drop.setAttribute("cx", cx.toString());
-		drop.setAttribute("cy", cy.toString());
-		drop.style.setProperty("--rain-drift", `${drift.toFixed(1)}px`);
-		drop.style.setProperty("--rain-tilt", `${tilt.toFixed(2)}deg`);
-		drop.style.setProperty("--rain-start-y", `${startY.toFixed(1)}px`);
-		drop.style.setProperty("--rain-end-y", `${rainViewHeight.toFixed(1)}px`);
-		drop.style.transform = `translate(${(-drift).toFixed(1)}px, ${startY.toFixed(1)}px) rotate(${tilt.toFixed(2)}deg)`;
+		drop.setAttribute("cx", "0");
+		drop.setAttribute("cy", "0");
+		drop.style.setProperty("--rain-start-x", `${start.x.toFixed(1)}px`);
+		drop.style.setProperty("--rain-start-y", `${start.y.toFixed(1)}px`);
+		drop.style.setProperty("--rain-end-x", `${end.x.toFixed(1)}px`);
+		drop.style.setProperty("--rain-end-y", `${end.y.toFixed(1)}px`);
+		drop.style.setProperty("--rain-tilt", `${tiltCss.toFixed(2)}deg`);
+		drop.style.transform = `translate(${start.x.toFixed(1)}px, ${start.y.toFixed(1)}px) rotate(${tiltCss.toFixed(2)}deg)`;
 		drop.style.opacity = Math.min(RAIN_OPACITY_MAX, baseOpacity * (0.7 + (size * 0.3))).toFixed(2);
 		drop.dataset.size = size.toFixed(3);
 		drop.dataset.slot = slot.toString();
+		drop.dataset.pathLength = Math.hypot(end.x - start.x, end.y - start.y).toFixed(1);
 		setDropSpeed(drop, size);
 	};
 
@@ -174,6 +223,8 @@ function setTemperature(value){
 function setWindSpeed(value){
 	const intensity = toIntensity(value);
 	document.documentElement.style.setProperty('--windspeed-intensity', intensity.toString());
+	windIntensity = intensity;
+	updateRainDrops(rainIntensity < 0 ? 0 : rainIntensity, true);
 }
 
 function setRainfall(value){

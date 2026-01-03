@@ -17,9 +17,6 @@ from .const import (
     MOODS,
     SERVICE_SET_MOOD,
     ATTR_MOOD,
-    #WEATHERS,
-    #SERVICE_SET_WEATHER,
-    #ATTR_WEATHER,
     SERVICE_SET_BRIGHTNESS,
     ATTR_BRIGHTNESS,
     SERVICE_SET_TEMPERATURE,
@@ -28,6 +25,8 @@ from .const import (
     ATTR_WINDSPEED,
     SERVICE_SET_RAINFALL,
     ATTR_RAINFALL,
+    SERVICE_SET_SNOWFALL,
+    ATTR_SNOWFALL,
 )
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -112,6 +111,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     migrate("macs_temperature", "number.macs_temperature")
     migrate("macs_windspeed", "number.macs_windspeed")
     migrate("macs_rainfall", "number.macs_rainfall")
+    migrate("macs_snowfall", "number.macs_snowfall")
 
     async def handle_set_mood(call: ServiceCall) -> None:
         mood = str(call.data.get(ATTR_MOOD, "")).strip().lower()
@@ -129,28 +129,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             raise vol.Invalid("Macs mood entity not found (select not created)")
 
         await hass.services.async_call("select", "select_option", {"entity_id": entity_id, "option": mood}, blocking=True)
-
-    # async def handle_set_weather(call: ServiceCall) -> None:
-    #     weather = str(call.data.get(ATTR_WEATHER, "")).strip().lower()
-    #     if weather not in WEATHERS:
-    #         raise vol.Invalid(f"Invalid weather '{weather}'. Must be one of: {', '.join(WEATHERS)}")
-
-    #     registry = er.async_get(hass)
-    #     entity_id = None
-    #     for ent in registry.entities.values():
-    #         if ent.platform == DOMAIN and ent.unique_id == "macs_weather":
-    #             entity_id = ent.entity_id
-    #             break
-
-    #     if not entity_id:
-    #         raise vol.Invalid("Macs weather entity not found (select not created)")
-
-    #     await hass.services.async_call(
-    #         "select",
-    #         "select_option",
-    #         {"entity_id": entity_id, "option": weather},
-    #         blocking=True,
-    #     )
 
     async def _set_number_entity(call: ServiceCall, attr_name: str, unique_id: str, label: str) -> None:
         raw = call.data.get(attr_name, None)
@@ -191,6 +169,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_set_rainfall(call: ServiceCall) -> None:
         await _set_number_entity(call, ATTR_RAINFALL, "macs_rainfall", "rainfall")
 
+    async def handle_set_rainfall(call: ServiceCall) -> None:
+        await _set_number_entity(call, ATTR_SNOWFALL, "macs_snowfall", "snowfall")
+
     if not hass.services.has_service(DOMAIN, SERVICE_SET_MOOD):
         hass.services.async_register(
             DOMAIN,
@@ -198,14 +179,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             handle_set_mood,
             schema=vol.Schema({vol.Required(ATTR_MOOD): vol.In(MOODS)}),
         )
-
-    # if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER):
-    #     hass.services.async_register(
-    #         DOMAIN,
-    #         SERVICE_SET_WEATHER,
-    #         handle_set_weather,
-    #         schema=vol.Schema({vol.Required(ATTR_WEATHER): vol.In(WEATHERS)}),
-    #     )
 
     if not hass.services.has_service(DOMAIN, SERVICE_SET_BRIGHTNESS):
         hass.services.async_register(
@@ -239,6 +212,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=vol.Schema({vol.Required(ATTR_RAINFALL): vol.Coerce(float)}),
         )
 
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_SNOWFALL):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_SNOWFALL,
+            handle_set_snowfall,
+            schema=vol.Schema({vol.Required(ATTR_SNOWFALL): vol.Coerce(float)}),
+        )
+
     # Auto-add/update Lovelace resource (storage mode)
     await _ensure_lovelace_resource(hass)
 
@@ -249,10 +230,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok and not hass.config_entries.async_entries(DOMAIN):
         hass.services.async_remove(DOMAIN, SERVICE_SET_MOOD)
-        #hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER)
         hass.services.async_remove(DOMAIN, SERVICE_SET_BRIGHTNESS)
         hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WINDSPEED)
         hass.services.async_remove(DOMAIN, SERVICE_SET_RAINFALL)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_SNOWFALL)
         hass.data.get(DOMAIN, {}).pop("static_path_registered", None)
     return unload_ok
