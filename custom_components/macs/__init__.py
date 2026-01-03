@@ -25,14 +25,14 @@ from .const import (
     ATTR_WINDSPEED,
     SERVICE_SET_RAINFALL,
     ATTR_RAINFALL,
-    SERVICE_SET_SNOWFALL,
-    ATTR_SNOWFALL,
+    SERVICE_SET_SNOWING,
+    ATTR_SNOWING
 )
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 # user dropdown/select and number entities
-PLATFORMS: list[str] = ["select", "number"]
+PLATFORMS: list[str] = ["select", "number", "switch"]
 
 RESOURCE_BASE_URL = "/macs/macs.js"
 RESOURCE_TYPE = "module"
@@ -106,12 +106,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # These must match the _attr_unique_id values in entities.py
     migrate("macs_mood", "select.macs_mood")
-    #migrate("macs_weather", "select.macs_weather")
     migrate("macs_brightness", "number.macs_brightness")
     migrate("macs_temperature", "number.macs_temperature")
     migrate("macs_windspeed", "number.macs_windspeed")
     migrate("macs_rainfall", "number.macs_rainfall")
-    migrate("macs_snowfall", "number.macs_snowfall")
+    migrate("macs_snowing", "switch.macs_snowing")
 
     async def handle_set_mood(call: ServiceCall) -> None:
         mood = str(call.data.get(ATTR_MOOD, "")).strip().lower()
@@ -169,8 +168,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_set_rainfall(call: ServiceCall) -> None:
         await _set_number_entity(call, ATTR_RAINFALL, "macs_rainfall", "rainfall")
 
-    async def handle_set_snowfall(call: ServiceCall) -> None:
-        await _set_number_entity(call, ATTR_SNOWFALL, "macs_snowfall", "snowfall")
+
+    async def _set_switch_entity(call: ServiceCall, attr_name: str, unique_id: str, label: str) -> None:
+        raw = call.data.get(attr_name, None)
+
+        if isinstance(raw, bool):
+            is_on = raw
+        elif isinstance(raw, (int, float)):
+            is_on = bool(raw)
+        elif isinstance(raw, str):
+            v = raw.strip().lower()
+            if v in ("1", "true", "on", "yes", "y"):
+                is_on = True
+            elif v in ("0", "false", "off", "no", "n"):
+                is_on = False
+            else:
+                raise vol.Invalid(f"Invalid {label} '{raw}'. Must be true/false.")
+        else:
+            raise vol.Invalid(f"Invalid {label} '{raw}'. Must be true/false.")
+
+        registry = er.async_get(hass)
+        entity_id = None
+        for ent in registry.entities.values():
+            if ent.platform == DOMAIN and ent.unique_id == unique_id:
+                entity_id = ent.entity_id
+                break
+
+        if not entity_id:
+            raise vol.Invalid(f"Macs {label} entity not found (switch not created)")
+
+        await hass.services.async_call(
+            "switch",
+            "turn_on" if is_on else "turn_off",
+            {"entity_id": entity_id},
+            blocking=True,
+        )
+
+    async def handle_set_snowing(call: ServiceCall) -> None:
+        await _set_switch_entity(call, ATTR_SNOWING, "macs_snowing", "snowing")
+
+
 
     if not hass.services.has_service(DOMAIN, SERVICE_SET_MOOD):
         hass.services.async_register(
@@ -212,13 +249,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=vol.Schema({vol.Required(ATTR_RAINFALL): vol.Coerce(float)}),
         )
 
-    if not hass.services.has_service(DOMAIN, SERVICE_SET_SNOWFALL):
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_SNOWING):
         hass.services.async_register(
-            DOMAIN,
-            SERVICE_SET_SNOWFALL,
-            handle_set_snowfall,
-            schema=vol.Schema({vol.Required(ATTR_SNOWFALL): vol.Coerce(float)}),
-        )
+        DOMAIN,
+        SERVICE_SET_SNOWING,
+        handle_set_snowing,
+        schema=vol.Schema({vol.Required(ATTR_SNOWING): cv.boolean}),
+    )
 
     # Auto-add/update Lovelace resource (storage mode)
     await _ensure_lovelace_resource(hass)
@@ -234,6 +271,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WINDSPEED)
         hass.services.async_remove(DOMAIN, SERVICE_SET_RAINFALL)
-        hass.services.async_remove(DOMAIN, SERVICE_SET_SNOWFALL)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_SNOWING)
         hass.data.get(DOMAIN, {}).pop("static_path_registered", None)
     return unload_ok

@@ -66,7 +66,7 @@ export class MacsCardEditor extends HTMLElement {
 			<!-- Auto respond to assistant states -->
 			<div class="group">
 				<div class="row">
-					<label for="assist_states_enabled">React to wake-words?</label>
+					<label for="assist_states_enabled">React to Wake-Words?</label>
 					<ha-switch id="assist_states_enabled"></ha-switch>
 					<div class="hint">When enabled, Macs will mirror your selected Assist satellite.<br>(listening, processing, responding, idle, etc)</div>
 				</div>
@@ -83,7 +83,7 @@ export class MacsCardEditor extends HTMLElement {
 			<!-- Show dialogue -->
 			<div class="group">
 				<div class="row">
-					<label for="assist_pipeline_enabled">Display dialogue?</label>
+					<label for="assist_pipeline_enabled">Display Dialogue?</label>
 					<ha-switch id="assist_pipeline_enabled"></ha-switch>
 					<div class="hint">When enabled, Macs will display conversations with your assistant.</div>
 				</div>
@@ -100,7 +100,7 @@ export class MacsCardEditor extends HTMLElement {
 			<!-- Temperature sensor -->
 			<div class="group">
 				<div class="row">
-					<label for="temperature_sensor_enabled">Use temperature sensor?</label>
+					<label for="temperature_sensor_enabled">Use Temperature Sensor?</label>
 					<ha-switch id="temperature_sensor_enabled"></ha-switch>
 				</div>
 
@@ -125,7 +125,7 @@ export class MacsCardEditor extends HTMLElement {
 			<!-- Wind sensor -->
 			<div class="group">
 				<div class="row">
-					<label for="wind_sensor_enabled">Use wind sensor?</label>
+					<label for="wind_sensor_enabled">Use Wind Sensor?</label>
 					<ha-switch id="wind_sensor_enabled"></ha-switch>
 				</div>
 
@@ -150,7 +150,7 @@ export class MacsCardEditor extends HTMLElement {
 			<!-- Rain / precipitation sensor -->
 			<div class="group">
 				<div class="row">
-					<label for="precipitation_sensor_enabled">Use rainfall sensor?</label>
+					<label for="precipitation_sensor_enabled">Use Rainfall Sensor?</label>
 					<ha-switch id="precipitation_sensor_enabled"></ha-switch>
 				</div>
 
@@ -169,6 +169,22 @@ export class MacsCardEditor extends HTMLElement {
 				<div class="row double">
 					<ha-textfield id="precipitation_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 					<ha-textfield id="precipitation_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
+				</div>
+			</div>
+
+			<!-- Snow sensor -->
+			<div class="group">
+				<div class="row">
+					<label for="weather_condition_enabled">Auto-Detect Snowing?</label>
+					<ha-switch id="weather_condition_enabled"></ha-switch>
+				</div>
+
+				<div class="row">
+					<ha-combo-box id="weather_source_select" label="weather condition entity"></ha-combo-box>
+				</div>
+
+				<div class="row">
+					<ha-textfield id="weather_entity" label="Weather Condition  ID" placeholder="weather.forecast_home"></ha-textfield>
 				</div>
 			</div>
 

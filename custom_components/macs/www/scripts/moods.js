@@ -26,6 +26,26 @@ const RAIN_WIND_TILT_MAX = 89;
 const RAIN_TILT_VARIATION = 1;
 const RAIN_PATH_PADDING = 60;
 const RAIN_WIND_SPEED_MULTIPLIER = 1.7;
+const RAIN_SPAWN_OFFSET = 120;
+const RAIN_SPAWN_VARIATION = 1;
+
+const SNOW_MAX_FLAKES = 500;
+const SNOW_MIN_SPEED = 0.1;
+const SNOW_MAX_SPEED = 0.3;
+const SNOW_SIZE_MIN = 1.4;
+const SNOW_SIZE_MAX = 3.6;
+const SNOW_SIZE_VARIATION = 0.6;
+const SNOW_OPACITY_MIN = 0.3;
+const SNOW_OPACITY_MAX = 0.9;
+const SNOW_OPACITY_VARIATION = 0.5;
+const SNOW_MIN_DURATION = 6;
+const SNOW_SPEED_JITTER_MIN = -0.1;
+const SNOW_SPEED_JITTER_MAX = 0.1;
+const SNOW_WIND_TILT_MAX = 89;
+const SNOW_TILT_VARIATION = 12;
+const SNOW_PATH_PADDING = 80;
+const SNOW_WIND_SPEED_MULTIPLIER = 0.4;
+const SNOW_START_DELAY_RATIO = 1;
 
 const WIND_TILT_MAX = 25;
 const WIND_TILT_EXPONENT = 2.2;
@@ -45,9 +65,12 @@ let rainIntensity = -1;
 let rainViewWidth = 1000;
 let rainViewHeight = 1000;
 let windIntensity = 0;
+let snowFlakeCount = -1;
+let snowIntensity = -1;
 let idleFloatBase = IDLE_FLOAT_BASE_VMIN;
 let idleFloatDuration = IDLE_FLOAT_BASE_SECONDS;
 let idleFloatJitterTimer = null;
+const snowAnimations = new WeakMap();
 
 const clampPercent = (value, fallback = 0) => {
 	const num = Number(value);
@@ -140,7 +163,12 @@ const setRainViewBoxFromSvg = () => {
 	rainViewWidth = width;
 	rainViewHeight = height;
 	svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+	const snowSvg = document.querySelector(".fx-snow");
+	if (snowSvg) {
+		snowSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+	}
 	rainDropCount = -1;
+	snowFlakeCount = -1;
 };
 
 const updateRainDrops = (intensity, forceUpdate = false) => {
@@ -167,7 +195,7 @@ const updateRainDrops = (intensity, forceUpdate = false) => {
 		const speed = Math.min(RAIN_MAX_SPEED, Math.max(RAIN_MIN_SPEED, unclamped));
 		const pathLength = Number(drop.dataset.pathLength);
 		const distance = Number.isFinite(pathLength) ? pathLength : refDistance;
-		const distanceRatio = Math.sqrt(distance / refDistance);
+		const distanceRatio = distance / refDistance;
 		const duration = distanceRatio / speed;
 		drop.style.animationDuration = `${duration.toFixed(2)}s`;
 	};
@@ -207,6 +235,9 @@ const updateRainDrops = (intensity, forceUpdate = false) => {
 		const segment = getLineRectIntersections(point, dir, rect);
 		const start = segment?.start ?? { x: center.x, y: rect.yMin };
 		const end = segment?.end ?? { x: center.x, y: rect.yMax };
+		const spawnOffset = RAIN_SPAWN_OFFSET * (0.5 + (Math.random() * RAIN_SPAWN_VARIATION));
+		const startOut = { x: start.x - (dir.x * spawnOffset), y: start.y - (dir.y * spawnOffset) };
+		const endOut = { x: end.x + (dir.x * spawnOffset), y: end.y + (dir.y * spawnOffset) };
 
 		drop.setAttribute("rx", rx.toFixed(2));
 		drop.setAttribute("ry", ry.toFixed(2));
@@ -239,6 +270,129 @@ const updateRainDrops = (intensity, forceUpdate = false) => {
 	}
 };
 
+const updateSnowFlakes = (intensity, forceUpdate = false) => {
+	setRainViewBoxFromSvg();
+	const container = document.getElementById("snow-flakes");
+	if (!container) return;
+
+	const normalized = clamp01(intensity);
+	const targetCount = Math.ceil(normalized * SNOW_MAX_FLAKES);
+	const windMultiplier = 1 + (windIntensity * SNOW_WIND_SPEED_MULTIPLIER);
+	const rect = {
+		xMin: -SNOW_PATH_PADDING,
+		xMax: rainViewWidth + SNOW_PATH_PADDING,
+		yMin: -SNOW_PATH_PADDING,
+		yMax: rainViewHeight + SNOW_PATH_PADDING
+	};
+	const refDistance = Math.max(1, rect.yMax - rect.yMin);
+
+	const getFlakeDuration = (size, pathLength) => {
+		const jitter = SNOW_SPEED_JITTER_MIN + (Math.random() * (SNOW_SPEED_JITTER_MAX - SNOW_SPEED_JITTER_MIN));
+		const sizeFactor = (size - SNOW_SIZE_MIN) / Math.max(1, (SNOW_SIZE_MAX - SNOW_SIZE_MIN));
+		const speedBias = clamp01(sizeFactor + jitter);
+		const baseSpeed = SNOW_MIN_SPEED + (speedBias * (SNOW_MAX_SPEED - SNOW_MIN_SPEED));
+		const unclampedSpeed = baseSpeed * windMultiplier;
+		const speed = Math.min(SNOW_MAX_SPEED, Math.max(SNOW_MIN_SPEED, unclampedSpeed));
+		const distance = Number.isFinite(pathLength) ? pathLength : refDistance;
+		const distanceRatio = distance / refDistance;
+		const minDuration = SNOW_MIN_DURATION * distanceRatio;
+		return Math.max(minDuration, distanceRatio / speed);
+	};
+
+	const buildFlakeConfig = (slotIndex) => {
+		const slot = Number.isFinite(slotIndex) ? slotIndex : Math.floor(Math.random() * Math.max(1, targetCount));
+		const sizeBias = clamp01(normalized + ((Math.random() * 2) - 1) * SNOW_SIZE_VARIATION);
+		const size = SNOW_SIZE_MIN + (sizeBias * (SNOW_SIZE_MAX - SNOW_SIZE_MIN));
+		const opacityBias = clamp01(normalized + ((Math.random() * 2) - 1) * SNOW_OPACITY_VARIATION);
+		const baseOpacity = SNOW_OPACITY_MIN + (opacityBias * (SNOW_OPACITY_MAX - SNOW_OPACITY_MIN));
+		const divergence = (Math.random() * 2) - 1;
+		const tiltDeg = (windIntensity * SNOW_WIND_TILT_MAX) + (divergence * SNOW_TILT_VARIATION);
+		const tiltCss = -tiltDeg;
+		const tiltRad = tiltDeg * (Math.PI / 180);
+		const dir = { x: Math.sin(tiltRad), y: Math.cos(tiltRad) };
+		const perp = { x: -dir.y, y: dir.x };
+		const maxOffset = (Math.abs(perp.x) * rainViewWidth + Math.abs(perp.y) * rainViewHeight) / 2;
+		const offset = (((slot + Math.random()) / Math.max(1, targetCount)) - 0.5) * 2 * maxOffset;
+		const center = { x: rainViewWidth / 2, y: rainViewHeight / 2 };
+		const point = { x: center.x + (perp.x * offset), y: center.y + (perp.y * offset) };
+		const segment = getLineRectIntersections(point, dir, rect);
+		const start = segment?.start ?? { x: center.x, y: rect.yMin };
+		const end = segment?.end ?? { x: center.x, y: rect.yMax };
+		const startOut = { x: start.x, y: start.y };
+		const endOut = { x: end.x, y: end.y };
+		const pathLength = Math.hypot(endOut.x - startOut.x, endOut.y - startOut.y);
+		const duration = getFlakeDuration(size, pathLength);
+
+		return {
+			slot,
+			size,
+			opacity: Math.min(SNOW_OPACITY_MAX, baseOpacity),
+			tiltCss,
+			startOut,
+			endOut,
+			pathLength,
+			duration
+		};
+	};
+
+	const stopSnowAnimation = (flake) => {
+		const anim = snowAnimations.get(flake);
+		if (anim) {
+			anim.onfinish = null;
+			anim.cancel();
+			snowAnimations.delete(flake);
+		}
+	};
+
+	const startSnowAnimation = (flake, slotIndex) => {
+		stopSnowAnimation(flake);
+		const config = buildFlakeConfig(slotIndex);
+		flake.setAttribute("r", config.size.toFixed(2));
+		flake.setAttribute("cx", "0");
+		flake.setAttribute("cy", "0");
+		flake.style.opacity = config.opacity.toFixed(2);
+		flake.dataset.size = config.size.toFixed(3);
+		flake.dataset.slot = config.slot.toString();
+		flake.dataset.pathLength = config.pathLength.toFixed(1);
+
+		const keyframes = [
+			{ transform: `translate(${config.startOut.x.toFixed(1)}px, ${config.startOut.y.toFixed(1)}px) rotate(${config.tiltCss.toFixed(2)}deg)` },
+			{ transform: `translate(${config.endOut.x.toFixed(1)}px, ${config.endOut.y.toFixed(1)}px) rotate(${config.tiltCss.toFixed(2)}deg)` }
+		];
+		const anim = flake.animate(keyframes, {
+			duration: config.duration * 1000,
+			delay: Math.random() * config.duration * SNOW_START_DELAY_RATIO * 1000,
+			easing: "linear",
+			fill: "backwards",
+			iterations: 1
+		});
+		snowAnimations.set(flake, anim);
+		anim.onfinish = () => startSnowAnimation(flake, config.slot);
+	};
+
+	if (targetCount === snowFlakeCount && normalized === snowIntensity) {
+		if (forceUpdate) {
+			[...container.children].forEach((flake) => {
+				const slot = Number(flake.dataset.slot);
+				startSnowAnimation(flake, Number.isFinite(slot) ? slot : undefined);
+			});
+		}
+		return;
+	}
+	snowFlakeCount = targetCount;
+	snowIntensity = normalized;
+
+	const slots = shuffle([...Array(targetCount).keys()]);
+	[...container.children].forEach(stopSnowAnimation);
+	container.replaceChildren();
+	for (let i = 0; i < targetCount; i += 1) {
+		const flake = document.createElementNS(SVG_NS, "circle");
+		flake.setAttribute("class", "flake");
+		container.appendChild(flake);
+		startSnowAnimation(flake, slots[i]);
+	}
+};
+
 function setTemperature(value){
 	const intensity = toIntensity(value);
 	document.documentElement.style.setProperty('--temperature-intensity', intensity.toString());
@@ -255,12 +409,19 @@ function setWindSpeed(value){
 	document.documentElement.style.setProperty('--idle-float-duration', `${idleFloatDuration.toFixed(2)}s`);
 	applyIdleFloatJitter();
 	updateRainDrops(rainIntensity < 0 ? 0 : rainIntensity, true);
+	updateSnowFlakes(snowIntensity < 0 ? 0 : snowIntensity, true);
 }
 
 function setRainfall(value){
 	const intensity = toIntensity(value);
 	document.documentElement.style.setProperty('--rainfall-intensity', intensity.toString());
 	updateRainDrops(intensity);
+}
+
+function setSnowfall(value){
+	const intensity = toIntensity(value);
+	document.documentElement.style.setProperty('--snowfall-intensity', intensity.toString());
+	updateSnowFlakes(intensity);
 }
 
 // set brightness level (0-100)
@@ -293,11 +454,13 @@ setRainViewBoxFromSvg();
 setTemperature(qs.get('temperature') ?? '0');
 setWindSpeed(qs.get('windspeed') ?? '0');
 setRainfall(qs.get('rainfall') ?? '0');
+setSnowfall(qs.get('snowfall') ?? '0');
 setBrightness(qs.get('brightness') ?? '100');
 
 window.addEventListener('resize', () => {
 	setRainViewBoxFromSvg();
 	updateRainDrops(rainIntensity < 0 ? 0 : rainIntensity);
+	updateSnowFlakes(snowIntensity < 0 ? 0 : snowIntensity);
 });
 
 window.addEventListener('message', (e) => {
@@ -322,6 +485,11 @@ window.addEventListener('message', (e) => {
     if (e.data.type === 'macs:rainfall') {
         setRainfall(e.data.rainfall ?? '0');
         debug("Setting rainfall to: " + (e.data.rainfall ?? '0'));
+        return;
+    }
+    if (e.data.type === 'macs:snowfall') {
+        setSnowfall(e.data.snowfall ?? '0');
+        debug("Setting snowfall to: " + (e.data.snowfall ?? '0'));
         return;
     }
     if (e.data.type === 'macs:brightness') {
