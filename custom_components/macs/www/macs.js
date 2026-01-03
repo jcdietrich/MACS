@@ -8,6 +8,12 @@
 /** 
  * TO-DO
  * --------
+ * min max text inputs changing before config is saved
+ * create macs.set_temperature service etc for custom integrations
+ * How does this work with sensors? You use one or the other, if the toggle is off, then use macs.temperature
+ * 
+ * Also add a macs.show_message
+ * 
  * - Monitor idle time and set bored, then sleep state/mood.
  * - Allow the user to configure the mood timeout/duration when a conversation ends.
  * - Create a user config options:
