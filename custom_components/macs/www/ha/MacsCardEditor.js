@@ -64,8 +64,13 @@ export class MacsCardEditor extends HTMLElement {
 					.hint{opacity:0.7;font-size:90%;margin-top:4px;}
 					#satellite_select, #satellite_entity, #pipeline_select, #pipeline_id,
 					#temperature_select, #temperature_entity, #temperature_unit, #temperature_min, #temperature_max,
+					#temperature_update_interval,
 					#wind_select, #wind_entity, #wind_unit, #wind_min, #wind_max,
-					#precipitation_select, #precipitation_entity, #precipitation_unit, #precipitation_min, #precipitation_max { width: 100%; }
+					#wind_update_interval,
+					#precipitation_select, #precipitation_entity, #precipitation_unit, #precipitation_min, #precipitation_max,
+					#precipitation_update_interval { width: 100%; }
+					.double{display: flex;gap:12px;}
+					.double > * {flex: 1 1 0;min-width: 0;}
 					.entity-grid {display: grid;grid-template-columns: 1fr 1fr;gap: 6px 12px;}
 					.entity-grid .header {font-weight: 600;border-bottom: 1px solid var(--divider-color);padding-bottom: 4px;}
 					.entity-grid > div {white-space: nowrap;}
@@ -123,10 +128,14 @@ export class MacsCardEditor extends HTMLElement {
 					</div>
 
 					<div class="row">
-						<ha-combo-box id="temperature_unit" label="Temperature units"></ha-combo-box>
+						<ha-combo-box id="temperature_update_interval" label="Update interval"></ha-combo-box>
 					</div>
 
 					<div class="row">
+						<ha-combo-box id="temperature_unit" label="Temperature units"></ha-combo-box>
+					</div>
+
+					<div class="row double">
 						<ha-textfield id="temperature_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 						<ha-textfield id="temperature_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 					</div>
@@ -148,10 +157,14 @@ export class MacsCardEditor extends HTMLElement {
 					</div>
 
 					<div class="row">
-						<ha-combo-box id="wind_unit" label="Wind speed units"></ha-combo-box>
+						<ha-combo-box id="wind_update_interval" label="Update interval"></ha-combo-box>
 					</div>
 
 					<div class="row">
+						<ha-combo-box id="wind_unit" label="Wind speed units"></ha-combo-box>
+					</div>
+
+					<div class="row double">
 						<ha-textfield id="wind_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 						<ha-textfield id="wind_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 					</div>
@@ -173,10 +186,14 @@ export class MacsCardEditor extends HTMLElement {
 					</div>
 
 					<div class="row">
-						<ha-combo-box id="precipitation_unit" label="Rainfall units"></ha-combo-box>
+						<ha-combo-box id="precipitation_update_interval" label="Update interval"></ha-combo-box>
 					</div>
 
 					<div class="row">
+						<ha-combo-box id="precipitation_unit" label="Rainfall units"></ha-combo-box>
+					</div>
+
+					<div class="row double">
 						<ha-textfield id="precipitation_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 						<ha-textfield id="precipitation_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
 					</div>
@@ -350,7 +367,7 @@ export class MacsCardEditor extends HTMLElement {
                 windUnitSelect.value = (this._config.wind_unit ?? "").toString();
             }
 
-            // Weather: precipitation units
+			// Weather: precipitation units
             const precipitationUnitSelect = this.shadowRoot.getElementById("precipitation_unit");
             if (precipitationUnitSelect) {
                 precipitationUnitSelect.items = [
@@ -363,6 +380,39 @@ export class MacsCardEditor extends HTMLElement {
                 precipitationUnitSelect.itemValuePath = "id";
                 precipitationUnitSelect.value = (this._config.precipitation_unit ?? "").toString();
             }
+
+			const updateIntervalItems = [
+				{ id: "0", name: "Instant (Not recommended)" },
+				{ id: "5", name: "Every 5 minutes" },
+				{ id: "10", name: "Every 10 minutes" },
+				{ id: "15", name: "Every 15 minutes" },
+				{ id: "30", name: "Every 30 minutes" },
+				{ id: "60", name: "Every 60 minutes" },
+			];
+
+			const temperatureUpdateInterval = this.shadowRoot.getElementById("temperature_update_interval");
+			if (temperatureUpdateInterval) {
+				temperatureUpdateInterval.items = updateIntervalItems;
+				temperatureUpdateInterval.itemLabelPath = "name";
+				temperatureUpdateInterval.itemValuePath = "id";
+				temperatureUpdateInterval.value = (this._config.temperature_update_interval ?? "").toString();
+			}
+
+			const windUpdateInterval = this.shadowRoot.getElementById("wind_update_interval");
+			if (windUpdateInterval) {
+				windUpdateInterval.items = updateIntervalItems;
+				windUpdateInterval.itemLabelPath = "name";
+				windUpdateInterval.itemValuePath = "id";
+				windUpdateInterval.value = (this._config.wind_update_interval ?? "").toString();
+			}
+
+			const precipitationUpdateInterval = this.shadowRoot.getElementById("precipitation_update_interval");
+			if (precipitationUpdateInterval) {
+				precipitationUpdateInterval.items = updateIntervalItems;
+				precipitationUpdateInterval.itemLabelPath = "name";
+				precipitationUpdateInterval.itemValuePath = "id";
+				precipitationUpdateInterval.value = (this._config.precipitation_update_interval ?? "").toString();
+			}
 
             // Weather min/max fields from config
             const tempMin = this.shadowRoot.getElementById("temperature_min");
@@ -465,14 +515,16 @@ export class MacsCardEditor extends HTMLElement {
 			});
 
 			[
-				"temperature_sensor_enabled","temperature_select","temperature_entity","temperature_unit","temperature_min","temperature_max",
-				"wind_sensor_enabled","wind_select","wind_entity","wind_unit","wind_min","wind_max",
-				"precipitation_sensor_enabled","precipitation_select","precipitation_entity","precipitation_unit","precipitation_min","precipitation_max"
+				"temperature_sensor_enabled","temperature_select","temperature_entity","temperature_unit","temperature_update_interval","temperature_min","temperature_max",
+				"wind_sensor_enabled","wind_select","wind_entity","wind_unit","wind_update_interval","wind_min","wind_max",
+				"precipitation_sensor_enabled","precipitation_select","precipitation_entity","precipitation_unit","precipitation_update_interval","precipitation_min","precipitation_max"
 			].forEach((id) => {
 				const el = this.shadowRoot.getElementById(id);
 				if (!el) return;
 				el.addEventListener("change", onChange);
-				if (id.endsWith("_select") || id.endsWith("_unit")) el.addEventListener("value-changed", onChange);
+				if (id.endsWith("_select") || id.endsWith("_unit") || id.endsWith("_update_interval")) {
+					el.addEventListener("value-changed", onChange);
+				}
 			});
 
 		}

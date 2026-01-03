@@ -17,7 +17,7 @@
  * and the M.A.C.S. frontend character.
  */
 
-import { DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID } from "./constants.js";
+import { DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, DEFAULT_WEATHER_POLL_MINUTES } from "./constants.js";
 import { normMood, normBrightness, safeUrl, getTargetOrigin, assistStateToMood} from "./validators.js";
 import { SatelliteTracker } from "./assistSatellite.js";
 import { AssistPipelineTracker } from "./assistPipeline.js";
@@ -94,6 +94,7 @@ export class MacsCard extends HTMLElement {
             this._loadedOnce = false;
             this._lastMood = undefined;
             this._lastSrc = undefined;
+            this._lastWeather = null;
 
             // Keep home assistant state
             this._hass = null;
@@ -110,6 +111,8 @@ export class MacsCard extends HTMLElement {
 
             this._weatherHandler = new WeatherHandler();
             this._weatherHandler.setConfig(this._config);
+            this._weatherPollTimers = {};
+            this._setupWeatherPolling();
 
 
             // Listen for messages from HA to the iframe
@@ -120,13 +123,9 @@ export class MacsCard extends HTMLElement {
             if (this._weatherHandler) this._weatherHandler.setConfig(this._config);
             if (this._hass && this._weatherHandler) {
                 this._weatherHandler.setHass(this._hass);
-                const weather = this._weatherHandler.getWeather();
-                const weatherJson = weather ? JSON.stringify(weather) : null;
-                if (weatherJson !== this._lastWeather) {
-                    this._lastWeather = weatherJson;
-                    if (weather) this._sendWeatherToIframe(weather);
-                }
+                this._pollWeather("config");
             }
+            this._setupWeatherPolling();
         }
     }
 
@@ -144,6 +143,8 @@ export class MacsCard extends HTMLElement {
 
         try { this._weatherHandler?.dispose?.(); } catch (_) {}
         this._weatherHandler = null;
+
+        this._clearWeatherPolling();
 
     }
 
@@ -164,6 +165,10 @@ export class MacsCard extends HTMLElement {
         if (this._config && !this._assistSatelliteOutcome) {
             debug("Recreating SatelliteTracker (reconnect)");
             this._assistSatelliteOutcome = new SatelliteTracker({});
+        }
+
+        if (this._config) {
+            this._setupWeatherPolling();
         }
     }
 
@@ -197,6 +202,55 @@ export class MacsCard extends HTMLElement {
     }
     _sendBrightnessToIframe(brightness) {
         this._postToIframe({ type: "macs:brightness", brightness });
+    }
+
+    _normalizeWeatherInterval(value) {
+        const n = Number(value);
+        if (Number.isFinite(n) && n <= 0) return 0;
+        if (Number.isFinite(n) && n > 0) return n;
+        return DEFAULT_WEATHER_POLL_MINUTES;
+    }
+
+    _clearWeatherPolling() {
+        if (!this._weatherPollTimers) return;
+        Object.keys(this._weatherPollTimers).forEach((key) => {
+            const timer = this._weatherPollTimers[key];
+            if (timer) clearInterval(timer);
+            this._weatherPollTimers[key] = null;
+        });
+    }
+
+    _setupWeatherPolling() {
+        this._clearWeatherPolling();
+        if (!this._config) return;
+
+        this._configureWeatherPolling("temperature", "temperature_sensor_enabled", "temperature_update_interval");
+        this._configureWeatherPolling("wind", "wind_sensor_enabled", "wind_update_interval");
+        this._configureWeatherPolling("precipitation", "precipitation_sensor_enabled", "precipitation_update_interval");
+    }
+
+    _configureWeatherPolling(kind, enabledKey, intervalKey) {
+        if (!this._config?.[enabledKey]) return;
+
+        const minutes = this._normalizeWeatherInterval(this._config?.[intervalKey]);
+        if (minutes <= 0) return;
+        const intervalMs = minutes * 60 * 1000;
+        if (!Number.isFinite(intervalMs) || intervalMs <= 0) return;
+
+        this._weatherPollTimers[kind] = setInterval(() => {
+            this._pollWeather("poll");
+        }, intervalMs);
+    }
+
+    _pollWeather(source) {
+        if (!this._weatherHandler || !this._hass) return null;
+        const weather = this._weatherHandler.getWeather({ source });
+        const weatherJson = weather ? JSON.stringify(weather) : null;
+        if (weatherJson !== this._lastWeather) {
+            this._lastWeather = weatherJson;
+            if (weather) this._sendWeatherToIframe(weather);
+        }
+        return weather;
     }
 
     _sendTurnsToIframe() {
@@ -274,7 +328,7 @@ export class MacsCard extends HTMLElement {
         const brightness = normBrightness(brightnessState?.state);
 
         if (this._weatherHandler) this._weatherHandler.setHass(hass);
-        const weather = this._weatherHandler?.getWeather?.() || null;
+        const weather = this._weatherHandler?.getWeather?.({ source: "hass" }) || null;
         const weatherJson = weather ? JSON.stringify(weather) : null;
 
         const base = safeUrl(this._config.url);
