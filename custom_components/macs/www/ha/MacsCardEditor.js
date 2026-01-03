@@ -214,12 +214,21 @@ export class MacsCardEditor extends HTMLElement {
 							<div>select.macs_weather</div>
 							<div>macs.set_weather</div>
 
-							<div>number.macs_brightness</div>
-							<div>macs.set_brightness</div>
+								<div>number.macs_brightness</div>
+								<div>macs.set_brightness</div>
+
+								<div>number.macs_temperature</div>
+								<div>macs.set_temperature</div>
+
+								<div>number.macs_windspeed</div>
+								<div>macs.set_windspeed</div>
+
+								<div>number.macs_rainfall</div>
+								<div>macs.set_rainfall</div>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
 
 
 			<!-- About -->

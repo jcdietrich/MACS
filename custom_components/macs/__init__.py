@@ -22,6 +22,12 @@ from .const import (
     #ATTR_WEATHER,
     SERVICE_SET_BRIGHTNESS,
     ATTR_BRIGHTNESS,
+    SERVICE_SET_TEMPERATURE,
+    ATTR_TEMPERATURE,
+    SERVICE_SET_WINDSPEED,
+    ATTR_WINDSPEED,
+    SERVICE_SET_RAINFALL,
+    ATTR_RAINFALL,
 )
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -103,6 +109,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     migrate("macs_mood", "select.macs_mood")
     #migrate("macs_weather", "select.macs_weather")
     migrate("macs_brightness", "number.macs_brightness")
+    migrate("macs_temperature", "number.macs_temperature")
+    migrate("macs_windspeed", "number.macs_windspeed")
+    migrate("macs_rainfall", "number.macs_rainfall")
 
     async def handle_set_mood(call: ServiceCall) -> None:
         mood = str(call.data.get(ATTR_MOOD, "")).strip().lower()
@@ -143,32 +152,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     #         blocking=True,
     #     )
 
-    async def handle_set_brightness(call: ServiceCall) -> None:
-        raw = call.data.get(ATTR_BRIGHTNESS, None)
+    async def _set_number_entity(call: ServiceCall, attr_name: str, unique_id: str, label: str) -> None:
+        raw = call.data.get(attr_name, None)
         try:
-            brightness = float(raw)
+            value = float(raw)
         except (TypeError, ValueError):
-            raise vol.Invalid(f"Invalid brightness '{raw}'. Must be a number between 0 and 100.")
+            raise vol.Invalid(f"Invalid {label} '{raw}'. Must be a number between 0 and 100.")
 
-        if not (0 <= brightness <= 100):
-            raise vol.Invalid(f"Invalid brightness '{brightness}'. Must be between 0 and 100.")
+        if not (0 <= value <= 100):
+            raise vol.Invalid(f"Invalid {label} '{value}'. Must be between 0 and 100.")
 
         registry = er.async_get(hass)
         entity_id = None
         for ent in registry.entities.values():
-            if ent.platform == DOMAIN and ent.unique_id == "macs_brightness":
+            if ent.platform == DOMAIN and ent.unique_id == unique_id:
                 entity_id = ent.entity_id
                 break
 
         if not entity_id:
-            raise vol.Invalid("Macs brightness entity not found (number not created)")
+            raise vol.Invalid(f"Macs {label} entity not found (number not created)")
 
         await hass.services.async_call(
             "number",
             "set_value",
-            {"entity_id": entity_id, "value": brightness},
+            {"entity_id": entity_id, "value": value},
             blocking=True,
         )
+
+    async def handle_set_brightness(call: ServiceCall) -> None:
+        await _set_number_entity(call, ATTR_BRIGHTNESS, "macs_brightness", "brightness")
+
+    async def handle_set_temperature(call: ServiceCall) -> None:
+        await _set_number_entity(call, ATTR_TEMPERATURE, "macs_temperature", "temperature")
+
+    async def handle_set_windspeed(call: ServiceCall) -> None:
+        await _set_number_entity(call, ATTR_WINDSPEED, "macs_windspeed", "windspeed")
+
+    async def handle_set_rainfall(call: ServiceCall) -> None:
+        await _set_number_entity(call, ATTR_RAINFALL, "macs_rainfall", "rainfall")
 
     if not hass.services.has_service(DOMAIN, SERVICE_SET_MOOD):
         hass.services.async_register(
@@ -194,6 +215,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=vol.Schema({vol.Required(ATTR_BRIGHTNESS): vol.Coerce(float)}),
         )
 
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_TEMPERATURE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_TEMPERATURE,
+            handle_set_temperature,
+            schema=vol.Schema({vol.Required(ATTR_TEMPERATURE): vol.Coerce(float)}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WINDSPEED):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WINDSPEED,
+            handle_set_windspeed,
+            schema=vol.Schema({vol.Required(ATTR_WINDSPEED): vol.Coerce(float)}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_RAINFALL):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_RAINFALL,
+            handle_set_rainfall,
+            schema=vol.Schema({vol.Required(ATTR_RAINFALL): vol.Coerce(float)}),
+        )
+
     # Auto-add/update Lovelace resource (storage mode)
     await _ensure_lovelace_resource(hass)
 
@@ -206,5 +251,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_remove(DOMAIN, SERVICE_SET_MOOD)
         #hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER)
         hass.services.async_remove(DOMAIN, SERVICE_SET_BRIGHTNESS)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WINDSPEED)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_RAINFALL)
         hass.data.get(DOMAIN, {}).pop("static_path_registered", None)
     return unload_ok

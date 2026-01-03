@@ -40,3 +40,12 @@ ATTR_MOOD = "mood"
 
 SERVICE_SET_BRIGHTNESS = "set_brightness"
 ATTR_BRIGHTNESS = "brightness"
+
+SERVICE_SET_TEMPERATURE = "set_temperature"
+ATTR_TEMPERATURE = "temperature"
+
+SERVICE_SET_WINDSPEED = "set_windspeed"
+ATTR_WINDSPEED = "windspeed"
+
+SERVICE_SET_RAINFALL = "set_rainfall"
+ATTR_RAINFALL = "rainfall"

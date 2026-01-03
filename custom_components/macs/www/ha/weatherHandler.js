@@ -1,5 +1,10 @@
 import { normalizeTemperature, normalizeWind, normalizeRain } from "./validators.js";
-import { DEFAULT_WEATHER_POLL_MINUTES } from "./constants.js";
+import {
+    DEFAULT_WEATHER_POLL_MINUTES,
+    TEMPERATURE_ENTITY_ID,
+    WIND_ENTITY_ID,
+    RAINFALL_ENTITY_ID,
+} from "./constants.js";
 import { createDebugger } from "./debugger.js";
 
 const DEBUG_ENABLED = false;
@@ -78,6 +83,22 @@ export class WeatherHandler {
         };
     }
 
+    _readManualValue(entityId) {
+        if (!this._hass || !entityId) return null;
+        const st = this._hass.states?.[entityId];
+        if (!st) return null;
+        const value = toNumber(st.state);
+        if (value === null) return null;
+        const clamped = Math.max(0, Math.min(100, value));
+        return {
+            value: clamped,
+            unit: "normalized",
+            min: 0,
+            max: 100,
+            normalized: clamped,
+        };
+    }
+
     _getUpdateMode(kind) {
         const intervalMs = this._getUpdateIntervalMs(kind);
         return intervalMs <= 0 ? "instant" : "polling";
@@ -129,8 +150,10 @@ export class WeatherHandler {
 
     _normalizeTemperature(source, now) {
         if (!this._config?.temperature_sensor_enabled) {
-            this._cache.temperature = null;
-            return null;
+            const manual = this._readManualValue(TEMPERATURE_ENTITY_ID);
+            this._cache.temperature = manual;
+            this._lastUpdate.temperature = now;
+            return manual;
         }
         const entityId = (this._config.temperature_sensor_entity || "").toString().trim();
         if (!entityId) {
@@ -180,8 +203,10 @@ export class WeatherHandler {
 
     _normalizeWind(source, now) {
         if (!this._config?.wind_sensor_enabled) {
-            this._cache.wind = null;
-            return null;
+            const manual = this._readManualValue(WIND_ENTITY_ID);
+            this._cache.wind = manual;
+            this._lastUpdate.wind = now;
+            return manual;
         }
         const entityId = (this._config.wind_sensor_entity || "").toString().trim();
         if (!entityId) {
@@ -231,8 +256,10 @@ export class WeatherHandler {
 
     _normalizeRain(source, now) {
         if (!this._config?.precipitation_sensor_enabled) {
-            this._cache.precipitation = null;
-            return null;
+            const manual = this._readManualValue(RAINFALL_ENTITY_ID);
+            this._cache.precipitation = manual;
+            this._lastUpdate.precipitation = now;
+            return manual;
         }
         const entityId = (this._config.precipitation_sensor_entity || "").toString().trim();
         if (!entityId) {
