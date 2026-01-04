@@ -23,6 +23,10 @@
  * - change happy trigger from idle to responding. Actually, idle OR responding, whichever comes first.
  * - update readme screenshot
  * - create bored / sleep sequence
+ * kios mode, tap to wake, hold to show/hide toolbars
+ * doesnt update when switch dashboard
+ * prevent preview kiosk mode
+ * wake word restore brightness
  */
 
 

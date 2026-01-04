@@ -402,11 +402,11 @@ export class MacsCardEditor extends HTMLElement {
 			unitValue: this._config.battery_charge_sensor_unit ?? "%"
 		});
 
-				createInputGroup(inputGroups, {
+		createInputGroup(inputGroups, {
 			id: "auto_brightness",
 			name: "Kiosk Mode",
 			label: "Enable Kiosk Mode?",
-			hint: "Applies to this card only.",
+			hint: "Applies to this card only.<br>Tip: tap and hold anywhere on the card to toggle the sidebar and navbar.",
 			placeholder: "",
 			select: false,
 			entity: false,

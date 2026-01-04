@@ -85,6 +85,7 @@ const IDLE_FLOAT_BASE_SECONDS = 9;
 const IDLE_FLOAT_MIN_SECONDS = 1;
 const IDLE_FLOAT_SPEED_EXPONENT = 1.5;
 const IDLE_FLOAT_JITTER_RATIO = 0.25;
+const KIOSK_HOLD_MS = 800;
 
 
 
@@ -105,6 +106,10 @@ let autoBrightnessMax = 100;
 let autoBrightnessTimer = null;
 let autoBrightnessIdle = false;
 let baseBrightness = 100;
+let autoBrightnessNextSleepAt = null;
+let autoBrightnessDebugTimer = null;
+let autoBrightnessConfigApplied = false;
+let kioskHoldTimer = null;
 
 let rainParticles = null;
 let snowParticles = null;
@@ -480,6 +485,37 @@ const applyBrightness = () => {
 	setBrightnessValue(target);
 };
 
+const updateAutoBrightnessDebug = () => {
+	const debugDiv = document.getElementById("debug");
+	if (!debugDiv) return;
+	let statusEl = debugDiv.querySelector(".debug-sleep-timer");
+	if (!statusEl) {
+		statusEl = document.createElement("div");
+		statusEl.className = "debug-sleep-timer";
+		debugDiv.appendChild(statusEl);
+	}
+
+	let text = "Sleep in: disabled";
+	if (autoBrightnessEnabled) {
+		if (autoBrightnessIdle) {
+			text = "Sleep in: 0s (sleeping)";
+		} else if (autoBrightnessNextSleepAt) {
+			const remainingMs = autoBrightnessNextSleepAt - Date.now();
+			const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
+			text = `Sleep in: ${remaining}s`;
+		} else {
+			text = "Sleep in: 0s";
+		}
+	}
+
+	statusEl.textContent = text;
+};
+
+const ensureAutoBrightnessDebugTimer = () => {
+	if (autoBrightnessDebugTimer) return;
+	autoBrightnessDebugTimer = setInterval(updateAutoBrightnessDebug, 1000);
+};
+
 const scheduleAutoBrightness = () => {
 	if (autoBrightnessTimer) {
 		clearTimeout(autoBrightnessTimer);
@@ -490,14 +526,20 @@ const scheduleAutoBrightness = () => {
 
 	if (!Number.isFinite(autoBrightnessTimeoutMs) || autoBrightnessTimeoutMs <= 0) {
 		autoBrightnessIdle = false;
+		autoBrightnessNextSleepAt = null;
 		applyBrightness();
+		updateAutoBrightnessDebug();
 		return;
 	}
 
+	autoBrightnessNextSleepAt = Date.now() + autoBrightnessTimeoutMs;
 	autoBrightnessTimer = setTimeout(() => {
 		autoBrightnessIdle = true;
+		autoBrightnessNextSleepAt = null;
 		applyBrightness();
+		updateAutoBrightnessDebug();
 	}, autoBrightnessTimeoutMs);
+	updateAutoBrightnessDebug();
 };
 
 const registerAutoBrightnessActivity = () => {
@@ -511,16 +553,75 @@ const registerAutoBrightnessActivity = () => {
 	scheduleAutoBrightness();
 };
 
+const sendKioskToggle = () => {
+	try {
+		debug("Kiosk hold: toggling sidebar/navbar");
+		window.parent.postMessage({ type: "macs:toggle_kiosk" }, window.location.origin);
+	} catch (_) {}
+};
+
+const startKioskHold = () => {
+	if (!autoBrightnessEnabled) return;
+	debug("Kiosk hold: start");
+	if (kioskHoldTimer) clearTimeout(kioskHoldTimer);
+	kioskHoldTimer = setTimeout(() => {
+		kioskHoldTimer = null;
+		sendKioskToggle();
+	}, KIOSK_HOLD_MS);
+};
+
+const endKioskHold = () => {
+	if (kioskHoldTimer) {
+		debug("Kiosk hold: cancel");
+		clearTimeout(kioskHoldTimer);
+		kioskHoldTimer = null;
+	}
+};
+
+const initKioskHoldListeners = () => {
+	const target = document.body;
+	if (!target) return;
+	if ("PointerEvent" in window) {
+		target.addEventListener("pointerdown", startKioskHold, { passive: true });
+		target.addEventListener("pointerup", endKioskHold, { passive: true });
+		target.addEventListener("pointercancel", endKioskHold, { passive: true });
+		target.addEventListener("pointerleave", endKioskHold, { passive: true });
+	} else {
+		target.addEventListener("touchstart", startKioskHold, { passive: true });
+		target.addEventListener("touchend", endKioskHold, { passive: true });
+		target.addEventListener("touchcancel", endKioskHold, { passive: true });
+		target.addEventListener("mousedown", startKioskHold);
+		target.addEventListener("mouseup", endKioskHold);
+		target.addEventListener("mouseleave", endKioskHold);
+	}
+};
+
 function setAutoBrightnessConfig(config){
 	const nextEnabled = !!(config && config.auto_brightness_enabled);
+	const timeoutFallback = autoBrightnessTimeoutMs ? (autoBrightnessTimeoutMs / 60000) : 0;
+	const timeoutMinutes = toNumber(config?.auto_brightness_timeout_minutes, timeoutFallback);
+	const nextTimeoutMs = timeoutMinutes > 0 ? timeoutMinutes * 60 * 1000 : 0;
+	const nextMin = toNumber(config?.auto_brightness_min, autoBrightnessMin);
+	const nextMax = toNumber(config?.auto_brightness_max, autoBrightnessMax);
+
+	const changed = !autoBrightnessConfigApplied ||
+		nextEnabled !== autoBrightnessEnabled ||
+		nextTimeoutMs !== autoBrightnessTimeoutMs ||
+		nextMin !== autoBrightnessMin ||
+		nextMax !== autoBrightnessMax;
+
+	if (!changed) return;
+
+	autoBrightnessConfigApplied = true;
 	autoBrightnessEnabled = nextEnabled;
-	const timeoutMinutes = toNumber(config?.auto_brightness_timeout_minutes, 0);
-	autoBrightnessTimeoutMs = timeoutMinutes > 0 ? timeoutMinutes * 60 * 1000 : 0;
-	autoBrightnessMin = config?.auto_brightness_min ?? autoBrightnessMin;
-	autoBrightnessMax = config?.auto_brightness_max ?? autoBrightnessMax;
+	autoBrightnessTimeoutMs = nextTimeoutMs;
+	autoBrightnessMin = nextMin;
+	autoBrightnessMax = nextMax;
 	autoBrightnessIdle = false;
+	ensureAutoBrightnessDebugTimer();
 	scheduleAutoBrightness();
 	applyBrightness();
+	updateAutoBrightnessDebug();
 }
 
 // set brightness level (0-100)
@@ -557,6 +658,9 @@ if (conditionsParam !== null) {
 }
 setBattery(qs.get('battery') ?? '0');
 setBrightness(qs.get('brightness') ?? '100');
+ensureAutoBrightnessDebugTimer();
+updateAutoBrightnessDebug();
+initKioskHoldListeners();
 
 const activityEvents = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"];
 activityEvents.forEach((eventName) => {

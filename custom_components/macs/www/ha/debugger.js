@@ -37,7 +37,41 @@ function getMacsVersion() {
         }
     }
 
-    return "Unknown";
+    return "";
+}
+
+function ensureManifestVersion() {
+    if (window.__MACS_VERSION__) {
+        return Promise.resolve(window.__MACS_VERSION__);
+    }
+
+    if (window.__MACS_VERSION_PROMISE__) {
+        return window.__MACS_VERSION_PROMISE__;
+    }
+
+    window.__MACS_VERSION_PROMISE__ = fetch("/macs-manifest.json", { cache: "no-store" })
+        .then((resp) => (resp.ok ? resp.json() : null))
+        .then((data) => {
+            const version = (data && data.version ? String(data.version) : "").trim();
+            if (version) {
+                window.__MACS_VERSION__ = version;
+            }
+            return window.__MACS_VERSION__ || "";
+        })
+        .catch(() => "");
+
+    return window.__MACS_VERSION_PROMISE__;
+}
+
+function renderVersion(debugDiv, version) {
+    if (!debugDiv) return;
+    let versionEl = debugDiv.querySelector(".debug-version");
+    if (!versionEl) {
+        versionEl = document.createElement("div");
+        versionEl.className = "debug-version";
+        debugDiv.appendChild(versionEl);
+    }
+    versionEl.textContent = "Version: " + (version || "Unknown");
 }
 
 export function createDebugger(namespace, enabled = DEBUGGING) {
@@ -48,7 +82,12 @@ export function createDebugger(namespace, enabled = DEBUGGING) {
         if(debugDiv){
             debugDiv.style.display = "block";
             debugDiv.innerHTML = "<h1>Debugging</h1>";
-            debugDiv.innerHTML += "Version: " + version + "<br>";
+            renderVersion(debugDiv, version);
+            if (!version) {
+                ensureManifestVersion().then((resolved) => {
+                    if (resolved) renderVersion(debugDiv, resolved);
+                });
+            }
         }
         return (...args) => {
             if(debugDiv){

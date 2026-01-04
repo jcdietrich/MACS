@@ -27,6 +27,24 @@ import { createDebugger } from "./debugger.js";
 
 const DEBUG_ENABLED = false;
 const debug = createDebugger("macsCard", DEBUG_ENABLED);
+const KIOSK_STYLE_ID = "macs-kiosk-style";
+const KIOSK_STYLE = `
+    app-drawer-layout app-drawer,
+    app-drawer-layout [drawer],
+    ha-sidebar,
+    hui-sidebar {
+        display: none !important;
+    }
+    app-header,
+    app-toolbar,
+    ha-tabs,
+    .header {
+        display: none !important;
+    }
+    app-drawer-layout > [main] {
+        margin-left: 0 !important;
+    }
+`;
 
 
 export class MacsCard extends HTMLElement {
@@ -100,6 +118,7 @@ export class MacsCard extends HTMLElement {
             this._loadedOnce = false;
             this._lastMood = undefined;
             this._lastSrc = undefined;
+            this._kioskHidden = false;
 
             // Keep home assistant state
             this._hass = null;
@@ -252,11 +271,85 @@ export class MacsCard extends HTMLElement {
 
         if (!e.data || typeof e.data !== "object") return;
 
+        if (e.data.type === "macs:toggle_kiosk") {
+            this._toggleKioskUi();
+            return;
+        }
+
         // Iframe requests initial config and current turns
         if (e.data.type === "macs:request_config") {
             this._sendConfigToIframe();
             this._sendTurnsToIframe();
         }
+    }
+
+    _getKioskStyleRoots() {
+        const roots = [];
+        const hass = document.querySelector("home-assistant");
+        const hassRoot = hass?.shadowRoot;
+        if (hassRoot) roots.push(hassRoot);
+
+        const main = hassRoot?.querySelector("home-assistant-main");
+        const mainRoot = main?.shadowRoot;
+        if (mainRoot) roots.push(mainRoot);
+
+        const lovelace = mainRoot?.querySelector("ha-panel-lovelace");
+        const lovelaceRoot = lovelace?.shadowRoot;
+        if (lovelaceRoot) roots.push(lovelaceRoot);
+
+        const huiRoot = lovelaceRoot?.querySelector("hui-root");
+        const huiShadow = huiRoot?.shadowRoot;
+        if (huiShadow) roots.push(huiShadow);
+
+        return roots;
+    }
+
+    _applyKioskStyles(enabled) {
+        const roots = this._getKioskStyleRoots();
+        roots.forEach((root) => {
+            const existing = root.getElementById(KIOSK_STYLE_ID);
+            if (!enabled) {
+                if (existing) existing.remove();
+                return;
+            }
+            if (!existing) {
+                const style = document.createElement("style");
+                style.id = KIOSK_STYLE_ID;
+                style.textContent = KIOSK_STYLE;
+                root.appendChild(style);
+            }
+        });
+    }
+
+    _applyKioskCardStyle(enabled) {
+        if (enabled) {
+            if (typeof this._kioskHostStyleBackup === "undefined") {
+                this._kioskHostStyleBackup = this.getAttribute("style");
+            }
+            this.style.position = "fixed";
+            this.style.inset = "0";
+            this.style.width = "100vw";
+            this.style.height = "100vh";
+            this.style.maxWidth = "100vw";
+            this.style.maxHeight = "100vh";
+            this.style.margin = "0";
+            this.style.zIndex = "10000";
+        } else {
+            if (typeof this._kioskHostStyleBackup === "undefined") {
+                this.removeAttribute("style");
+            } else if (this._kioskHostStyleBackup) {
+                this.setAttribute("style", this._kioskHostStyleBackup);
+            } else {
+                this.removeAttribute("style");
+            }
+        }
+    }
+
+    _toggleKioskUi() {
+        this._kioskHidden = !this._kioskHidden;
+        debug("kiosk-toggle", { hidden: this._kioskHidden });
+        this._applyKioskStyles(this._kioskHidden);
+        this._applyKioskCardStyle(this._kioskHidden);
     }
 
     _sendWeatherIfChanged() {

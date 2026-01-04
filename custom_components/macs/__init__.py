@@ -111,7 +111,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     if not hass.data[DOMAIN].get("static_path_registered"):
         www_path = Path(__file__).parent / "www"
-        await hass.http.async_register_static_paths([StaticPathConfig("/macs", str(www_path), cache_headers=False)])
+        manifest_path = Path(__file__).parent / "manifest.json"
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig("/macs", str(www_path), cache_headers=False),
+                StaticPathConfig("/macs-manifest.json", str(manifest_path), cache_headers=False),
+            ]
+        )
         hass.data[DOMAIN]["static_path_registered"] = True
 
     # Create entities first
