@@ -198,17 +198,6 @@ set_weather_conditions_lightning:
       selector:
         boolean:
 
-set_weather_conditions_lightning_rainy:
-  name: Set weather conditions lightning rainy
-  description: Toggle MACS lightning rainy effect on/off.
-  fields:
-    weather_conditions_lightning_rainy:
-      name: Weather conditions lightning rainy
-      description: true to enable lightning rainy effect, false to disable
-      required: true
-      selector:
-        boolean:
-
 set_weather_conditions_partlycloudy:
   name: Set weather conditions partly cloudy
   description: Toggle MACS partly cloudy effect on/off.
@@ -231,17 +220,6 @@ set_weather_conditions_pouring:
       selector:
         boolean:
 
-set_weather_conditions_snowy_rainy:
-  name: Set weather conditions snowy rainy
-  description: Toggle MACS snowy rainy effect on/off.
-  fields:
-    weather_conditions_snowy_rainy:
-      name: Weather conditions snowy rainy
-      description: true to enable snowy rainy effect, false to disable
-      required: true
-      selector:
-        boolean:
-
 set_weather_conditions_clear_night:
   name: Set weather conditions clear night
   description: Toggle MACS clear night effect on/off.
@@ -249,17 +227,6 @@ set_weather_conditions_clear_night:
     weather_conditions_clear_night:
       name: Weather conditions clear night
       description: true to enable clear night effect, false to disable
-      required: true
-      selector:
-        boolean:
-
-set_weather_conditions_windy_variant:
-  name: Set weather conditions windy variant
-  description: Toggle MACS windy variant effect on/off.
-  fields:
-    weather_conditions_windy_variant:
-      name: Weather conditions windy variant
-      description: true to enable windy variant effect, false to disable
       required: true
       selector:
         boolean:

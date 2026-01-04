@@ -458,34 +458,6 @@ class MacsWeatherConditionsLightningSwitch(SwitchEntity, RestoreEntity):
         return MACS_DEVICE
 
 
-class MacsWeatherConditionsLightningRainySwitch(SwitchEntity, RestoreEntity):
-    _attr_has_entity_name = True
-    _attr_name = "Lightning Rainy"
-    _attr_unique_id = "macs_weather_conditions_lightning_rainy"
-    _attr_suggested_object_id = "macs_weather_conditions_lightning_rainy"
-    _attr_icon = "mdi:weather-lightning-rainy"
-    _attr_is_on = False
-
-    async def async_turn_on(self, **kwargs) -> None:
-        self._attr_is_on = True
-        self.async_write_ha_state()
-
-    async def async_turn_off(self, **kwargs) -> None:
-        self._attr_is_on = False
-        self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        last_state = await self.async_get_last_state()
-        if not last_state:
-            return
-        self._attr_is_on = (last_state.state == "on")
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return MACS_DEVICE
-
-
 class MacsWeatherConditionsPartlyCloudySwitch(SwitchEntity, RestoreEntity):
     _attr_has_entity_name = True
     _attr_name = "Partly Cloudy"
@@ -542,68 +514,12 @@ class MacsWeatherConditionsPouringSwitch(SwitchEntity, RestoreEntity):
         return MACS_DEVICE
 
 
-class MacsWeatherConditionsSnowyRainySwitch(SwitchEntity, RestoreEntity):
-    _attr_has_entity_name = True
-    _attr_name = "Snowy Rainy"
-    _attr_unique_id = "macs_weather_conditions_snowy_rainy"
-    _attr_suggested_object_id = "macs_weather_conditions_snowy_rainy"
-    _attr_icon = "mdi:weather-snowy-rainy"
-    _attr_is_on = False
-
-    async def async_turn_on(self, **kwargs) -> None:
-        self._attr_is_on = True
-        self.async_write_ha_state()
-
-    async def async_turn_off(self, **kwargs) -> None:
-        self._attr_is_on = False
-        self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        last_state = await self.async_get_last_state()
-        if not last_state:
-            return
-        self._attr_is_on = (last_state.state == "on")
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return MACS_DEVICE
-
-
 class MacsWeatherConditionsClearNightSwitch(SwitchEntity, RestoreEntity):
     _attr_has_entity_name = True
     _attr_name = "Clear Night"
     _attr_unique_id = "macs_weather_conditions_clear_night"
     _attr_suggested_object_id = "macs_weather_conditions_clear_night"
     _attr_icon = "mdi:weather-night"
-    _attr_is_on = False
-
-    async def async_turn_on(self, **kwargs) -> None:
-        self._attr_is_on = True
-        self.async_write_ha_state()
-
-    async def async_turn_off(self, **kwargs) -> None:
-        self._attr_is_on = False
-        self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        last_state = await self.async_get_last_state()
-        if not last_state:
-            return
-        self._attr_is_on = (last_state.state == "on")
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return MACS_DEVICE
-
-
-class MacsWeatherConditionsWindyVariantSwitch(SwitchEntity, RestoreEntity):
-    _attr_has_entity_name = True
-    _attr_name = "Windy Variant"
-    _attr_unique_id = "macs_weather_conditions_windy_variant"
-    _attr_suggested_object_id = "macs_weather_conditions_windy_variant"
-    _attr_icon = "mdi:weather-windy-variant"
     _attr_is_on = False
 
     async def async_turn_on(self, **kwargs) -> None:

@@ -9,17 +9,14 @@ from .entities import (
     MacsWeatherConditionsExceptionalSwitch,
     MacsWeatherConditionsFoggySwitch,
     MacsWeatherConditionsHailSwitch,
-    MacsWeatherConditionsLightningRainySwitch,
     MacsWeatherConditionsLightningSwitch,
     MacsWeatherConditionsPartlyCloudySwitch,
     MacsWeatherConditionsPouringSwitch,
     MacsWeatherConditionsRainySwitch,
-    MacsWeatherConditionsSnowyRainySwitch,
     MacsWeatherConditionsSnowySwitch,
     MacsWeatherConditionsStormySwitch,
     MacsWeatherConditionsSunnySwitch,
     MacsWeatherConditionsWindySwitch,
-    MacsWeatherConditionsWindyVariantSwitch,
 )
 
 
@@ -39,12 +36,9 @@ async def async_setup_entry(
             MacsWeatherConditionsFoggySwitch(),
             MacsWeatherConditionsHailSwitch(),
             MacsWeatherConditionsLightningSwitch(),
-            MacsWeatherConditionsLightningRainySwitch(),
             MacsWeatherConditionsPartlyCloudySwitch(),
             MacsWeatherConditionsPouringSwitch(),
-            MacsWeatherConditionsSnowyRainySwitch(),
             MacsWeatherConditionsClearNightSwitch(),
-            MacsWeatherConditionsWindyVariantSwitch(),
             MacsWeatherConditionsExceptionalSwitch(),
         ]
     )

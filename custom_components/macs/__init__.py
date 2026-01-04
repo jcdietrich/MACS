@@ -45,18 +45,12 @@ from .const import (
     ATTR_WEATHER_CONDITIONS_HAIL,
     SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING,
     ATTR_WEATHER_CONDITIONS_LIGHTNING,
-    SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING_RAINY,
-    ATTR_WEATHER_CONDITIONS_LIGHTNING_RAINY,
     SERVICE_SET_WEATHER_CONDITIONS_PARTLYCLOUDY,
     ATTR_WEATHER_CONDITIONS_PARTLYCLOUDY,
     SERVICE_SET_WEATHER_CONDITIONS_POURING,
     ATTR_WEATHER_CONDITIONS_POURING,
-    SERVICE_SET_WEATHER_CONDITIONS_SNOWY_RAINY,
-    ATTR_WEATHER_CONDITIONS_SNOWY_RAINY,
     SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT,
     ATTR_WEATHER_CONDITIONS_CLEAR_NIGHT,
-    SERVICE_SET_WEATHER_CONDITIONS_WINDY_VARIANT,
-    ATTR_WEATHER_CONDITIONS_WINDY_VARIANT,
     SERVICE_SET_WEATHER_CONDITIONS_EXCEPTIONAL,
     ATTR_WEATHER_CONDITIONS_EXCEPTIONAL
 )
@@ -152,12 +146,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     migrate("macs_weather_conditions_foggy", "switch.macs_weather_conditions_foggy")
     migrate("macs_weather_conditions_hail", "switch.macs_weather_conditions_hail")
     migrate("macs_weather_conditions_lightning", "switch.macs_weather_conditions_lightning")
-    migrate("macs_weather_conditions_lightning_rainy", "switch.macs_weather_conditions_lightning_rainy")
     migrate("macs_weather_conditions_partlycloudy", "switch.macs_weather_conditions_partlycloudy")
     migrate("macs_weather_conditions_pouring", "switch.macs_weather_conditions_pouring")
-    migrate("macs_weather_conditions_snowy_rainy", "switch.macs_weather_conditions_snowy_rainy")
     migrate("macs_weather_conditions_clear_night", "switch.macs_weather_conditions_clear_night")
-    migrate("macs_weather_conditions_windy_variant", "switch.macs_weather_conditions_windy_variant")
     migrate("macs_weather_conditions_exceptional", "switch.macs_weather_conditions_exceptional")
 
     async def handle_set_mood(call: ServiceCall) -> None:
@@ -327,14 +318,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "weather conditions lightning"
         )
 
-    async def handle_set_weather_conditions_lightning_rainy(call: ServiceCall) -> None:
-        await _set_switch_entity(
-            call,
-            ATTR_WEATHER_CONDITIONS_LIGHTNING_RAINY,
-            "macs_weather_conditions_lightning_rainy",
-            "weather conditions lightning rainy"
-        )
-
     async def handle_set_weather_conditions_partlycloudy(call: ServiceCall) -> None:
         await _set_switch_entity(
             call,
@@ -351,28 +334,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "weather conditions pouring"
         )
 
-    async def handle_set_weather_conditions_snowy_rainy(call: ServiceCall) -> None:
-        await _set_switch_entity(
-            call,
-            ATTR_WEATHER_CONDITIONS_SNOWY_RAINY,
-            "macs_weather_conditions_snowy_rainy",
-            "weather conditions snowy rainy"
-        )
-
     async def handle_set_weather_conditions_clear_night(call: ServiceCall) -> None:
         await _set_switch_entity(
             call,
             ATTR_WEATHER_CONDITIONS_CLEAR_NIGHT,
             "macs_weather_conditions_clear_night",
             "weather conditions clear night"
-        )
-
-    async def handle_set_weather_conditions_windy_variant(call: ServiceCall) -> None:
-        await _set_switch_entity(
-            call,
-            ATTR_WEATHER_CONDITIONS_WINDY_VARIANT,
-            "macs_weather_conditions_windy_variant",
-            "weather conditions windy variant"
         )
 
     async def handle_set_weather_conditions_exceptional(call: ServiceCall) -> None:
@@ -505,14 +472,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_LIGHTNING): cv.boolean}),
         )
 
-    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING_RAINY):
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING_RAINY,
-            handle_set_weather_conditions_lightning_rainy,
-            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_LIGHTNING_RAINY): cv.boolean}),
-        )
-
     if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_PARTLYCLOUDY):
         hass.services.async_register(
             DOMAIN,
@@ -529,28 +488,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_POURING): cv.boolean}),
         )
 
-    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SNOWY_RAINY):
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_SET_WEATHER_CONDITIONS_SNOWY_RAINY,
-            handle_set_weather_conditions_snowy_rainy,
-            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_SNOWY_RAINY): cv.boolean}),
-        )
-
     if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT):
         hass.services.async_register(
             DOMAIN,
             SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT,
             handle_set_weather_conditions_clear_night,
             schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_CLEAR_NIGHT): cv.boolean}),
-        )
-
-    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_WINDY_VARIANT):
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_SET_WEATHER_CONDITIONS_WINDY_VARIANT,
-            handle_set_weather_conditions_windy_variant,
-            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_WINDY_VARIANT): cv.boolean}),
         )
 
     if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_EXCEPTIONAL):
@@ -585,12 +528,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_FOGGY)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_HAIL)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING)
-        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING_RAINY)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_PARTLYCLOUDY)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_POURING)
-        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SNOWY_RAINY)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT)
-        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_WINDY_VARIANT)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_EXCEPTIONAL)
         hass.data.get(DOMAIN, {}).pop("static_path_registered", None)
     return unload_ok

@@ -15,12 +15,9 @@ const CONDITION_KEYS = [
     "foggy",
     "hail",
     "lightning",
-    "lightning_rainy",
     "partlycloudy",
     "pouring",
-    "snowy_rainy",
     "clear_night",
-    "windy_variant",
     "exceptional",
 ];
 
@@ -34,12 +31,9 @@ const CONDITION_ENTITY_IDS = {
     foggy: "switch.macs_weather_conditions_foggy",
     hail: "switch.macs_weather_conditions_hail",
     lightning: "switch.macs_weather_conditions_lightning",
-    lightning_rainy: "switch.macs_weather_conditions_lightning_rainy",
     partlycloudy: "switch.macs_weather_conditions_partlycloudy",
     pouring: "switch.macs_weather_conditions_pouring",
-    snowy_rainy: "switch.macs_weather_conditions_snowy_rainy",
     clear_night: "switch.macs_weather_conditions_clear_night",
-    windy_variant: "switch.macs_weather_conditions_windy_variant",
     exceptional: "switch.macs_weather_conditions_exceptional",
 };
 
@@ -57,17 +51,6 @@ function isTruthyState(state) {
 }
 
 function applyDerivedConditions(flags) {
-    if (flags.lightning_rainy) {
-        flags.lightning = true;
-        flags.rainy = true;
-    }
-    if (flags.snowy_rainy) {
-        flags.snowy = true;
-        flags.rainy = true;
-    }
-    if (flags.windy_variant) {
-        flags.windy = true;
-    }
     if (flags.partlycloudy) {
         flags.cloudy = true;
     }
@@ -387,20 +370,6 @@ export class WeatherHandler {
 
             const flags = emptyConditions();
 
-            if (hasToken("lightning_rainy") || hasToken("lightning-rainy")) {
-                flags.lightning_rainy = true;
-                flags.lightning = true;
-                flags.rainy = true;
-            }
-            if (hasToken("snowy_rainy") || hasToken("snowy-rainy")) {
-                flags.snowy_rainy = true;
-                flags.snowy = true;
-                flags.rainy = true;
-            }
-            if (hasToken("windy_variant") || hasToken("windy-variant")) {
-                flags.windy_variant = true;
-                flags.windy = true;
-            }
             if (hasToken("partlycloudy") || hasToken("partly cloudy") || hasToken("partly-cloudy")) {
                 flags.partlycloudy = true;
                 flags.cloudy = true;
