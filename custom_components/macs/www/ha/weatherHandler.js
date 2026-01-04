@@ -5,6 +5,77 @@ import { createDebugger } from "./debugger.js";
 const DEBUG_ENABLED = false;
 const debug = createDebugger("weatherHandler", DEBUG_ENABLED);
 
+const CONDITION_KEYS = [
+    "snowy",
+    "cloudy",
+    "rainy",
+    "windy",
+    "sunny",
+    "stormy",
+    "foggy",
+    "hail",
+    "lightning",
+    "lightning_rainy",
+    "partlycloudy",
+    "pouring",
+    "snowy_rainy",
+    "clear_night",
+    "windy_variant",
+    "exceptional",
+];
+
+const CONDITION_ENTITY_IDS = {
+    snowy: "switch.macs_weather_conditions_snowy",
+    cloudy: "switch.macs_weather_conditions_cloudy",
+    rainy: "switch.macs_weather_conditions_rainy",
+    windy: "switch.macs_weather_conditions_windy",
+    sunny: "switch.macs_weather_conditions_sunny",
+    stormy: "switch.macs_weather_conditions_stormy",
+    foggy: "switch.macs_weather_conditions_foggy",
+    hail: "switch.macs_weather_conditions_hail",
+    lightning: "switch.macs_weather_conditions_lightning",
+    lightning_rainy: "switch.macs_weather_conditions_lightning_rainy",
+    partlycloudy: "switch.macs_weather_conditions_partlycloudy",
+    pouring: "switch.macs_weather_conditions_pouring",
+    snowy_rainy: "switch.macs_weather_conditions_snowy_rainy",
+    clear_night: "switch.macs_weather_conditions_clear_night",
+    windy_variant: "switch.macs_weather_conditions_windy_variant",
+    exceptional: "switch.macs_weather_conditions_exceptional",
+};
+
+function emptyConditions() {
+    const out = {};
+    for (let i = 0; i < CONDITION_KEYS.length; i++) {
+        out[CONDITION_KEYS[i]] = false;
+    }
+    return out;
+}
+
+function isTruthyState(state) {
+    const value = (state || "").toString().trim().toLowerCase();
+    return value === "on" || value === "true" || value === "1" || value === "yes";
+}
+
+function applyDerivedConditions(flags) {
+    if (flags.lightning_rainy) {
+        flags.lightning = true;
+        flags.rainy = true;
+    }
+    if (flags.snowy_rainy) {
+        flags.snowy = true;
+        flags.rainy = true;
+    }
+    if (flags.windy_variant) {
+        flags.windy = true;
+    }
+    if (flags.partlycloudy) {
+        flags.cloudy = true;
+    }
+    if (flags.pouring) {
+        flags.rainy = true;
+    }
+}
+
 export class WeatherHandler {
     constructor() {
         this._config = null;
@@ -13,11 +84,13 @@ export class WeatherHandler {
         this._windspeed = null;
         this._rainfall = null;
         this._battery = null;
-        this._weather = { temperature: null, wind: null, precipitation: null, battery: null };
+        this._conditions = emptyConditions();
+        this._weather = { temperature: null, wind: null, precipitation: null, battery: null, conditions: null };
         this._lastTemperature = undefined;
         this._lastWindspeed = undefined;
         this._lastRainfall = undefined;
         this._lastBattery = undefined;
+        this._lastConditionsSignature = undefined;
     }
 
     setConfig(config) {
@@ -35,12 +108,14 @@ export class WeatherHandler {
         const wind = this._normalizeWind();
         const precipitation = this._normalizeRain();
         const battery = this._normalizeBattery();
+        const conditions = this._normalizeConditions();
 
-        this._weather = { temperature, wind, precipitation, battery };
+        this._weather = { temperature, wind, precipitation, battery, conditions };
         this._temperature = Number.isFinite(temperature?.normalized) ? temperature.normalized : null;
         this._windspeed = Number.isFinite(wind?.normalized) ? wind.normalized : null;
         this._rainfall = Number.isFinite(precipitation?.normalized) ? precipitation.normalized : null;
         this._battery = Number.isFinite(battery?.normalized) ? battery.normalized : null;
+        this._conditions = conditions || emptyConditions();
 
         return this.getPayload();
     }
@@ -69,6 +144,23 @@ export class WeatherHandler {
             max: 100,
             normalized: clamped,
         };
+    }
+
+    _readConditionText(stateObj) {
+        if (!stateObj) return "";
+        const attrs = stateObj.attributes || {};
+        const candidates = [attrs.condition, attrs.conditions, attrs.weather, stateObj.state];
+        for (let i = 0; i < candidates.length; i++) {
+            const candidate = candidates[i];
+            if (Array.isArray(candidate) && candidate.length > 0) {
+                return candidate.join(", ");
+            }
+            if (typeof candidate === "string") {
+                const value = candidate.trim();
+                if (value) return value;
+            }
+        }
+        return "";
     }
 
     _resolveUnit(sensorUnit, configUnit, kind) {
@@ -264,6 +356,122 @@ export class WeatherHandler {
         };
     }
 
+    _normalizeConditions() {
+        if (this._config?.weather_conditions_enabled) {
+            const entityId = (this._config.weather_conditions || "").toString().trim();
+            if (!entityId || !this._hass?.states) {
+                return emptyConditions();
+            }
+            const st = this._hass.states?.[entityId];
+            if (!st) {
+                return emptyConditions();
+            }
+            const raw = this._readConditionText(st);
+            const text = (raw || "").toString().trim().toLowerCase();
+            if (!text || text === "unknown" || text === "unavailable") {
+                return emptyConditions();
+            }
+
+            const normalized = text.replace(/\s+/g, " ").trim();
+            const compact = normalized.replace(/[\s-]+/g, "_");
+            const spaced = normalized.replace(/[_-]+/g, " ");
+
+            const hasToken = (token) => {
+                if (!token) return false;
+                const t = token.toLowerCase();
+                if (normalized.indexOf(t) !== -1) return true;
+                if (compact.indexOf(t.replace(/[\s-]+/g, "_")) !== -1) return true;
+                if (spaced.indexOf(t.replace(/[_-]+/g, " ")) !== -1) return true;
+                return false;
+            };
+
+            const flags = emptyConditions();
+
+            if (hasToken("lightning_rainy") || hasToken("lightning-rainy")) {
+                flags.lightning_rainy = true;
+                flags.lightning = true;
+                flags.rainy = true;
+            }
+            if (hasToken("snowy_rainy") || hasToken("snowy-rainy")) {
+                flags.snowy_rainy = true;
+                flags.snowy = true;
+                flags.rainy = true;
+            }
+            if (hasToken("windy_variant") || hasToken("windy-variant")) {
+                flags.windy_variant = true;
+                flags.windy = true;
+            }
+            if (hasToken("partlycloudy") || hasToken("partly cloudy") || hasToken("partly-cloudy")) {
+                flags.partlycloudy = true;
+                flags.cloudy = true;
+            }
+            if (hasToken("clear_night") || hasToken("clear-night") || hasToken("clear night")) {
+                flags.clear_night = true;
+            }
+
+            if (hasToken("snowy") || hasToken("snowing") || hasToken("snow")) {
+                flags.snowy = true;
+            }
+            if (hasToken("rainy") || hasToken("raining") || hasToken("rain")) {
+                flags.rainy = true;
+            }
+            if (hasToken("pouring")) {
+                flags.pouring = true;
+                flags.rainy = true;
+            }
+            if (hasToken("windy") || hasToken("wind")) {
+                flags.windy = true;
+            }
+            if (hasToken("cloudy") || hasToken("clouds") || hasToken("overcast")) {
+                flags.cloudy = true;
+            }
+            if (hasToken("sunny") || hasToken("sun")) {
+                flags.sunny = true;
+            }
+            if (hasToken("stormy") || hasToken("storm")) {
+                flags.stormy = true;
+            }
+            if (hasToken("foggy") || hasToken("fog")) {
+                flags.foggy = true;
+            }
+            if (hasToken("hail")) {
+                flags.hail = true;
+            }
+            if (hasToken("lightning")) {
+                flags.lightning = true;
+            }
+            if (hasToken("exceptional")) {
+                flags.exceptional = true;
+            }
+
+            debug("weather conditions", JSON.stringify({
+                entityId,
+                raw,
+                conditions: flags,
+            }));
+            return flags;
+        }
+
+        if (!this._hass?.states) {
+            return emptyConditions();
+        }
+
+        const flags = emptyConditions();
+        for (let i = 0; i < CONDITION_KEYS.length; i++) {
+            const key = CONDITION_KEYS[i];
+            const id = CONDITION_ENTITY_IDS[key];
+            if (!id) continue;
+            const st = this._hass.states?.[id];
+            if (!st) continue;
+            flags[key] = isTruthyState(st.state);
+        }
+        applyDerivedConditions(flags);
+        debug("weather condition toggles", JSON.stringify({
+            conditions: flags,
+        }));
+        return flags;
+    }
+
     getWeather() {
         debug("getWeather");
         return this._weather;
@@ -275,6 +483,7 @@ export class WeatherHandler {
             windspeed: this._windspeed,
             rainfall: this._rainfall,
             battery: this._battery,
+            conditions: this._conditions,
         };
     }
 
@@ -308,6 +517,17 @@ export class WeatherHandler {
         return changed;
     }
 
+    getWeatherConditions() {
+        return this._conditions;
+    }
+
+    getWeatherConditionsHasChanged() {
+        const signature = JSON.stringify(this._conditions || emptyConditions());
+        const changed = signature !== this._lastConditionsSignature;
+        if (changed) this._lastConditionsSignature = signature;
+        return changed;
+    }
+
     getBattery() {
         return this._battery;
     }
@@ -325,11 +545,13 @@ export class WeatherHandler {
         this._windspeed = null;
         this._rainfall = null;
         this._battery = null;
-        this._weather = { temperature: null, wind: null, precipitation: null, battery: null };
+        this._conditions = emptyConditions();
+        this._weather = { temperature: null, wind: null, precipitation: null, battery: null, conditions: null };
         this._lastTemperature = undefined;
         this._lastWindspeed = undefined;
         this._lastRainfall = undefined;
         this._lastBattery = undefined;
+        this._lastConditionsSignature = undefined;
     }
 
 

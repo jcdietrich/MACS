@@ -95,6 +95,7 @@ let snowIntensity = -1;
 let idleFloatBase = IDLE_FLOAT_BASE_VMIN;
 let idleFloatDuration = IDLE_FLOAT_BASE_SECONDS;
 let idleFloatJitterTimer = null;
+let weatherConditions = {};
 
 let rainParticles = null;
 let snowParticles = null;
@@ -393,6 +394,18 @@ function setSnowfall(value){
 	updateLeaves();
 }
 
+function setWeatherConditions(conditions){
+	weatherConditions = (conditions && typeof conditions === "object") ? conditions : {};
+	const body = document.body;
+	if (!body) return;
+	[...body.classList].forEach(c => {
+		if (c.indexOf("weather-") === 0) body.classList.remove(c);
+	});
+	Object.keys(weatherConditions).forEach(key => {
+		if (weatherConditions[key]) body.classList.add(`weather-${key}`);
+	});
+}
+
 function setBattery(value){
 	const intensity = toIntensity(value);
 	document.documentElement.style.setProperty('--battery-intensity', intensity.toString());
@@ -474,6 +487,10 @@ window.addEventListener('message', (e) => {
     if (e.data.type === 'macs:rainfall') {
         setRainfall(e.data.rainfall ?? '0');
         debug("Setting rainfall to: " + (e.data.rainfall ?? '0'));
+        return;
+    }
+    if (e.data.type === 'macs:weather_conditions') {
+        setWeatherConditions(e.data.conditions);
         return;
     }
     if (e.data.type === 'macs:battery') {

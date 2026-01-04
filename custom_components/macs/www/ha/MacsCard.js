@@ -204,6 +204,11 @@ export class MacsCard extends HTMLElement {
             this._postToIframe({ type: "macs:rainfall", rainfall });
         }
     }
+    _sendWeatherConditionsToIframe(conditions) {
+        if (this._weatherHandler.getWeatherConditionsHasChanged?.()) {
+            this._postToIframe({ type: "macs:weather_conditions", conditions: conditions || {} });
+        }
+    }
     _sendBatteryToIframe(battery) {
         if (this._weatherHandler.getBatteryHasChanged?.()) {
             this._postToIframe({ type: "macs:battery", battery });
@@ -242,6 +247,7 @@ export class MacsCard extends HTMLElement {
         this._sendTemperatureToIframe(this._weatherHandler.getTemperature?.());
         this._sendWindSpeedToIframe(this._weatherHandler.getWindSpeed?.());       
         this._sendRainfallToIframe(this._weatherHandler.getRainfall?.());
+        this._sendWeatherConditionsToIframe(this._weatherHandler.getWeatherConditions?.());
         this._sendBatteryToIframe(this._weatherHandler.getBattery?.());
     }
 
