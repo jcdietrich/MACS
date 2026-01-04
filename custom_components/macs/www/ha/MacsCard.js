@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MacsCard
  * --------
  * Main Home Assistant Lovelace card implementation for M.A.C.S.
@@ -204,6 +204,11 @@ export class MacsCard extends HTMLElement {
             this._postToIframe({ type: "macs:rainfall", rainfall });
         }
     }
+    _sendBatteryToIframe(battery) {
+        if (this._weatherHandler.getBatteryHasChanged?.()) {
+            this._postToIframe({ type: "macs:battery", battery });
+        }
+    }
     _sendBrightnessToIframe(brightness) {
         this._postToIframe({ type: "macs:brightness", brightness });
     }
@@ -237,6 +242,7 @@ export class MacsCard extends HTMLElement {
         this._sendTemperatureToIframe(this._weatherHandler.getTemperature?.());
         this._sendWindSpeedToIframe(this._weatherHandler.getWindSpeed?.());       
         this._sendRainfallToIframe(this._weatherHandler.getRainfall?.());
+        this._sendBatteryToIframe(this._weatherHandler.getBattery?.());
     }
 
 
@@ -316,6 +322,9 @@ export class MacsCard extends HTMLElement {
             }
             if (weatherValues && Number.isFinite(weatherValues.rainfall)) {
                 base.searchParams.set("rainfall", weatherValues.rainfall.toString());
+            }
+            if (weatherValues && Number.isFinite(weatherValues.battery)) {
+                base.searchParams.set("battery", weatherValues.battery.toString());
             }
 
             const src = base.toString();

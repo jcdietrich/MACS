@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shared helpers for normalising values and safely handling URLs
  */
 
@@ -116,6 +116,14 @@ export function normalizeRainUnit(value) {
     return "mm";
 }
 
+export function normalizeBatteryUnit(value) {
+    const u = (value || "").toString().trim().toLowerCase();
+    if (!u) return "";
+    if (u === "%" || u.indexOf("percent") !== -1) return "%";
+    if (u === "v" || u === "volt" || u === "volts") return "v";
+    return "%";
+}
+
 export function normalizeWeatherUnit(kind, value) {
     if (kind === "temp") return normalizeTempUnit(value);
     if (kind === "wind") return normalizeWindUnit(value);
@@ -179,6 +187,13 @@ export function getDefaultRainRange(unit) {
     return { min: DEFAULT_MIN_RAIN_MM, max: DEFAULT_MAX_RAIN_MM };
 }
 
+export function getDefaultBatteryRange(unit) {
+    if (unit === "v") {
+        return { min: 0, max: 100 };
+    }
+    return { min: 0, max: 100 };
+}
+
 export function normalizeTemperatureValue(value, unit, minValue, maxValue) {
     const normalizedUnit = normalizeTempUnit(unit);
     const defaults = getDefaultTempRange(normalizedUnit);
@@ -212,3 +227,13 @@ export function normalizeRainValue(value, unit, minValue, maxValue) {
     return normalizeRange(v, effectiveMin, effectiveMax);
 }
 
+export function normalizeBatteryValue(value, unit, minValue, maxValue) {
+    const normalizedUnit = normalizeBatteryUnit(unit);
+    const defaults = getDefaultBatteryRange(normalizedUnit);
+    const min = toNumberOrNull(minValue);
+    const max = toNumberOrNull(maxValue);
+    const effectiveMin = Number.isFinite(min) ? min : defaults.min;
+    const effectiveMax = Number.isFinite(max) ? max : defaults.max;
+    const v = toNumber(value);
+    return normalizeRange(v, effectiveMin, effectiveMax);
+}

@@ -1,5 +1,5 @@
-import { TEMPERATURE_ENTITY_ID, WIND_ENTITY_ID, RAINFALL_ENTITY_ID } from "./constants.js";
-import { toNumber, normalizeTemperatureValue, normalizeWindValue, normalizeRainValue, normalizeWeatherUnit } from "./validators.js";
+﻿import { TEMPERATURE_ENTITY_ID, WIND_ENTITY_ID, RAINFALL_ENTITY_ID, BATTERY_CHARGE_ENTITY_ID } from "./constants.js";
+import { toNumber, normalizeTemperatureValue, normalizeWindValue, normalizeRainValue, normalizeBatteryValue, normalizeWeatherUnit, normalizeBatteryUnit } from "./validators.js";
 import { createDebugger } from "./debugger.js";
 
 const DEBUG_ENABLED = false;
@@ -12,10 +12,12 @@ export class WeatherHandler {
         this._temperature = null;
         this._windspeed = null;
         this._rainfall = null;
-        this._weather = { temperature: null, wind: null, precipitation: null };
+        this._battery = null;
+        this._weather = { temperature: null, wind: null, precipitation: null, battery: null };
         this._lastTemperature = undefined;
         this._lastWindspeed = undefined;
         this._lastRainfall = undefined;
+        this._lastBattery = undefined;
     }
 
     setConfig(config) {
@@ -32,11 +34,13 @@ export class WeatherHandler {
         const temperature = this._normalizeTemperature();
         const wind = this._normalizeWind();
         const precipitation = this._normalizeRain();
+        const battery = this._normalizeBattery();
 
-        this._weather = { temperature, wind, precipitation };
+        this._weather = { temperature, wind, precipitation, battery };
         this._temperature = Number.isFinite(temperature?.normalized) ? temperature.normalized : null;
         this._windspeed = Number.isFinite(wind?.normalized) ? wind.normalized : null;
         this._rainfall = Number.isFinite(precipitation?.normalized) ? precipitation.normalized : null;
+        this._battery = Number.isFinite(battery?.normalized) ? battery.normalized : null;
 
         return this.getPayload();
     }
@@ -84,6 +88,16 @@ export class WeatherHandler {
             return "mm";
         }
         return "";
+    }
+
+    _resolveBatteryUnit(sensorUnit, configUnit) {
+        const cfg = normalizeBatteryUnit(configUnit);
+        if (cfg) return cfg;
+
+        const su = normalizeBatteryUnit(sensorUnit);
+        if (su) return su;
+
+        return "%";
     }
 
     _normalizeTemperature() {
@@ -209,6 +223,47 @@ export class WeatherHandler {
         };
     }
 
+    _normalizeBattery() {
+        if (!this._config?.battery_charge_sensor_enabled) {
+            return this._readManualValue(BATTERY_CHARGE_ENTITY_ID);
+        }
+        const entityId = (this._config.battery_charge_sensor_entity || "").toString().trim();
+        if (!entityId) {
+            return null;
+        }
+        const reading = this._readSensor(entityId);
+        if (!reading || reading.value === null) {
+            return null;
+        }
+        debug("battery sensor", JSON.stringify({
+            entityId,
+            value: reading.value,
+            unit: reading.unit,
+        }));
+
+        const unit = this._resolveBatteryUnit(reading.unit, this._config.battery_charge_sensor_unit);
+        const normalized = normalizeBatteryValue(
+            reading.value,
+            unit,
+            this._config.battery_charge_sensor_min,
+            this._config.battery_charge_sensor_max
+        );
+        debug("battery normalized", JSON.stringify({
+            entityId,
+            unit,
+            min: this._config.battery_charge_sensor_min,
+            max: this._config.battery_charge_sensor_max,
+            normalized,
+        }));
+        return {
+            value: reading.value,
+            unit,
+            min: this._config.battery_charge_sensor_min,
+            max: this._config.battery_charge_sensor_max,
+            normalized,
+        };
+    }
+
     getWeather() {
         debug("getWeather");
         return this._weather;
@@ -219,6 +274,7 @@ export class WeatherHandler {
             temperature: this._temperature,
             windspeed: this._windspeed,
             rainfall: this._rainfall,
+            battery: this._battery,
         };
     }
 
@@ -252,16 +308,28 @@ export class WeatherHandler {
         return changed;
     }
 
+    getBattery() {
+        return this._battery;
+    }
+
+    getBatteryHasChanged() {
+        const changed = this._battery !== this._lastBattery;
+        if (changed) this._lastBattery = this._battery;
+        return changed;
+    }
+
     dispose() {
         this._hass = null;
         this._config = null;
         this._temperature = null;
         this._windspeed = null;
         this._rainfall = null;
-        this._weather = { temperature: null, wind: null, precipitation: null };
+        this._battery = null;
+        this._weather = { temperature: null, wind: null, precipitation: null, battery: null };
         this._lastTemperature = undefined;
         this._lastWindspeed = undefined;
         this._lastRainfall = undefined;
+        this._lastBattery = undefined;
     }
 
 

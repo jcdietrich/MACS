@@ -1,4 +1,4 @@
-import { createDebugger } from "../ha/debugger.js";
+﻿import { createDebugger } from "../ha/debugger.js";
 import { Particle, SVG_NS } from "./particles.js";
 
 const DEBUG_ENABLED = true;
@@ -393,6 +393,11 @@ function setSnowfall(value){
 	updateLeaves();
 }
 
+function setBattery(value){
+	const intensity = toIntensity(value);
+	document.documentElement.style.setProperty('--battery-intensity', intensity.toString());
+}
+
 // set brightness level (0-100)
 function setBrightness(userBrightness){
 	const brightness = Number(userBrightness);
@@ -434,9 +439,10 @@ if (snowing) {
 		setRainfall('0');
 	}
 } else {
-	setRainfall(rainfallParam ?? '0');
-	setSnowfall(snowfallParam ?? '0');
+setRainfall(rainfallParam ?? '0');
+setSnowfall(snowfallParam ?? '0');
 }
+setBattery(qs.get('battery') ?? '0');
 setBrightness(qs.get('brightness') ?? '100');
 
 window.addEventListener('resize', () => {
@@ -468,6 +474,10 @@ window.addEventListener('message', (e) => {
     if (e.data.type === 'macs:rainfall') {
         setRainfall(e.data.rainfall ?? '0');
         debug("Setting rainfall to: " + (e.data.rainfall ?? '0'));
+        return;
+    }
+    if (e.data.type === 'macs:battery') {
+        setBattery(e.data.battery ?? '0');
         return;
     }
     if (e.data.type === 'macs:snowfall') {
