@@ -416,12 +416,12 @@ function syncSingleWeather(
 	}
 }
 
-export function syncWeatherControls(root, config, items) {
+export function syncWeatherControls(root, config, temperatureItems, windItems, precipitationItems) {
 	// Sync all three weather sections.
 	syncSingleWeather(
 		root,
 		config,
-		items.temperatureItems,
+		temperatureItems,
 		{
 			enabled: "temperature_sensor_enabled",
 			select: "temperature_sensor_select",
@@ -441,7 +441,7 @@ export function syncWeatherControls(root, config, items) {
 	syncSingleWeather(
 		root,
 		config,
-		items.windItems,
+		windItems,
 		{
 			enabled: "wind_sensor_enabled",
 			select: "wind_sensor_select",
@@ -461,7 +461,7 @@ export function syncWeatherControls(root, config, items) {
 	syncSingleWeather(
 		root,
 		config,
-		items.precipitationItems,
+		precipitationItems,
 		{
 			enabled: "precipitation_sensor_enabled",
 			select: "precipitation_sensor_select",

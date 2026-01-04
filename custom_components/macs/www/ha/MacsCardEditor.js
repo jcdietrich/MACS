@@ -15,6 +15,8 @@
  * This file is frontend-only and does not perform any backend logic.
  */
 
+
+
 import { DEFAULTS } from "./constants.js";
 import { createDebugger } from "./debugger.js";
 import { loadAssistantOptions, loadWeatherOptions, readAssistStateInputs, readPipelineInputs, readWeatherInputs, syncAssistStateControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
@@ -126,9 +128,37 @@ function createHtmlGroup({id, name, label, hint=null, placeholder, units=false, 
 	return htmlString;
 }
 
+function populateCombobox(root, id, items, selectedId, options = {}){
+	if (!root) return null;
 
+	const el = root.getElementById(id);
+	if (!el) return null;
 
+	const labelPath = options.labelPath ?? "name";
+	const valuePath = options.valuePath ?? "id";
+	const customValue = options.customValue ?? "custom";
+	const allowCustom = !!options.allowCustom;
+	const customFlag = !!options.customFlag;
 
+	el.items = Array.isArray(items) ? items : [];
+	el.itemLabelPath = labelPath;
+	el.itemValuePath = valuePath;
+
+	const selected = selectedId === null || typeof selectedId === "undefined" ? "" : String(selectedId);
+	const hasSelected = selected.length > 0;
+
+	if (allowCustom) {
+		const known =
+			Array.isArray(items) &&
+			items.some((item) => item && item[valuePath] === selected && item[valuePath] !== customValue);
+		const isCustom = customFlag || (!known && hasSelected);
+		el.value = isCustom ? customValue : selected;
+	} else {
+		el.value = selected;
+	}
+
+	return el;
+}
 
 export class MacsCardEditor extends HTMLElement {
 	// get the defaults, and apply user's config
@@ -151,7 +181,7 @@ export class MacsCardEditor extends HTMLElement {
 		let htmlOutput;
 
 		const { satItems, pipelineItems, preferred } = await loadAssistantOptions(this._hass);
-		const weatherItems = await loadWeatherOptions(this._hass);
+		const { temperatureItems, windItems, precipitationItems } = await loadWeatherOptions(this._hass);
 
 		// Build DOM...
 		
@@ -226,126 +256,100 @@ export class MacsCardEditor extends HTMLElement {
 		this._rendered = true;
 
 		// Add satellites to combobox
-		const satSel = this.shadowRoot.getElementById("assist_satellite_select");
-		// add selects to combobox
-		if (satSel) {
-			satSel.items = satItems;
-			satSel.itemLabelPath = "name";
-			satSel.itemValuePath = "id";
-		}
 		this._satelliteItems = satItems;
-		// Preselect saved config before sync
-		if (satSel) {
-			const eid = (this._config.assist_satellite_entity ?? "").toString();
-			const known = satItems.some(s => s.id === eid && s.id !== "custom");
-			const isCustom = !!this._config.assist_satellite_custom || (!known && eid);
-			satSel.value = isCustom ? "custom" : eid;
-		}
+		populateCombobox(
+			this.shadowRoot,
+			"assist_satellite_select",
+			satItems,
+			this._config.assist_satellite_entity ?? "",
+			{ allowCustom: true, customFlag: !!this._config.assist_satellite_custom }
+		);
 
 
 		// Add pipelines to combobox
-		const sel = this.shadowRoot.getElementById("assist_pipeline_select");
-		if (sel) {
-			sel.items = pipelineItems;
-			sel.itemLabelPath = "name";
-			sel.itemValuePath = "id";
-		}
 		this._pipelineItems = pipelineItems;
-
-		// Preselect pipline based on saved config before sync runs
-		if (sel) {
-			const pid = (this._config.pipeline_id ?? "").toString();
-			const known = pipelineItems.some(p => p.id === pid && p.id !== "custom");
-			const isCustom = !!this._config.pipeline_custom || (!known && pid);
-			sel.value = isCustom ? "custom" : pid;
-		}
+		populateCombobox(
+			this.shadowRoot,
+			"assist_pipeline_select",
+			pipelineItems,
+			this._config.pipeline_id ?? "",
+			{ allowCustom: true, customFlag: !!this._config.pipeline_custom }
+		);
 
 		// Weather sensors: temperature
-		const tempSel = this.shadowRoot.getElementById("temperature_sensor_select");
-		if (tempSel) {
-			tempSel.items = weatherItems.temperatureItems;
-			tempSel.itemLabelPath = "name";
-			tempSel.itemValuePath = "id";
-		}
-		this._temperatureItems = weatherItems.temperatureItems;
-		if (tempSel) {
-			const tid = (this._config.temperature_sensor_entity ?? "").toString();
-			const known = weatherItems.temperatureItems.some(s => s.id === tid && s.id !== "custom");
-			const isCustom = !!this._config.temperature_sensor_custom || (!known && tid);
-			tempSel.value = isCustom ? "custom" : tid;
-		}
+		this._temperatureItems = temperatureItems;
+		populateCombobox(
+			this.shadowRoot,
+			"temperature_sensor_select",
+			temperatureItems,
+			this._config.temperature_sensor_entity ?? "",
+			{ allowCustom: true, customFlag: !!this._config.temperature_sensor_custom }
+		);
 
 		// Weather sensors: wind
-		const windSel = this.shadowRoot.getElementById("wind_sensor_select");
-		if (windSel) {
-			windSel.items = weatherItems.windItems;
-			windSel.itemLabelPath = "name";
-			windSel.itemValuePath = "id";
-		}
-		this._windItems = weatherItems.windItems;
-		if (windSel) {
-			const wid = (this._config.wind_sensor_entity ?? "").toString();
-			const known = weatherItems.windItems.some(s => s.id === wid && s.id !== "custom");
-			const isCustom = !!this._config.wind_sensor_custom || (!known && wid);
-			windSel.value = isCustom ? "custom" : wid;
-		}
+		this._windItems = windItems;
+		populateCombobox(
+			this.shadowRoot,
+			"wind_sensor_select",
+			windItems,
+			this._config.wind_sensor_entity ?? "",
+			{ allowCustom: true, customFlag: !!this._config.wind_sensor_custom }
+		);
 
 		// Weather sensors: precipitation
-		const rainSel = this.shadowRoot.getElementById("precipitation_sensor_select");
-		if (rainSel) {
-			rainSel.items = weatherItems.precipitationItems;
-			rainSel.itemLabelPath = "name";
-			rainSel.itemValuePath = "id";
-		}
-		this._precipitationItems = weatherItems.precipitationItems;
-		if (rainSel) {
-			const rid = (this._config.precipitation_sensor_entity ?? "").toString();
-			const known = weatherItems.precipitationItems.some(s => s.id === rid && s.id !== "custom");
-			const isCustom = !!this._config.precipitation_sensor_custom || (!known && rid);
-			rainSel.value = isCustom ? "custom" : rid;
-		}
-
+		this._precipitationItems = precipitationItems;
+		populateCombobox(
+			this.shadowRoot,
+			"precipitation_sensor_select",
+			precipitationItems,
+			this._config.precipitation_sensor_entity ?? "",
+			{ allowCustom: true, customFlag: !!this._config.precipitation_sensor_custom }
+		);
 		// Weather: temperature sensor units
-		const temperatureUnitSelect = this.shadowRoot.getElementById("temperature_sensor_unit");
-		if (temperatureUnitSelect) {
-			temperatureUnitSelect.items = [
+		populateCombobox(
+			this.shadowRoot,
+			"temperature_sensor_unit",
+			[
 				{ id: "", name: "Auto" },
-				{ id: "c", name: "Celsius (°C)" },
-				{ id: "f", name: "Fahrenheit (°F)" },
-			];
-			temperatureUnitSelect.itemLabelPath = "name";
-                temperatureUnitSelect.itemValuePath = "id";
-                temperatureUnitSelect.value = (this._config.temperature_unit ?? "").toString();
-            }
+				{ id: "c", name: "Celsius (�C)" },
+				{ id: "f", name: "Fahrenheit (�F)" },
+			],
+			this._config.temperature_unit
+		);
 
-            // Weather: wind units
-            const windUnitSelect = this.shadowRoot.getElementById("wind_sensor_unit");
-            if (windUnitSelect) {
-                windUnitSelect.items = [
-                    { id: "", name: "Auto" },
-                    { id: "mph", name: "Miles per hour (mph)" },
-                    { id: "kph", name: "Kilometres per hour (kph)" },
-                    { id: "mps", name: "Metres per second (m/s)" },
-                    { id: "knots", name: "Knots" },
-                ];
-                windUnitSelect.itemLabelPath = "name";
-                windUnitSelect.itemValuePath = "id";
-                windUnitSelect.value = (this._config.wind_unit ?? "").toString();
-            }
+		// Weather: wind units
+		populateCombobox(
+			this.shadowRoot,
+			"wind_sensor_unit",
+			[
+				{ id: "", name: "Auto" },
+				{ id: "mph", name: "Miles per hour (mph)" },
+				{ id: "kph", name: "Kilometres per hour (kph)" },
+				{ id: "mps", name: "Metres per second (m/s)" },
+				{ id: "knots", name: "Knots" },
+			],
+			this._config.wind_unit
+		);
 
-			// Weather: precipitation units
-            const precipitationUnitSelect = this.shadowRoot.getElementById("precipitation_sensor_unit");
-            if (precipitationUnitSelect) {
-                precipitationUnitSelect.items = [
-                    { id: "", name: "Auto" },
-                    { id: "%", name: "Chance of rain (%)" },
-                    { id: "mm", name: "Millimetres (mm)" },
-                    { id: "in", name: "Inches (in)" },
-                ];
-                precipitationUnitSelect.itemLabelPath = "name";
-                precipitationUnitSelect.itemValuePath = "id";
-                precipitationUnitSelect.value = (this._config.precipitation_unit ?? "").toString();
-            }
+		// Weather: precipitation units
+		populateCombobox(
+			this.shadowRoot,
+			"precipitation_sensor_unit",
+			[
+				{ id: "", name: "Auto" },
+				{ id: "%", name: "Chance of rain (%)" },
+				{ id: "mm", name: "Millimetres (mm)" },
+				{ id: "in", name: "Inches (in)" },
+			],
+			this._config.precipitation_unit
+		);
+
+
+
+
+
+
+
 
 		// Weather min/max fields from config
 		const tempMin = this.shadowRoot.getElementById("temperature_sensor_min");
@@ -399,11 +403,13 @@ export class MacsCardEditor extends HTMLElement {
 
 		syncAssistStateControls(this.shadowRoot, this._config, this._satelliteItems);
 		syncPipelineControls(this.shadowRoot, this._config, this._pipelineItems);
-		syncWeatherControls(this.shadowRoot, this._config, {
-			temperatureItems: this._temperatureItems || [],
-			windItems: this._windItems || [],
-			precipitationItems: this._precipitationItems || []
-		});
+		syncWeatherControls(
+			this.shadowRoot,
+			this._config,
+			this._temperatureItems || [],
+			this._windItems || [],
+			this._precipitationItems || []
+		);
 	}
 
 	// wire up event listeners for user config changes
