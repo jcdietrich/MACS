@@ -1,28 +1,50 @@
-.fx{ position:absolute; inset:-10vmin; pointer-events:none; opacity:0; }
-body.weather-rain .fx-rain{ opacity: calc(0.9 * var(--weather-intensity)); }
+﻿.fx{
+	position: fixed;
+	inset: 0;
+	width: 100vw;
+	height: 100vh;
+	pointer-events:none;
+	opacity:0;
+	z-index: 3;
+}
+
+:root{
+	--precipitation-intensity: 0;
+	--snowfall-intensity: 0;
+	--leaf-intensity: 0;
+	--windspeed-intensity: 0;
+	--temperature-intensity: 0;
+}
+
+.fx-rain{ opacity: 1; }
+.fx-snow{ opacity: 1; }
+.fx-leaves{ opacity: 1; overflow: hidden; }
+body.weather-rain{ --precipitation-intensity: var(--weather-intensity, 1); }
 body.weather-wind .fx-wind{ opacity: calc(0.9 * var(--weather-intensity)); }
 body.weather-hot  .fx-hot{  opacity: calc(0.9 * var(--weather-intensity)); }
 body.weather-cold .fx-cold{ opacity: calc(0.9 * var(--weather-intensity)); }
 
 /* Rain */
-:root{
-	--rain-drift: -100px;   /* horizontal wind */
-	--rain-tilt: 8deg;  /* visual tilt */
-}
-.drop{ fill: rgb(82 172 249 / 65%); filter: blur(0.2px); animation: rainFall 1.2s linear infinite; }
-.drop.d2{ animation-duration: 1.6s; opacity:0.25; }
-.drop.d3{ animation-duration: 1.9s; opacity:0.22; }
-@keyframes rainFall{
-	from{
-		transform:
-			translate(calc(-1 * var(--rain-drift)), -40%)
-			rotate(var(--rain-tilt));
-	}
-	to{
-		transform:
-			translate(var(--rain-drift), 140%)
-			rotate(var(--rain-tilt));
-	}
+.drop{ fill: rgb(82 172 249 / 65%); filter: blur(0.2px); will-change: transform; }
+.drop.d2{ opacity:0.25; }
+.drop.d3{ opacity:0.22; }
+
+/* Snow */
+.flake{ fill: #fff; filter: blur(1px); will-change: transform; }
+
+/* Leaves */
+#leaf-layer{ position: absolute; inset: 0; }
+.leaf{
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 24px;
+	height: 24px;
+	opacity: 0.85;
+	transform-origin: center;
+	will-change: transform;
+	pointer-events: none;
+	user-select: none;
 }
 
 /* Wind */

@@ -8,6 +8,8 @@
 /** 
  * TO-DO
  * --------
+ * Also add a macs.show_message
+ * 
  * - Monitor idle time and set bored, then sleep state/mood.
  * - Allow the user to configure the mood timeout/duration when a conversation ends.
  * - Create a user config options:
@@ -15,7 +17,6 @@
  *    - after N idle minutes, starting turning display brightness to X, over a duration of T
  *    - on wake, return display brightness to B
  * - test non-admin user
- * - split weather into separate numeric entities: wind, temperature, rain, snow
  * - add seasons: christmas, halloween etc.
  * - create a "charging" mood.
  * - train "Hey Macs" wakeword

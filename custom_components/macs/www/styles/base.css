@@ -17,15 +17,25 @@ body{
 	align-items:center;
 	justify-content:center;
 	padding: 7vmin;
+	z-index:100;
 }
 
-.char{
+.char-tilt{
 	position:relative;
 	width: min(60vw, 620px);
 	max-width: 60vw;
 	aspect-ratio: 1 / 1;
+	transform: rotate(var(--wind-tilt, 0deg));
+	transform-origin: 50% 60%;
+	z-index: 2;
+}
+
+.char{
+	position:relative;
+	width: 100%;
+	height: 100%;
 	transform: translateZ(0);
-	animation: idleFloat 9s ease-in-out infinite;
+	animation: idleFloat var(--idle-float-duration, 9s) ease-in-out infinite;
 }
 
 .brow{
@@ -133,8 +143,13 @@ body{
 #debug{
     position: fixed;
     top: 4px;
-    right: 8px;
+    left: 8px;
     font-size: 10px;
-    color: #fff;
+    color: #aaa;
     display:none;
+	user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    z-index:1000;
 }
