@@ -28,6 +28,28 @@ const debug = createDebugger("macsCardEditor", DEBUG_ENABLED);
 const cssUrl = new URL("./editor.css", import.meta.url).toString();
 const styleSheet = `<link rel="stylesheet" href="${cssUrl}">`;
 
+const temperatureUnitItems = [
+	{ id: "", name: "Auto" },
+	{ id: "c", name: "Celsius (°C)" },
+	{ id: "f", name: "Fahrenheit (°F)" },
+];
+
+const windUnitItems = [
+	{ id: "", name: "Auto" },
+	{ id: "mph", name: "Miles per hour (mph)" },
+	{ id: "kph", name: "Kilometres per hour (kph)" },
+	{ id: "mps", name: "Metres per second (m/s)" },
+	{ id: "knots", name: "Knots" },
+];
+
+const precipitationUnitItems = [
+	{ id: "", name: "Auto" },
+	{ id: "%", name: "Chance of rain (%)" },
+	{ id: "mm", name: "Millimetres (mm)" },
+	{ id: "in", name: "Inches (in)" },
+];
+
+
 const instructions = `
 	<!-- Show dialogue -->
 		<div class="group">
@@ -160,6 +182,52 @@ function populateCombobox(root, id, items, selectedId, options = {}) {
 	return el;
 }
 
+function createInputGroup(groups, definition) {
+	if (!groups || !definition) return null;
+
+	const group = {
+		id: definition.id,
+		name: definition.name,
+		label: definition.label,
+		hint: definition.hint,
+		placeholder: definition.placeholder,
+		units: !!definition.units,
+		minMax: !!definition.minMax,
+		selectItems: typeof definition.selectItems === "undefined" ? null : definition.selectItems,
+		selectValue: definition.selectValue,
+		selectOptions: typeof definition.selectOptions === "undefined" ? null : definition.selectOptions,
+		unitItems: typeof definition.unitItems === "undefined" ? null : definition.unitItems,
+		unitValue: definition.unitValue,
+		wire: definition.wire !== false
+	};
+
+	group.html = createHtmlGroup(group);
+	groups.push(group);
+	return group;
+}
+
+function setupInputGroup(root, config, group) {
+	if (!root || !group) return;
+
+	if (Array.isArray(group.selectItems)) {
+		populateCombobox(
+			root,
+			`${group.id}_select`,
+			group.selectItems,
+			group.selectValue,
+			group.selectOptions || {}
+		);
+	}
+
+	if (Array.isArray(group.unitItems)) {
+		populateCombobox(root, `${group.id}_unit`, group.unitItems, group.unitValue);
+	}
+
+	if (group.minMax) {
+		setMinMax(root, config, group.id);
+	}
+}
+
 function setMinMax(root, config, idBase) {
 	if (!root) return;
 
@@ -170,6 +238,24 @@ function setMinMax(root, config, idBase) {
 
 	if (elMin) elMin.value = (config?.[minKey] ?? "").toString();
 	if (elMax) elMax.value = (config?.[maxKey] ?? "").toString();
+}
+
+function wireInput(root, id, onChange, options = {}) {
+	if (!root || typeof onChange !== "function") return;
+
+	const el = root.getElementById(id);
+	if (!el) return;
+
+	el.addEventListener("change", onChange);
+
+	const listenValueChanged =
+		typeof options.valueChanged !== "undefined"
+			? options.valueChanged
+			: id.endsWith("_select") || id.endsWith("_unit");
+
+	if (listenValueChanged) {
+		el.addEventListener("value-changed", onChange);
+	}
 }
 
 export class MacsCardEditor extends HTMLElement {
@@ -196,68 +282,86 @@ export class MacsCardEditor extends HTMLElement {
 		const { temperatureItems, windItems, precipitationItems } = await loadWeatherOptions(this._hass);
 
 		// Build DOM...
+		const inputGroups = [];
 
-		const htmlGroupAssistStates = createHtmlGroup({
+		createInputGroup(inputGroups, {
 			id: "assist_satellite",
 			name: "Assist Satellite",
 			label: "React to Wake-Words?",
 			hint: "When enabled, Macs will mirror your selected Assist satellite.<br>(listening, processing, responding, idle, etc)",
 			placeholder: "assist_satellite.my_device",
+			selectItems: satItems,
+			selectValue: this._config.assist_satellite_entity ?? "",
+			selectOptions: { allowCustom: true, customFlag: !!this._config.assist_satellite_custom }
 		});
 
-		const htmlGroupShowDialogue = createHtmlGroup({
+		createInputGroup(inputGroups, {
 			id: "assist_pipeline",
 			name: "Assistant Pipeline",
 			label: "Display Dialogue?",
 			hint: "When enabled, Macs will display conversations with your assistant.",
-			placeholder: "01k..."
+			placeholder: "01k...",
+			selectItems: pipelineItems,
+			selectValue: this._config.assist_pipeline_entity ?? "",
+			selectOptions: { allowCustom: true, customFlag: !!this._config.assist_pipeline_custom }
 		});
 
-		const htmlGroupTemperature = createHtmlGroup({
+		createInputGroup(inputGroups, {
 			id: "temperature_sensor",
 			name: "Temperature",
 			label: "Use Temperature Sensor?",
 			hint: null,
 			placeholder: "sensor.my_temperature",
 			units: true,
-			minMax: true
+			minMax: true,
+			selectItems: temperatureItems,
+			selectValue: this._config.temperature_sensor_entity ?? "",
+			selectOptions: { allowCustom: true, customFlag: !!this._config.temperature_sensor_custom },
+			unitItems: temperatureUnitItems,
+			unitValue: this._config.temperature_sensor_unit ?? ""
 		});
 
-		const htmlGroupWindspeed = createHtmlGroup({
+		createInputGroup(inputGroups, {
 			id: "wind_sensor",
 			name: "Wind Sensor",
 			label: "Use Wind Sensor?",
 			hint: null,
 			placeholder: "sensor.my_wind_speed",
 			units: true,
-			minMax: true
+			minMax: true,
+			selectItems: windItems,
+			selectValue: this._config.wind_sensor_entity ?? "",
+			selectOptions: { allowCustom: true, customFlag: !!this._config.wind_sensor_custom },
+			unitItems: windUnitItems,
+			unitValue: this._config.wind_sensor_unit ?? ""
 		});
 
-		const htmlGroupRainfall = createHtmlGroup({
+		createInputGroup(inputGroups, {
 			id: "precipitation_sensor",
 			name: "Rainfall Sensor",
 			label: "Use Rainfall Sensor?",
 			hint: null,
 			placeholder: "sensor.my_rain",
 			units: true,
-			minMax: true
+			minMax: true,
+			selectItems: precipitationItems,
+			selectValue: this._config.precipitation_sensor_entity ?? "",
+			selectOptions: { allowCustom: true, customFlag: !!this._config.precipitation_sensor_custom },
+			unitItems: precipitationUnitItems,
+			unitValue: this._config.precipitation_sensor_unit ?? ""
 		});
 
-		const htmlGroupSnow = createHtmlGroup({
+		createInputGroup(inputGroups, {
 			id: "weather_condition",
 			name: "Weather Condition",
 			label: "Auto-Detect Snowing?",
 			hint: null,
 			placeholder: "weather.forecast_home",
+			wire: false
 		});
 
 		htmlOutput = styleSheet;
-		htmlOutput += htmlGroupAssistStates;
-		htmlOutput += htmlGroupShowDialogue;
-		htmlOutput += htmlGroupTemperature;
-		htmlOutput += htmlGroupWindspeed;
-		htmlOutput += htmlGroupRainfall;
-		htmlOutput += htmlGroupSnow;
+		htmlOutput += inputGroups.map((group) => group.html).join("");
 		htmlOutput += instructions;
 		htmlOutput += about;
 
@@ -267,100 +371,15 @@ export class MacsCardEditor extends HTMLElement {
 		// Page has rendered
 		this._rendered = true;
 
-		// Add satellites to combobox
+		this._inputGroups = inputGroups;
 		this._satelliteItems = satItems;
-		populateCombobox(
-			this.shadowRoot,
-			"assist_satellite_select",
-			satItems,
-			this._config.assist_satellite_entity ?? "",
-			{ allowCustom: true, customFlag: !!this._config.assist_satellite_custom }
-		);
-
-
-		// Add pipelines to combobox
 		this._pipelineItems = pipelineItems;
-		populateCombobox(
-			this.shadowRoot,
-			"assist_pipeline_select",
-			pipelineItems,
-			this._config.assist_pipeline_entity ?? "",
-			{ allowCustom: true, customFlag: !!this._config.assist_pipeline_custom }
-		);
-
-		// Weather sensors: temperature
 		this._temperatureItems = temperatureItems;
-		populateCombobox(
-			this.shadowRoot,
-			"temperature_sensor_select",
-			temperatureItems,
-			this._config.temperature_sensor_entity ?? "",
-			{ allowCustom: true, customFlag: !!this._config.temperature_sensor_custom }
-		);
-
-		// Weather sensors: wind
 		this._windItems = windItems;
-		populateCombobox(
-			this.shadowRoot,
-			"wind_sensor_select",
-			windItems,
-			this._config.wind_sensor_entity ?? "",
-			{ allowCustom: true, customFlag: !!this._config.wind_sensor_custom }
-		);
-
-		// Weather sensors: precipitation
 		this._precipitationItems = precipitationItems;
-		populateCombobox(
-			this.shadowRoot,
-			"precipitation_sensor_select",
-			precipitationItems,
-			this._config.precipitation_sensor_entity ?? "",
-			{ allowCustom: true, customFlag: !!this._config.precipitation_sensor_custom }
-		);
-		// Weather: temperature sensor units
-		populateCombobox(
-			this.shadowRoot,
-			"temperature_sensor_unit",
-			[
-				{ id: "", name: "Auto" },
-				{ id: "c", name: "Celsius (°C)" },
-				{ id: "f", name: "Fahrenheit (°F)" },
-			],
-			this._config.temperature_sensor_unit
-		);
 
-		// Weather: wind units
-		populateCombobox(
-			this.shadowRoot,
-			"wind_sensor_unit",
-			[
-				{ id: "", name: "Auto" },
-				{ id: "mph", name: "Miles per hour (mph)" },
-				{ id: "kph", name: "Kilometres per hour (kph)" },
-				{ id: "mps", name: "Metres per second (m/s)" },
-				{ id: "knots", name: "Knots" },
-			],
-			this._config.wind_sensor_unit
-		);
+		inputGroups.forEach((group) => setupInputGroup(this.shadowRoot, this._config, group));
 
-		// Weather: precipitation units
-		populateCombobox(
-			this.shadowRoot,
-			"precipitation_sensor_unit",
-			[
-				{ id: "", name: "Auto" },
-				{ id: "%", name: "Chance of rain (%)" },
-				{ id: "mm", name: "Millimetres (mm)" },
-				{ id: "in", name: "Inches (in)" },
-			],
-			this._config.precipitation_sensor_unit
-		);
-
-
-		// Weather min/max fields from config
-		setMinMax(this.shadowRoot, this._config, "temperature_sensor");
-		setMinMax(this.shadowRoot, this._config, "wind_sensor");
-		setMinMax(this.shadowRoot, this._config, "precipitation_sensor");
 
 		// About/Support toggle
 		const toggle = this.shadowRoot.querySelector(".about-toggle");
@@ -446,24 +465,26 @@ export class MacsCardEditor extends HTMLElement {
 			this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true }));
 		};
 
-		["assist_satellite_enabled", "assist_satellite_select", "assist_satellite_entity", "assist_pipeline_enabled", "assist_pipeline_select", "assist_pipeline_entity"].forEach((id) => {
-			const el = this.shadowRoot.getElementById(id);
-			if (!el) return;
-			el.addEventListener("change", onChange);
-			if (id === "assist_satellite_select" || id === "assist_pipeline_select") el.addEventListener("value-changed", onChange);
-		});
+		const groups = Array.isArray(this._inputGroups) ? this._inputGroups : [];
+		groups.forEach((group) => {
+			if (!group || group.wire === false) return;
 
-		[
-			"temperature_sensor_enabled", "temperature_sensor_select", "temperature_sensor_entity", "temperature_sensor_unit", "temperature_sensor_min", "temperature_sensor_max",
-			"wind_sensor_enabled", "wind_sensor_select", "wind_sensor_entity", "wind_sensor_unit", "wind_sensor_min", "wind_sensor_max",
-			"precipitation_sensor_enabled", "precipitation_sensor_select", "precipitation_sensor_entity", "precipitation_sensor_unit", "precipitation_sensor_min", "precipitation_sensor_max"
-		].forEach((id) => {
-			const el = this.shadowRoot.getElementById(id);
-			if (!el) return;
-			el.addEventListener("change", onChange);
-			if (id.endsWith("_select") || id.endsWith("_unit")) {
-				el.addEventListener("value-changed", onChange);
+			const baseId = group.id;
+			const ids = [
+				`${baseId}_enabled`,
+				`${baseId}_select`,
+				`${baseId}_entity`,
+			];
+
+			if (group.units) {
+				ids.push(`${baseId}_unit`);
 			}
+
+			if (group.minMax) {
+				ids.push(`${baseId}_min`, `${baseId}_max`);
+			}
+
+			ids.forEach((id) => wireInput(this.shadowRoot, id, onChange));
 		});
 
 	}
