@@ -104,25 +104,25 @@ export class WeatherHandler {
             unit: reading.unit,
         }));
 
-        const unit = this._resolveUnit(reading.unit, this._config.temperature_unit, "temp");
+        const unit = this._resolveUnit(reading.unit, this._config.temperature_sensor_unit, "temp");
         const normalized = normalizeTemperatureValue(
             reading.value,
             unit,
-            this._config.temperature_min,
-            this._config.temperature_max
+            this._config.temperature_sensor_min,
+            this._config.temperature_sensor_max
         );
         debug("temperature normalized", JSON.stringify({
             entityId,
             unit,
-            min: this._config.temperature_min,
-            max: this._config.temperature_max,
+            min: this._config.temperature_sensor_min,
+            max: this._config.temperature_sensor_max,
             normalized,
         }));
         return {
             value: reading.value,
             unit,
-            min: this._config.temperature_min,
-            max: this._config.temperature_max,
+            min: this._config.temperature_sensor_min,
+            max: this._config.temperature_sensor_max,
             normalized,
         };
     }
@@ -145,25 +145,25 @@ export class WeatherHandler {
             unit: reading.unit,
         }));
 
-        const unit = this._resolveUnit(reading.unit, this._config.wind_unit, "wind");
+        const unit = this._resolveUnit(reading.unit, this._config.wind_sensor_unit, "wind");
         const normalized = normalizeWindValue(
             reading.value,
             unit,
-            this._config.wind_min,
-            this._config.wind_max
+            this._config.wind_sensor_min,
+            this._config.wind_sensor_max
         );
         debug("wind normalized", JSON.stringify({
             entityId,
             unit,
-            min: this._config.wind_min,
-            max: this._config.wind_max,
+            min: this._config.wind_sensor_min,
+            max: this._config.wind_sensor_max,
             normalized,
         }));
         return {
             value: reading.value,
             unit,
-            min: this._config.wind_min,
-            max: this._config.wind_max,
+            min: this._config.wind_sensor_min,
+            max: this._config.wind_sensor_max,
             normalized,
         };
     }
@@ -186,25 +186,25 @@ export class WeatherHandler {
             unit: reading.unit,
         }));
 
-        const unit = this._resolveUnit(reading.unit, this._config.precipitation_unit, "rain");
+        const unit = this._resolveUnit(reading.unit, this._config.precipitation_sensor_unit, "rain");
         const normalized = normalizeRainValue(
             reading.value,
             unit,
-            this._config.precipitation_min,
-            this._config.precipitation_max
+            this._config.precipitation_sensor_min,
+            this._config.precipitation_sensor_max
         );
         debug("precipitation normalized", JSON.stringify({
             entityId,
             unit,
-            min: this._config.precipitation_min,
-            max: this._config.precipitation_max,
+            min: this._config.precipitation_sensor_min,
+            max: this._config.precipitation_sensor_max,
             normalized,
         }));
         return {
             value: reading.value,
             unit,
-            min: this._config.precipitation_min,
-            max: this._config.precipitation_max,
+            min: this._config.precipitation_sensor_min,
+            max: this._config.precipitation_sensor_max,
             normalized,
         };
     }

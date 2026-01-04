@@ -40,7 +40,7 @@ export class AssistPipelineTracker {
         //debug("Setting pipeline config: " + JSON.stringify(config));
 
         const enabled = !!config?.assist_pipeline_enabled;
-        const pid = enabled ? (config?.pipeline_id || "").toString().trim() : "";
+        const pid = enabled ? (config?.assist_pipeline_entity || "").toString().trim() : "";
         //const maxTurns = Math.max(1, parseInt(config?.max_turns ?? DEFAULTS.max_turns, 10) || DEFAULTS.max_turns);
 
         const changed = (enabled !== this._enabled) || (pid !== this._pipelineId); // || (maxTurns !== this._maxTurns);

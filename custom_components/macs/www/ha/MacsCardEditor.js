@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MacsCardEditor
  * ---------------
  * Home Assistant Lovelace card editor for M.A.C.S. (Mood-Aware Character SVG).
@@ -92,7 +92,7 @@ const about = `
 		</div>
 	`;
 
-function createHtmlGroup({id, name, label, hint=null, placeholder, units=false, minMax=false}){
+function createHtmlGroup({ id, name, label, hint = null, placeholder, units = false, minMax = false }) {
 	let htmlString = `
 		<!-- ${name} -->
 			<div class="group" id="${id}">
@@ -128,7 +128,7 @@ function createHtmlGroup({id, name, label, hint=null, placeholder, units=false, 
 	return htmlString;
 }
 
-function populateCombobox(root, id, items, selectedId, options = {}){
+function populateCombobox(root, id, items, selectedId, options = {}) {
 	if (!root) return null;
 
 	const el = root.getElementById(id);
@@ -160,11 +160,23 @@ function populateCombobox(root, id, items, selectedId, options = {}){
 	return el;
 }
 
+function setMinMax(root, config, idBase) {
+	if (!root) return;
+
+	const minKey = `${idBase}_min`;
+	const maxKey = `${idBase}_max`;
+	const elMin = root.getElementById(minKey);
+	const elMax = root.getElementById(maxKey);
+
+	if (elMin) elMin.value = (config?.[minKey] ?? "").toString();
+	if (elMax) elMax.value = (config?.[maxKey] ?? "").toString();
+}
+
 export class MacsCardEditor extends HTMLElement {
 	// get the defaults, and apply user's config
 	setConfig(config) {
 		this._config = { ...DEFAULTS, ...(config || {}) };
-		debug("setConfig", {config:this._config});
+		debug("setConfig", { config: this._config });
 		this._render();
 	}
 
@@ -174,17 +186,17 @@ export class MacsCardEditor extends HTMLElement {
 
 	// render the card editor UI
 	async _render() {
-		if (!this.shadowRoot){
+		if (!this.shadowRoot) {
 			this.attachShadow({ mode: "open" });
 		}
-		
+
 		let htmlOutput;
 
 		const { satItems, pipelineItems, preferred } = await loadAssistantOptions(this._hass);
 		const { temperatureItems, windItems, precipitationItems } = await loadWeatherOptions(this._hass);
 
 		// Build DOM...
-		
+
 		const htmlGroupAssistStates = createHtmlGroup({
 			id: "assist_satellite",
 			name: "Assist Satellite",
@@ -245,8 +257,8 @@ export class MacsCardEditor extends HTMLElement {
 		htmlOutput += htmlGroupTemperature;
 		htmlOutput += htmlGroupWindspeed;
 		htmlOutput += htmlGroupRainfall;
-		htmlOutput += htmlGroupSnow;	
-		htmlOutput += instructions;	
+		htmlOutput += htmlGroupSnow;
+		htmlOutput += instructions;
 		htmlOutput += about;
 
 		this.shadowRoot.innerHTML = htmlOutput;
@@ -272,8 +284,8 @@ export class MacsCardEditor extends HTMLElement {
 			this.shadowRoot,
 			"assist_pipeline_select",
 			pipelineItems,
-			this._config.pipeline_id ?? "",
-			{ allowCustom: true, customFlag: !!this._config.pipeline_custom }
+			this._config.assist_pipeline_entity ?? "",
+			{ allowCustom: true, customFlag: !!this._config.assist_pipeline_custom }
 		);
 
 		// Weather sensors: temperature
@@ -311,10 +323,10 @@ export class MacsCardEditor extends HTMLElement {
 			"temperature_sensor_unit",
 			[
 				{ id: "", name: "Auto" },
-				{ id: "c", name: "Celsius (�C)" },
-				{ id: "f", name: "Fahrenheit (�F)" },
+				{ id: "c", name: "Celsius (°C)" },
+				{ id: "f", name: "Fahrenheit (°F)" },
 			],
-			this._config.temperature_unit
+			this._config.temperature_sensor_unit
 		);
 
 		// Weather: wind units
@@ -328,7 +340,7 @@ export class MacsCardEditor extends HTMLElement {
 				{ id: "mps", name: "Metres per second (m/s)" },
 				{ id: "knots", name: "Knots" },
 			],
-			this._config.wind_unit
+			this._config.wind_sensor_unit
 		);
 
 		// Weather: precipitation units
@@ -341,31 +353,14 @@ export class MacsCardEditor extends HTMLElement {
 				{ id: "mm", name: "Millimetres (mm)" },
 				{ id: "in", name: "Inches (in)" },
 			],
-			this._config.precipitation_unit
+			this._config.precipitation_sensor_unit
 		);
 
 
-
-
-
-
-
-
 		// Weather min/max fields from config
-		const tempMin = this.shadowRoot.getElementById("temperature_sensor_min");
-		const tempMax = this.shadowRoot.getElementById("temperature_sensor_max");
-		if (tempMin) tempMin.value = (this._config.temperature_min ?? "").toString();
-		if (tempMax) tempMax.value = (this._config.temperature_max ?? "").toString();
-
-		const windMin = this.shadowRoot.getElementById("wind_sensor_min");
-		const windMax = this.shadowRoot.getElementById("wind_sensor_max");
-		if (windMin) windMin.value = (this._config.wind_min ?? "").toString();
-		if (windMax) windMax.value = (this._config.wind_max ?? "").toString();
-
-		const precipMin = this.shadowRoot.getElementById("precipitation_sensor_min");
-		const precipMax = this.shadowRoot.getElementById("precipitation_sensor_max");
-		if (precipMin) precipMin.value = (this._config.precipitation_min ?? "").toString();
-		if (precipMax) precipMax.value = (this._config.precipitation_max ?? "").toString();
+		setMinMax(this.shadowRoot, this._config, "temperature_sensor");
+		setMinMax(this.shadowRoot, this._config, "wind_sensor");
+		setMinMax(this.shadowRoot, this._config, "precipitation_sensor");
 
 		// About/Support toggle
 		const toggle = this.shadowRoot.querySelector(".about-toggle");
@@ -388,14 +383,19 @@ export class MacsCardEditor extends HTMLElement {
 		//this._pipelinesLoaded = true;
 
 		// If user hasn't set a pipeline yet, pick HA's preferred
-		const currentPid = (this._config.pipeline_id ?? "").toString().trim();
-		if (!currentPid && preferred && !this._config.pipeline_custom) {
-			const next = { type: "custom:macs-card", ...this._config, pipeline_id: preferred, pipeline_custom: false };
+		const currentPid = (this._config.assist_pipeline_entity ?? "").toString().trim();
+		if (!currentPid && preferred && !this._config.assist_pipeline_custom) {
+			const next = {
+				type: "custom:macs-card",
+				...this._config,
+				assist_pipeline_entity: preferred,
+				assist_pipeline_custom: false
+			};
 			this._config = next;
 			this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true }));
 		}
 	}
-	
+
 
 	// sync UI state from this._config
 	async _sync() {
@@ -446,7 +446,7 @@ export class MacsCardEditor extends HTMLElement {
 			this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true }));
 		};
 
-		["assist_satellite_enabled","assist_satellite_select","assist_satellite_entity","assist_pipeline_enabled","assist_pipeline_select","assist_pipeline_entity"].forEach((id) => {
+		["assist_satellite_enabled", "assist_satellite_select", "assist_satellite_entity", "assist_pipeline_enabled", "assist_pipeline_select", "assist_pipeline_entity"].forEach((id) => {
 			const el = this.shadowRoot.getElementById(id);
 			if (!el) return;
 			el.addEventListener("change", onChange);
@@ -454,9 +454,9 @@ export class MacsCardEditor extends HTMLElement {
 		});
 
 		[
-			"temperature_sensor_enabled","temperature_sensor_select","temperature_sensor_entity","temperature_sensor_unit","temperature_sensor_min","temperature_sensor_max",
-			"wind_sensor_enabled","wind_sensor_select","wind_sensor_entity","wind_sensor_unit","wind_sensor_min","wind_sensor_max",
-			"precipitation_sensor_enabled","precipitation_sensor_select","precipitation_sensor_entity","precipitation_sensor_unit","precipitation_sensor_min","precipitation_sensor_max"
+			"temperature_sensor_enabled", "temperature_sensor_select", "temperature_sensor_entity", "temperature_sensor_unit", "temperature_sensor_min", "temperature_sensor_max",
+			"wind_sensor_enabled", "wind_sensor_select", "wind_sensor_entity", "wind_sensor_unit", "wind_sensor_min", "wind_sensor_max",
+			"precipitation_sensor_enabled", "precipitation_sensor_select", "precipitation_sensor_entity", "precipitation_sensor_unit", "precipitation_sensor_min", "precipitation_sensor_max"
 		].forEach((id) => {
 			const el = this.shadowRoot.getElementById(id);
 			if (!el) return;
@@ -468,6 +468,7 @@ export class MacsCardEditor extends HTMLElement {
 
 	}
 }
+
 
 
 

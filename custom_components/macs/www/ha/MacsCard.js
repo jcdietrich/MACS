@@ -35,7 +35,7 @@ export class MacsCard extends HTMLElement {
         return { 
             type: "custom:macs-card", 
             assist_pipeline_enabled: false, 
-            pipeline_custom: false, 
+            assist_pipeline_custom: false, 
             preview_image: DEFAULTS.preview_image
         }; 
     }
@@ -182,8 +182,8 @@ export class MacsCard extends HTMLElement {
 
     _sendConfigToIframe() {
         const enabled = !!this._config.assist_pipeline_enabled;
-        const pipeline_id = enabled ? (this._config.pipeline_id || "").toString().trim() : "";
-        this._postToIframe({ type: "macs:config", pipeline_id });
+        const assist_pipeline_entity = enabled ? (this._config.assist_pipeline_entity || "").toString().trim() : "";
+        this._postToIframe({ type: "macs:config", assist_pipeline_entity });
     }
 
     _sendMoodToIframe(mood) {
@@ -252,7 +252,7 @@ export class MacsCard extends HTMLElement {
                
         // Only re-apply config if the pipeline settings changed since last time we applied it
         const enabled = !!this._config?.assist_pipeline_enabled;
-        const pid = this._config?.pipeline_id || "";
+        const pid = this._config?.assist_pipeline_entity || "";
         if (!this._lastPipelineCfg || this._lastPipelineCfg.enabled !== enabled || this._lastPipelineCfg.pid !== pid) {
             this._lastPipelineCfg = { enabled, pid};
             this._pipelineTracker?.setConfig?.(this._config);
@@ -270,7 +270,7 @@ export class MacsCard extends HTMLElement {
         let assistMood = null;
         let satState = ""; 
 
-        if (this._config?.assist_states_enabled) {
+        if (this._config?.assist_satellite_enabled) {
             const satId = (this._config.assist_satellite_entity || "").toString().trim();
             if (satId) {
                 const satStateObj = hass.states[satId] || null;
@@ -278,13 +278,13 @@ export class MacsCard extends HTMLElement {
                 assistMood = assistStateToMood(satState);
                 const tracker = this._assistSatelliteOutcome;
                 debug(tracker);
-                if (this._config?.assist_states_enabled && satState && tracker) tracker.update(satState);
+                if (this._config?.assist_satellite_enabled && satState && tracker) tracker.update(satState);
             }
         }
 
         // const now = Date.now();
         const overrideMood = this._assistSatelliteOutcome?.getOverrideMood?.();
-        const mood = overrideMood ? overrideMood : ((this._config?.assist_states_enabled && assistMood) ? assistMood : baseMood);
+        const mood = overrideMood ? overrideMood : ((this._config?.assist_satellite_enabled && assistMood) ? assistMood : baseMood);
 
         const brightnessState = hass.states[BRIGHTNESS_ENTITY_ID] || null;
         const brightness = normBrightness(brightnessState?.state);

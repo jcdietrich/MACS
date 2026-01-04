@@ -109,7 +109,7 @@ export function syncAssistStateControls(root, config, satelliteItems) {
 		return;
 	}
 
-	var assistStateAutoMood = !!(config && config.assist_states_enabled);
+	var assistStateAutoMood = !!(config && config.assist_satellite_enabled);
 	var assistStateAutoMoodToggle = root.getElementById("assist_satellite_enabled");
 	var satelliteSelect = root.getElementById("assist_satellite_select");
 	var satelliteEntity = root.getElementById("assist_satellite_entity");
@@ -171,13 +171,13 @@ export function syncPipelineControls(root, config, pipelineItems) {
 		pipelineId.disabled = !dialogueEnabled;
 	}
 
-	var pid = String((config && config.pipeline_id) || "");
+	var pid = String((config && config.assist_pipeline_entity) || "");
 	var knownPipeline =
 		Array.isArray(pipelineItems) &&
 		pipelineItems.some(function (p) {
 			return p.id === pid && p.id !== "custom";
 		});
-	var pipelineIsCustom = !!(config && config.pipeline_custom) || !knownPipeline;
+	var pipelineIsCustom = !!(config && config.assist_pipeline_custom) || !knownPipeline;
 	var nextPipelineSelect = pipelineIsCustom ? "custom" : pid;
 
 	if (pipelineSelect && pipelineSelect.value !== nextPipelineSelect) {
@@ -195,7 +195,7 @@ export function readAssistStateInputs(root, e, config) {
 	// Read assist state inputs from the DOM, or fall back to config.
 	if (!root) {
 		return {
-			assist_states_enabled: !!(config && config.assist_states_enabled),
+			assist_satellite_enabled: !!(config && config.assist_satellite_enabled),
 			assist_satellite_entity: String((config && config.assist_satellite_entity) || ""),
 			assist_satellite_custom: !!(config && config.assist_satellite_custom),
 		};
@@ -214,7 +214,7 @@ export function readAssistStateInputs(root, e, config) {
 	}
 
 	return {
-		assist_states_enabled: assistStateAutoMood,
+		assist_satellite_enabled: assistStateAutoMood,
 		assist_satellite_entity: assistSatelliteEntity,
 		assist_satellite_custom: assistSatelliteCustom,
 	};
@@ -225,8 +225,8 @@ export function readPipelineInputs(root, e, config) {
 	if (!root) {
 		return {
 			assist_pipeline_enabled: !!(config && config.assist_pipeline_enabled),
-			pipeline_id: String((config && config.pipeline_id) || ""),
-			pipeline_custom: !!(config && config.pipeline_custom),
+			assist_pipeline_entity: String((config && config.assist_pipeline_entity) || ""),
+			assist_pipeline_custom: !!(config && config.assist_pipeline_custom),
 		};
 	}
 
@@ -241,12 +241,12 @@ export function readPipelineInputs(root, e, config) {
 		pipelineIdInput.disabled = !assist_pipeline_enabled || !pipeline_custom;
 	}
 
-	var pipeline_id = pipeline_custom ? pipelineId : pipelineValue;
+	var pipeline_entity = pipeline_custom ? pipelineId : pipelineValue;
 
 	return {
 		assist_pipeline_enabled: assist_pipeline_enabled,
-		pipeline_id: pipeline_id,
-		pipeline_custom: pipeline_custom,
+		assist_pipeline_entity: pipeline_entity,
+		assist_pipeline_custom: pipeline_custom,
 	};
 }
 
@@ -433,9 +433,9 @@ export function syncWeatherControls(root, config, temperatureItems, windItems, p
 		"temperature_sensor_custom",
 		"temperature_sensor_entity",
 		"temperature_sensor_enabled",
-		"temperature_unit",
-		"temperature_min",
-		"temperature_max"
+		"temperature_sensor_unit",
+		"temperature_sensor_min",
+		"temperature_sensor_max"
 	);
 
 	syncSingleWeather(
@@ -453,9 +453,9 @@ export function syncWeatherControls(root, config, temperatureItems, windItems, p
 		"wind_sensor_custom",
 		"wind_sensor_entity",
 		"wind_sensor_enabled",
-		"wind_unit",
-		"wind_min",
-		"wind_max"
+		"wind_sensor_unit",
+		"wind_sensor_min",
+		"wind_sensor_max"
 	);
 
 	syncSingleWeather(
@@ -473,9 +473,9 @@ export function syncWeatherControls(root, config, temperatureItems, windItems, p
 		"precipitation_sensor_custom",
 		"precipitation_sensor_entity",
 		"precipitation_sensor_enabled",
-		"precipitation_unit",
-		"precipitation_min",
-		"precipitation_max"
+		"precipitation_sensor_unit",
+		"precipitation_sensor_min",
+		"precipitation_sensor_max"
 	);
 }
 
@@ -545,21 +545,21 @@ export function readWeatherInputs(root, e, config) {
 			temperature_sensor_enabled: !!(config && config.temperature_sensor_enabled),
 			temperature_sensor_entity: String((config && config.temperature_sensor_entity) || ""),
 			temperature_sensor_custom: !!(config && config.temperature_sensor_custom),
-			temperature_unit: String((config && config.temperature_unit) || ""),
-			temperature_min: String((config && config.temperature_min) || ""),
-			temperature_max: String((config && config.temperature_max) || ""),
+			temperature_sensor_unit: String((config && config.temperature_sensor_unit) || ""),
+			temperature_sensor_min: String((config && config.temperature_sensor_min) || ""),
+			temperature_sensor_max: String((config && config.temperature_sensor_max) || ""),
 			wind_sensor_enabled: !!(config && config.wind_sensor_enabled),
 			wind_sensor_entity: String((config && config.wind_sensor_entity) || ""),
 			wind_sensor_custom: !!(config && config.wind_sensor_custom),
-			wind_unit: String((config && config.wind_unit) || ""),
-			wind_min: String((config && config.wind_min) || ""),
-			wind_max: String((config && config.wind_max) || ""),
+			wind_sensor_unit: String((config && config.wind_sensor_unit) || ""),
+			wind_sensor_min: String((config && config.wind_sensor_min) || ""),
+			wind_sensor_max: String((config && config.wind_sensor_max) || ""),
 			precipitation_sensor_enabled: !!(config && config.precipitation_sensor_enabled),
 			precipitation_sensor_entity: String((config && config.precipitation_sensor_entity) || ""),
 			precipitation_sensor_custom: !!(config && config.precipitation_sensor_custom),
-			precipitation_unit: String((config && config.precipitation_unit) || ""),
-			precipitation_min: String((config && config.precipitation_min) || ""),
-			precipitation_max: String((config && config.precipitation_max) || ""),
+			precipitation_sensor_unit: String((config && config.precipitation_sensor_unit) || ""),
+			precipitation_sensor_min: String((config && config.precipitation_sensor_min) || ""),
+			precipitation_sensor_max: String((config && config.precipitation_sensor_max) || ""),
 		};
 	}
 
@@ -579,9 +579,9 @@ export function readWeatherInputs(root, e, config) {
 			"temperature_sensor_enabled",
 			"temperature_sensor_entity",
 			"temperature_sensor_custom",
-			"temperature_unit",
-			"temperature_min",
-			"temperature_max"
+			"temperature_sensor_unit",
+			"temperature_sensor_min",
+			"temperature_sensor_max"
 		),
 		...readSingleWeather(
 			root,
@@ -598,9 +598,9 @@ export function readWeatherInputs(root, e, config) {
 			"wind_sensor_enabled",
 			"wind_sensor_entity",
 			"wind_sensor_custom",
-			"wind_unit",
-			"wind_min",
-			"wind_max"
+			"wind_sensor_unit",
+			"wind_sensor_min",
+			"wind_sensor_max"
 		),
 		...readSingleWeather(
 			root,
@@ -617,9 +617,9 @@ export function readWeatherInputs(root, e, config) {
 			"precipitation_sensor_enabled",
 			"precipitation_sensor_entity",
 			"precipitation_sensor_custom",
-			"precipitation_unit",
-			"precipitation_min",
-			"precipitation_max"
+			"precipitation_sensor_unit",
+			"precipitation_sensor_min",
+			"precipitation_sensor_max"
 		),
 	};
 }

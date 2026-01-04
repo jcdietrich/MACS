@@ -7,7 +7,7 @@ const debug = createDebugger("bridge", DEBUG_ENABLED);
 /* ===========================
     ASSIST DISPLAY — BRIDGE MODE
     Receives:
-      - macs:config { pipeline_id }
+      - macs:config { assist_pipeline_entity }
       - macs:turns  { turns: [...] }
       - macs:mood   { mood }
     =========================== */
@@ -70,8 +70,8 @@ window.addEventListener("message", (e) => {
   debug("message", e.data);
 
   if (e.data.type === "macs:config") {
-    injectedPipelineId = (e.data.pipeline_id || "").toString().trim();
-    debug("config", { pipeline_id: injectedPipelineId });
+    injectedPipelineId = (e.data.assist_pipeline_entity || "").toString().trim();
+    debug("config", { assist_pipeline_entity: injectedPipelineId });
     return;
   }
 
