@@ -116,6 +116,16 @@ const isTruthy = (value) => {
 	const v = value.toString().trim().toLowerCase();
 	return v === "1" || v === "true" || v === "yes" || v === "on";
 };
+const parseConditionsParam = (value) => {
+	const conditions = {};
+	if (!value) return conditions;
+	value.split(",").forEach((entry) => {
+		const key = entry.trim().toLowerCase();
+		if (key) conditions[key] = true;
+	});
+	return conditions;
+};
+
 const applyIdleFloatJitter = () => {
 	const jitter = (Math.random() * 2) - 1;
 	const amp = Math.max(0.1, idleFloatBase * (1 + (jitter * IDLE_FLOAT_JITTER_RATIO)));
@@ -464,6 +474,10 @@ if (precipitationParam !== null) {
 } else {
 	setPrecipitation('0');
 }
+const conditionsParam = qs.get('conditions');
+if (conditionsParam !== null) {
+	setWeatherConditions(parseConditionsParam(conditionsParam));
+}
 setBattery(qs.get('battery') ?? '0');
 setBrightness(qs.get('brightness') ?? '100');
 
@@ -523,4 +537,4 @@ window.addEventListener('message', (e) => {
 });
 
 
-debug("Macs Moods Loaded v0.8");
+debug("Macs Moods Loaded");

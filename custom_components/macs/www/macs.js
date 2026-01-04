@@ -8,10 +8,6 @@
 /** 
  * TO-DO
  * --------
- * min max text inputs changing before config is saved
- * create macs.set_temperature service etc for custom integrations
- * How does this work with sensors? You use one or the other, if the toggle is off, then use macs.temperature
- * 
  * Also add a macs.show_message
  * 
  * - Monitor idle time and set bored, then sleep state/mood.
@@ -21,15 +17,12 @@
  *    - after N idle minutes, starting turning display brightness to X, over a duration of T
  *    - on wake, return display brightness to B
  * - test non-admin user
- * - split weather into separate numeric entities: wind, temperature, rain, snow
  * - add seasons: christmas, halloween etc.
  * - create a "charging" mood.
  * - train "Hey Macs" wakeword
  * - change happy trigger from idle to responding. Actually, idle OR responding, whichever comes first.
  * - update readme screenshot
  * - create bored / sleep sequence
- * - add snow weather attribute
- * - remove url and other params from card yaml config
  */
 
 
