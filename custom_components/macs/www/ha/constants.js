@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shared constants and default configuration for the M.A.C.S. Lovelace card.
  */
 
@@ -41,6 +41,14 @@ export const DEFAULTS = {
     precipitation_sensor_unit: "",
     precipitation_sensor_min: "",
     precipitation_sensor_max: "",
+    battery_charge_sensor_enabled: false,
+    battery_charge_sensor_entity: "",
+    battery_charge_sensor_custom: false,
+    battery_charge_sensor_unit: "%",
+    battery_charge_sensor_min: "",
+    battery_charge_sensor_max: "",
+    weather_conditions_enabled: false,
+    weather_conditions: "",
 };
 
 export const DEFAULT_MAX_TEMP_C = 30;

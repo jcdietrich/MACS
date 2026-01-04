@@ -1,10 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entities import (
     MacsBrightnessNumber,
+    MacsBatteryChargeNumber,
     MacsTemperatureNumber,
     MacsWindSpeedNumber,
     MacsRainfallNumber,
@@ -19,6 +20,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             MacsBrightnessNumber(),
+            MacsBatteryChargeNumber(),
             MacsTemperatureNumber(),
             MacsWindSpeedNumber(),
             MacsRainfallNumber(),

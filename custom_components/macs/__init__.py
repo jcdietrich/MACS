@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -25,8 +25,40 @@ from .const import (
     ATTR_WINDSPEED,
     SERVICE_SET_RAINFALL,
     ATTR_RAINFALL,
-    SERVICE_SET_SNOWING,
-    ATTR_SNOWING
+    SERVICE_SET_BATTERY_CHARGE,
+    ATTR_BATTERY_CHARGE,
+    SERVICE_SET_WEATHER_CONDITIONS_SNOWY,
+    ATTR_WEATHER_CONDITIONS_SNOWY,
+    SERVICE_SET_WEATHER_CONDITIONS_CLOUDY,
+    ATTR_WEATHER_CONDITIONS_CLOUDY,
+    SERVICE_SET_WEATHER_CONDITIONS_RAINY,
+    ATTR_WEATHER_CONDITIONS_RAINY,
+    SERVICE_SET_WEATHER_CONDITIONS_WINDY,
+    ATTR_WEATHER_CONDITIONS_WINDY,
+    SERVICE_SET_WEATHER_CONDITIONS_SUNNY,
+    ATTR_WEATHER_CONDITIONS_SUNNY,
+    SERVICE_SET_WEATHER_CONDITIONS_STORMY,
+    ATTR_WEATHER_CONDITIONS_STORMY,
+    SERVICE_SET_WEATHER_CONDITIONS_FOGGY,
+    ATTR_WEATHER_CONDITIONS_FOGGY,
+    SERVICE_SET_WEATHER_CONDITIONS_HAIL,
+    ATTR_WEATHER_CONDITIONS_HAIL,
+    SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING,
+    ATTR_WEATHER_CONDITIONS_LIGHTNING,
+    SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING_RAINY,
+    ATTR_WEATHER_CONDITIONS_LIGHTNING_RAINY,
+    SERVICE_SET_WEATHER_CONDITIONS_PARTLYCLOUDY,
+    ATTR_WEATHER_CONDITIONS_PARTLYCLOUDY,
+    SERVICE_SET_WEATHER_CONDITIONS_POURING,
+    ATTR_WEATHER_CONDITIONS_POURING,
+    SERVICE_SET_WEATHER_CONDITIONS_SNOWY_RAINY,
+    ATTR_WEATHER_CONDITIONS_SNOWY_RAINY,
+    SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT,
+    ATTR_WEATHER_CONDITIONS_CLEAR_NIGHT,
+    SERVICE_SET_WEATHER_CONDITIONS_WINDY_VARIANT,
+    ATTR_WEATHER_CONDITIONS_WINDY_VARIANT,
+    SERVICE_SET_WEATHER_CONDITIONS_EXCEPTIONAL,
+    ATTR_WEATHER_CONDITIONS_EXCEPTIONAL
 )
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -107,10 +139,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # These must match the _attr_unique_id values in entities.py
     migrate("macs_mood", "select.macs_mood")
     migrate("macs_brightness", "number.macs_brightness")
+    migrate("macs_battery_charge", "number.macs_battery_charge")
     migrate("macs_temperature", "number.macs_temperature")
     migrate("macs_windspeed", "number.macs_windspeed")
     migrate("macs_rainfall", "number.macs_rainfall")
-    migrate("macs_snowing", "switch.macs_snowing")
+    migrate("macs_weather_conditions_snowy", "switch.macs_weather_conditions_snowy")
+    migrate("macs_weather_conditions_cloudy", "switch.macs_weather_conditions_cloudy")
+    migrate("macs_weather_conditions_rainy", "switch.macs_weather_conditions_rainy")
+    migrate("macs_weather_conditions_windy", "switch.macs_weather_conditions_windy")
+    migrate("macs_weather_conditions_sunny", "switch.macs_weather_conditions_sunny")
+    migrate("macs_weather_conditions_stormy", "switch.macs_weather_conditions_stormy")
+    migrate("macs_weather_conditions_foggy", "switch.macs_weather_conditions_foggy")
+    migrate("macs_weather_conditions_hail", "switch.macs_weather_conditions_hail")
+    migrate("macs_weather_conditions_lightning", "switch.macs_weather_conditions_lightning")
+    migrate("macs_weather_conditions_lightning_rainy", "switch.macs_weather_conditions_lightning_rainy")
+    migrate("macs_weather_conditions_partlycloudy", "switch.macs_weather_conditions_partlycloudy")
+    migrate("macs_weather_conditions_pouring", "switch.macs_weather_conditions_pouring")
+    migrate("macs_weather_conditions_snowy_rainy", "switch.macs_weather_conditions_snowy_rainy")
+    migrate("macs_weather_conditions_clear_night", "switch.macs_weather_conditions_clear_night")
+    migrate("macs_weather_conditions_windy_variant", "switch.macs_weather_conditions_windy_variant")
+    migrate("macs_weather_conditions_exceptional", "switch.macs_weather_conditions_exceptional")
 
     async def handle_set_mood(call: ServiceCall) -> None:
         mood = str(call.data.get(ATTR_MOOD, "")).strip().lower()
@@ -168,6 +216,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_set_rainfall(call: ServiceCall) -> None:
         await _set_number_entity(call, ATTR_RAINFALL, "macs_rainfall", "rainfall")
 
+    async def handle_set_battery_charge(call: ServiceCall) -> None:
+        await _set_number_entity(call, ATTR_BATTERY_CHARGE, "macs_battery_charge", "battery charge")
+
 
     async def _set_switch_entity(call: ServiceCall, attr_name: str, unique_id: str, label: str) -> None:
         raw = call.data.get(attr_name, None)
@@ -204,8 +255,133 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             blocking=True,
         )
 
-    async def handle_set_snowing(call: ServiceCall) -> None:
-        await _set_switch_entity(call, ATTR_SNOWING, "macs_snowing", "snowing")
+    async def handle_set_weather_conditions_snowy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_SNOWY,
+            "macs_weather_conditions_snowy",
+            "weather conditions snowy"
+        )
+
+    async def handle_set_weather_conditions_cloudy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_CLOUDY,
+            "macs_weather_conditions_cloudy",
+            "weather conditions cloudy"
+        )
+
+    async def handle_set_weather_conditions_rainy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_RAINY,
+            "macs_weather_conditions_rainy",
+            "weather conditions rainy"
+        )
+
+    async def handle_set_weather_conditions_windy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_WINDY,
+            "macs_weather_conditions_windy",
+            "weather conditions windy"
+        )
+
+    async def handle_set_weather_conditions_sunny(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_SUNNY,
+            "macs_weather_conditions_sunny",
+            "weather conditions sunny"
+        )
+
+    async def handle_set_weather_conditions_stormy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_STORMY,
+            "macs_weather_conditions_stormy",
+            "weather conditions stormy"
+        )
+
+    async def handle_set_weather_conditions_foggy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_FOGGY,
+            "macs_weather_conditions_foggy",
+            "weather conditions foggy"
+        )
+
+    async def handle_set_weather_conditions_hail(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_HAIL,
+            "macs_weather_conditions_hail",
+            "weather conditions hail"
+        )
+
+    async def handle_set_weather_conditions_lightning(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_LIGHTNING,
+            "macs_weather_conditions_lightning",
+            "weather conditions lightning"
+        )
+
+    async def handle_set_weather_conditions_lightning_rainy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_LIGHTNING_RAINY,
+            "macs_weather_conditions_lightning_rainy",
+            "weather conditions lightning rainy"
+        )
+
+    async def handle_set_weather_conditions_partlycloudy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_PARTLYCLOUDY,
+            "macs_weather_conditions_partlycloudy",
+            "weather conditions partly cloudy"
+        )
+
+    async def handle_set_weather_conditions_pouring(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_POURING,
+            "macs_weather_conditions_pouring",
+            "weather conditions pouring"
+        )
+
+    async def handle_set_weather_conditions_snowy_rainy(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_SNOWY_RAINY,
+            "macs_weather_conditions_snowy_rainy",
+            "weather conditions snowy rainy"
+        )
+
+    async def handle_set_weather_conditions_clear_night(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_CLEAR_NIGHT,
+            "macs_weather_conditions_clear_night",
+            "weather conditions clear night"
+        )
+
+    async def handle_set_weather_conditions_windy_variant(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_WINDY_VARIANT,
+            "macs_weather_conditions_windy_variant",
+            "weather conditions windy variant"
+        )
+
+    async def handle_set_weather_conditions_exceptional(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_WEATHER_CONDITIONS_EXCEPTIONAL,
+            "macs_weather_conditions_exceptional",
+            "weather conditions exceptional"
+        )
 
 
 
@@ -249,13 +425,141 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=vol.Schema({vol.Required(ATTR_RAINFALL): vol.Coerce(float)}),
         )
 
-    if not hass.services.has_service(DOMAIN, SERVICE_SET_SNOWING):
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_BATTERY_CHARGE):
         hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_SNOWING,
-        handle_set_snowing,
-        schema=vol.Schema({vol.Required(ATTR_SNOWING): cv.boolean}),
-    )
+            DOMAIN,
+            SERVICE_SET_BATTERY_CHARGE,
+            handle_set_battery_charge,
+            schema=vol.Schema({vol.Required(ATTR_BATTERY_CHARGE): vol.Coerce(float)}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SNOWY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_SNOWY,
+            handle_set_weather_conditions_snowy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_SNOWY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_CLOUDY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_CLOUDY,
+            handle_set_weather_conditions_cloudy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_CLOUDY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_RAINY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_RAINY,
+            handle_set_weather_conditions_rainy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_RAINY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_WINDY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_WINDY,
+            handle_set_weather_conditions_windy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_WINDY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SUNNY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_SUNNY,
+            handle_set_weather_conditions_sunny,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_SUNNY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_STORMY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_STORMY,
+            handle_set_weather_conditions_stormy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_STORMY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_FOGGY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_FOGGY,
+            handle_set_weather_conditions_foggy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_FOGGY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_HAIL):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_HAIL,
+            handle_set_weather_conditions_hail,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_HAIL): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING,
+            handle_set_weather_conditions_lightning,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_LIGHTNING): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING_RAINY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING_RAINY,
+            handle_set_weather_conditions_lightning_rainy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_LIGHTNING_RAINY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_PARTLYCLOUDY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_PARTLYCLOUDY,
+            handle_set_weather_conditions_partlycloudy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_PARTLYCLOUDY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_POURING):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_POURING,
+            handle_set_weather_conditions_pouring,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_POURING): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SNOWY_RAINY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_SNOWY_RAINY,
+            handle_set_weather_conditions_snowy_rainy,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_SNOWY_RAINY): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT,
+            handle_set_weather_conditions_clear_night,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_CLEAR_NIGHT): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_WINDY_VARIANT):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_WINDY_VARIANT,
+            handle_set_weather_conditions_windy_variant,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_WINDY_VARIANT): cv.boolean}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_EXCEPTIONAL):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_WEATHER_CONDITIONS_EXCEPTIONAL,
+            handle_set_weather_conditions_exceptional,
+            schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_EXCEPTIONAL): cv.boolean}),
+        )
 
     # Auto-add/update Lovelace resource (storage mode)
     await _ensure_lovelace_resource(hass)
@@ -271,6 +575,22 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WINDSPEED)
         hass.services.async_remove(DOMAIN, SERVICE_SET_RAINFALL)
-        hass.services.async_remove(DOMAIN, SERVICE_SET_SNOWING)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_BATTERY_CHARGE)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SNOWY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_CLOUDY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_RAINY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_WINDY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SUNNY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_STORMY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_FOGGY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_HAIL)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_LIGHTNING_RAINY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_PARTLYCLOUDY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_POURING)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SNOWY_RAINY)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_WINDY_VARIANT)
+        hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_EXCEPTIONAL)
         hass.data.get(DOMAIN, {}).pop("static_path_registered", None)
     return unload_ok

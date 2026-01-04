@@ -19,7 +19,7 @@
 
 import { DEFAULTS } from "./constants.js";
 import { createDebugger } from "./debugger.js";
-import { loadAssistantOptions, loadWeatherOptions, readAssistStateInputs, readPipelineInputs, readWeatherInputs, syncAssistStateControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
+import { loadAssistantOptions, loadWeatherOptions, readAssistStateInputs, readPipelineInputs, readWeatherInputs, syncAssistStateControls, syncConditionControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
 
 const DEBUG_ENABLED = false;
 const debug = createDebugger("macsCardEditor", DEBUG_ENABLED);
@@ -47,6 +47,11 @@ const precipitationUnitItems = [
 	{ id: "%", name: "Chance of rain (%)" },
 	{ id: "mm", name: "Millimetres (mm)" },
 	{ id: "in", name: "Inches (in)" },
+];
+
+const batteryChargeUnitItems = [
+	{ id: "%", name: "Percent (%)" },
+	{ id: "v", name: "Volts (V)" },
 ];
 
 
@@ -130,7 +135,7 @@ function createHtmlGroup({ id, name, label, hint = null, placeholder, units = fa
 				</div>
 
 				<div class="row">
-					<ha-textfield id="${id}_entity" label="${name} ID" placeholder="${placeholder}"></ha-textfield>
+					<ha-textfield id="${id}_entity" label="${name} ID" placeholder="${placeholder}" class="fullwidth"></ha-textfield>
 				</div>
 
 				${units ? `
@@ -279,7 +284,7 @@ export class MacsCardEditor extends HTMLElement {
 		let htmlOutput;
 
 		const { satItems, pipelineItems, preferred } = await loadAssistantOptions(this._hass);
-		const { temperatureItems, windItems, precipitationItems } = await loadWeatherOptions(this._hass);
+		const { temperatureItems, windItems, precipitationItems, batteryItems, conditionItems } = await loadWeatherOptions(this._hass);
 
 		// Build DOM...
 		const inputGroups = [];
@@ -352,12 +357,29 @@ export class MacsCardEditor extends HTMLElement {
 		});
 
 		createInputGroup(inputGroups, {
-			id: "weather_condition",
-			name: "Weather Condition",
-			label: "Auto-Detect Snowing?",
+			id: "weather_conditions",
+			name: "Weather Conditions",
+			label: "Auto-Detect Weather Conditions?",
 			hint: null,
 			placeholder: "weather.forecast_home",
-			wire: false
+			selectItems: conditionItems,
+			selectValue: this._config.weather_conditions ?? "",
+			selectOptions: { allowCustom: true }
+		});
+
+		createInputGroup(inputGroups, {
+			id: "battery_charge_sensor",
+			name: "Battery Charge",
+			label: "Use Battery Sensor?",
+			hint: null,
+			placeholder: "sensor.my_battery",
+			units: true,
+			minMax: true,
+			selectItems: batteryItems,
+			selectValue: this._config.battery_charge_sensor_entity ?? "",
+			selectOptions: { allowCustom: true, customFlag: !!this._config.battery_charge_sensor_custom },
+			unitItems: batteryChargeUnitItems,
+			unitValue: this._config.battery_charge_sensor_unit ?? "%"
 		});
 
 		htmlOutput = styleSheet;
@@ -377,6 +399,8 @@ export class MacsCardEditor extends HTMLElement {
 		this._temperatureItems = temperatureItems;
 		this._windItems = windItems;
 		this._precipitationItems = precipitationItems;
+		this._batteryItems = batteryItems;
+		this._conditionItems = conditionItems;
 
 		inputGroups.forEach((group) => setupInputGroup(this.shadowRoot, this._config, group));
 
@@ -427,8 +451,10 @@ export class MacsCardEditor extends HTMLElement {
 			this._config,
 			this._temperatureItems || [],
 			this._windItems || [],
-			this._precipitationItems || []
+			this._precipitationItems || [],
+			this._batteryItems || []
 		);
+		syncConditionControls(this.shadowRoot, this._config, this._conditionItems || []);
 	}
 
 	// wire up event listeners for user config changes

@@ -1,4 +1,4 @@
-// Helper and editor option utilities for the MACS editor.
+﻿// Helper and editor option utilities for the MACS editor.
 
 export async function loadSatellites(hass) {
 	// Guard against missing HA state.
@@ -191,6 +191,52 @@ export function syncPipelineControls(root, config, pipelineItems) {
 	}
 }
 
+export function syncConditionControls(root, config, conditionItems) {
+	// Sync weather condition controls from the saved config into the DOM.
+	if (!root) {
+		return;
+	}
+
+	var conditionsEnabled = !!(config && config.weather_conditions_enabled);
+	var conditionsToggle = root.getElementById("weather_conditions_enabled");
+	var conditionsSelect = root.getElementById("weather_conditions_select");
+	var conditionsEntity = root.getElementById("weather_conditions_entity");
+
+	if (conditionsToggle && conditionsToggle.checked !== conditionsEnabled) {
+		conditionsToggle.checked = conditionsEnabled;
+	}
+
+	if (conditionsSelect) {
+		conditionsSelect.disabled = !conditionsEnabled;
+	}
+	if (conditionsEntity) {
+		conditionsEntity.disabled = !conditionsEnabled;
+	}
+
+	var value = String((config && config.weather_conditions) || "");
+	var knownCondition =
+		Array.isArray(conditionItems) &&
+		conditionItems.some(function (c) {
+			return c.id === value && c.id !== "custom";
+		});
+	var isCustom = value.length > 0 && !knownCondition;
+	var nextSelect = isCustom ? "custom" : value;
+
+	if (conditionsSelect && conditionsSelect.value !== nextSelect) {
+		conditionsSelect.value = nextSelect;
+	}
+	if (
+		conditionsEntity &&
+		conditionsEntity.value !== value &&
+		(!isCustom || !conditionsEntity.matches(":focus-within"))
+	) {
+		conditionsEntity.value = value;
+	}
+	if (conditionsEntity) {
+		conditionsEntity.disabled = !conditionsEnabled || !isCustom;
+	}
+}
+
 export function readAssistStateInputs(root, e, config) {
 	// Read assist state inputs from the DOM, or fall back to config.
 	if (!root) {
@@ -250,6 +296,36 @@ export function readPipelineInputs(root, e, config) {
 	};
 }
 
+export function readConditionInputs(root, e, config) {
+	// Read weather condition inputs from the DOM, or fall back to config.
+	if (!root) {
+		return {
+			weather_conditions_enabled: !!(config && config.weather_conditions_enabled),
+			weather_conditions: String((config && config.weather_conditions) || ""),
+		};
+	}
+
+	var conditionsEnabled = !!root.getElementById("weather_conditions_enabled")?.checked;
+	var conditionsSelect = root.getElementById("weather_conditions_select");
+	var conditionsEntity = root.getElementById("weather_conditions_entity");
+	var selectValue = comboValue(conditionsSelect, e);
+	var manualVal = (conditionsEntity && conditionsEntity.value) || "";
+	var isCustom = selectValue === "custom";
+	var entityVal = isCustom ? manualVal : selectValue;
+
+	if (conditionsEntity) {
+		conditionsEntity.disabled = !conditionsEnabled || !isCustom;
+	}
+	if (conditionsSelect) {
+		conditionsSelect.disabled = !conditionsEnabled;
+	}
+
+	return {
+		weather_conditions_enabled: conditionsEnabled,
+		weather_conditions: conditionsEnabled ? String(entityVal || "") : "",
+	};
+}
+
 function collectSensors(hass, predicate) {
 	// Build a sorted list of sensors matching the predicate.
 	if (!hass || !hass.states) {
@@ -279,11 +355,39 @@ function collectSensors(hass, predicate) {
 	return out;
 }
 
+function collectWeatherEntities(hass) {
+	// Build a sorted list of weather entities for condition selection.
+	if (!hass || !hass.states) {
+		return [];
+	}
+
+	var out = [];
+	var entries = Object.entries(hass.states);
+	var i = 0;
+
+	for (i = 0; i < entries.length; i++) {
+		var id = entries[i][0];
+		var st = entries[i][1];
+		if (id.indexOf("weather.") !== 0) {
+			continue;
+		}
+		var name = (st && st.attributes && st.attributes.friendly_name) || id;
+		out.push({ id: id, name: String(name) });
+	}
+
+	out.sort(function (a, b) {
+		return a.name.localeCompare(b.name);
+	});
+
+	return out;
+}
+
 // Unit sets used for sensor matching.
 const TEMP_UNITS = new Set(["░c", "c", "celsius", "░f", "f", "fahrenheit"]);
 const WIND_UNITS = new Set(["mph", "kph", "mps", "knots", "km/h", "m/s", "kn", "kt", "kt/h"]);
-const RAIN_UNITS = new Set(["mm", "in", "%", "mm/h", "in/h", "inch", "inches"]);
+const RAIN_UNITS = new Set(["mm", "in", "mm/h", "in/h", "inch", "inches"]);
 const PERCENT_UNITS = new Set(["%"]);
+const BATTERY_UNITS = new Set(["%", "percent", "percentage", "v", "volt", "volts", "mv"]);
 
 function hasUnit(st, allowed) {
 	// Check sensor unit against a known set.
@@ -336,14 +440,30 @@ export async function loadWeatherOptions(hass) {
 		);
 	});
 
+	// Gather likely battery charge sensors.
+	var batteries = collectSensors(hass, function (id, st) {
+		return (
+			hasDeviceClass(st, "battery") ||
+			hasUnit(st, BATTERY_UNITS) ||
+			matchesName(id, st, ["battery", "charge", "batt"])
+		);
+	});
+
+	// Gather weather entities for condition strings.
+	var conditions = collectWeatherEntities(hass);
+
 	var temperatureItems = [{ id: "custom", name: "Custom" }].concat(temps);
 	var windItems = [{ id: "custom", name: "Custom" }].concat(winds);
 	var precipitationItems = [{ id: "custom", name: "Custom" }].concat(rains);
+	var batteryItems = [{ id: "custom", name: "Custom" }].concat(batteries);
+	var conditionItems = [{ id: "custom", name: "Custom" }].concat(conditions);
 
 	return {
 		temperatureItems: temperatureItems,
 		windItems: windItems,
 		precipitationItems: precipitationItems,
+		batteryItems: batteryItems,
+		conditionItems: conditionItems,
 	};
 }
 
@@ -416,8 +536,8 @@ function syncSingleWeather(
 	}
 }
 
-export function syncWeatherControls(root, config, temperatureItems, windItems, precipitationItems) {
-	// Sync all three weather sections.
+export function syncWeatherControls(root, config, temperatureItems, windItems, precipitationItems, batteryItems) {
+	// Sync all sensor sections.
 	syncSingleWeather(
 		root,
 		config,
@@ -476,6 +596,26 @@ export function syncWeatherControls(root, config, temperatureItems, windItems, p
 		"precipitation_sensor_unit",
 		"precipitation_sensor_min",
 		"precipitation_sensor_max"
+	);
+
+	syncSingleWeather(
+		root,
+		config,
+		batteryItems,
+		{
+			enabled: "battery_charge_sensor_enabled",
+			select: "battery_charge_sensor_select",
+			entity: "battery_charge_sensor_entity",
+			unit: "battery_charge_sensor_unit",
+			min: "battery_charge_sensor_min",
+			max: "battery_charge_sensor_max",
+		},
+		"battery_charge_sensor_custom",
+		"battery_charge_sensor_entity",
+		"battery_charge_sensor_enabled",
+		"battery_charge_sensor_unit",
+		"battery_charge_sensor_min",
+		"battery_charge_sensor_max"
 	);
 }
 
@@ -560,6 +700,14 @@ export function readWeatherInputs(root, e, config) {
 			precipitation_sensor_unit: String((config && config.precipitation_sensor_unit) || ""),
 			precipitation_sensor_min: String((config && config.precipitation_sensor_min) || ""),
 			precipitation_sensor_max: String((config && config.precipitation_sensor_max) || ""),
+			battery_charge_sensor_enabled: !!(config && config.battery_charge_sensor_enabled),
+			battery_charge_sensor_entity: String((config && config.battery_charge_sensor_entity) || ""),
+			battery_charge_sensor_custom: !!(config && config.battery_charge_sensor_custom),
+			battery_charge_sensor_unit: String((config && config.battery_charge_sensor_unit) || ""),
+			battery_charge_sensor_min: String((config && config.battery_charge_sensor_min) || ""),
+			battery_charge_sensor_max: String((config && config.battery_charge_sensor_max) || ""),
+			weather_conditions_enabled: !!(config && config.weather_conditions_enabled),
+			weather_conditions: String((config && config.weather_conditions) || ""),
 		};
 	}
 
@@ -621,6 +769,26 @@ export function readWeatherInputs(root, e, config) {
 			"precipitation_sensor_min",
 			"precipitation_sensor_max"
 		),
+		...readSingleWeather(
+			root,
+			e,
+			{
+				enabled: "battery_charge_sensor_enabled",
+				select: "battery_charge_sensor_select",
+				entity: "battery_charge_sensor_entity",
+				unit: "battery_charge_sensor_unit",
+				min: "battery_charge_sensor_min",
+				max: "battery_charge_sensor_max",
+			},
+			config,
+			"battery_charge_sensor_enabled",
+			"battery_charge_sensor_entity",
+			"battery_charge_sensor_custom",
+			"battery_charge_sensor_unit",
+			"battery_charge_sensor_min",
+			"battery_charge_sensor_max"
+		),
+		...readConditionInputs(root, e, config),
 	};
 }
 
