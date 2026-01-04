@@ -189,7 +189,18 @@ export class MacsCard extends HTMLElement {
     _sendConfigToIframe() {
         const enabled = !!this._config.assist_pipeline_enabled;
         const assist_pipeline_entity = enabled ? (this._config.assist_pipeline_entity || "").toString().trim() : "";
-        this._postToIframe({ type: "macs:config", assist_pipeline_entity });
+        const autoBrightnessEnabled = !!this._config.auto_brightness_enabled;
+        const autoBrightnessTimeout = this._config.auto_brightness_timeout_minutes;
+        const autoBrightnessMin = this._config.auto_brightness_min;
+        const autoBrightnessMax = this._config.auto_brightness_max;
+        this._postToIframe({
+            type: "macs:config",
+            assist_pipeline_entity,
+            auto_brightness_enabled: autoBrightnessEnabled,
+            auto_brightness_timeout_minutes: autoBrightnessTimeout,
+            auto_brightness_min: autoBrightnessMin,
+            auto_brightness_max: autoBrightnessMax
+        });
     }
 
     _sendMoodToIframe(mood) {

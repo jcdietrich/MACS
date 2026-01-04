@@ -19,7 +19,7 @@
 
 import { DEFAULTS } from "./constants.js";
 import { createDebugger } from "./debugger.js";
-import { loadAssistantOptions, loadWeatherOptions, readAssistStateInputs, readPipelineInputs, readWeatherInputs, syncAssistStateControls, syncConditionControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
+import { loadAssistantOptions, loadWeatherOptions, readAssistStateInputs, readAutoBrightnessInputs, readPipelineInputs, readWeatherInputs, syncAssistStateControls, syncConditionControls, syncAutoBrightnessControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
 
 const DEBUG_ENABLED = false;
 const debug = createDebugger("macsCardEditor", DEBUG_ENABLED);
@@ -119,24 +119,31 @@ const about = `
 		</div>
 	`;
 
-function createHtmlGroup({ id, name, label, hint = null, placeholder, units = false, minMax = false }) {
+function createHtmlGroup({ id, name, label, hint = null, placeholder, units = false, minMax = false, customInput = "", select = true, entity = true }) {
 	let htmlString = `
 		<!-- ${name} -->
 			<div class="group" id="${id}">
 				<div class="row">
-					<ha-switch id="${id}_enabled" label="${label}"></ha-switch>
+					<label for id="${id}_enabled">${label}</label>
+					<ha-switch id="${id}_enabled"></ha-switch>
 					${hint !== null ? `
 						<div class="hint">${hint}</div>
 					` : ""}
 				</div>
 
-				<div class="row">
-					<ha-combo-box id="${id}_select" label="${name} entity"></ha-combo-box>
-				</div>
+				${select ? `
+					<div class="row">
+						<ha-combo-box id="${id}_select" label="${name} entity"></ha-combo-box>
+					</div>
+				` : ""}
 
-				<div class="row">
-					<ha-textfield id="${id}_entity" label="${name} ID" placeholder="${placeholder}" class="fullwidth"></ha-textfield>
-				</div>
+				${entity ? `
+					<div class="row">
+						<ha-textfield id="${id}_entity" label="${name} ID" placeholder="${placeholder}" class="fullwidth"></ha-textfield>
+					</div>
+				` : ""}
+
+				${customInput || ""}
 
 				${units ? `
 					<div class="row">
@@ -198,6 +205,10 @@ function createInputGroup(groups, definition) {
 		placeholder: definition.placeholder,
 		units: !!definition.units,
 		minMax: !!definition.minMax,
+		select: typeof definition.select === "undefined" ? true : !!definition.select,
+		entity: typeof definition.entity === "undefined" ? true : !!definition.entity,
+		customInput: definition.customInput || "",
+		extraIds: Array.isArray(definition.extraIds) ? definition.extraIds : [],
 		selectItems: typeof definition.selectItems === "undefined" ? null : definition.selectItems,
 		selectValue: definition.selectValue,
 		selectOptions: typeof definition.selectOptions === "undefined" ? null : definition.selectOptions,
@@ -382,6 +393,23 @@ export class MacsCardEditor extends HTMLElement {
 			unitValue: this._config.battery_charge_sensor_unit ?? "%"
 		});
 
+				createInputGroup(inputGroups, {
+			id: "auto_brightness",
+			name: "Kiosk Mode",
+			label: "Enable Kiosk Mode?",
+			hint: "Applies to this card only.",
+			placeholder: "",
+			select: false,
+			entity: false,
+			minMax: true,
+			customInput: `
+				<div class="row">
+					<ha-textfield id="auto_brightness_timeout_minutes" label="Screen timeout (minutes)" placeholder="5" type="number" inputmode="decimal"></ha-textfield>
+				</div>
+			`,
+			extraIds: ["auto_brightness_timeout_minutes"]
+		});
+
 		htmlOutput = styleSheet;
 		htmlOutput += inputGroups.map((group) => group.html).join("");
 		htmlOutput += instructions;
@@ -431,11 +459,13 @@ export class MacsCardEditor extends HTMLElement {
 			const assistConfig = readAssistStateInputs(this.shadowRoot, null, this._config);
 			const pipelineConfig = readPipelineInputs(this.shadowRoot, null, this._config);
 			const weatherConfig = readWeatherInputs(this.shadowRoot, null, this._config);
+			const autoBrightnessConfig = readAutoBrightnessInputs(this.shadowRoot, null, this._config);
 			const next = {
 				type: "custom:macs-card",
 				...assistConfig,
 				...pipelineConfig,
 				...weatherConfig,
+				...autoBrightnessConfig,
 				assist_pipeline_entity: preferred,
 				assist_pipeline_custom: false,
 			};
@@ -460,6 +490,7 @@ export class MacsCardEditor extends HTMLElement {
 			this._batteryItems || []
 		);
 		syncConditionControls(this.shadowRoot, this._config, this._conditionItems || []);
+		syncAutoBrightnessControls(this.shadowRoot, this._config);
 	}
 
 	// wire up event listeners for user config changes
@@ -479,6 +510,7 @@ export class MacsCardEditor extends HTMLElement {
 			const assistConfig = readAssistStateInputs(this.shadowRoot, e, this._config);
 			const pipelineConfig = readPipelineInputs(this.shadowRoot, e, this._config);
 			const weatherConfig = readWeatherInputs(this.shadowRoot, e, this._config);
+			const autoBrightnessConfig = readAutoBrightnessInputs(this.shadowRoot, e, this._config);
 			debug("weather-config", weatherConfig);
 
 			// Commit new config
@@ -486,7 +518,8 @@ export class MacsCardEditor extends HTMLElement {
 				type: "custom:macs-card",
 				...assistConfig,
 				...pipelineConfig,
-				...weatherConfig
+				...weatherConfig,
+				...autoBrightnessConfig
 			};
 
 			this._config = { ...DEFAULTS, ...next };
@@ -500,11 +533,15 @@ export class MacsCardEditor extends HTMLElement {
 			if (!group || group.wire === false) return;
 
 			const baseId = group.id;
-			const ids = [
-				`${baseId}_enabled`,
-				`${baseId}_select`,
-				`${baseId}_entity`,
-			];
+			const ids = [`${baseId}_enabled`];
+
+			if (group.select !== false) {
+				ids.push(`${baseId}_select`);
+			}
+
+			if (group.entity !== false) {
+				ids.push(`${baseId}_entity`);
+			}
 
 			if (group.units) {
 				ids.push(`${baseId}_unit`);
@@ -512,6 +549,10 @@ export class MacsCardEditor extends HTMLElement {
 
 			if (group.minMax) {
 				ids.push(`${baseId}_min`, `${baseId}_max`);
+			}
+
+			if (Array.isArray(group.extraIds) && group.extraIds.length > 0) {
+				ids.push(...group.extraIds);
 			}
 
 			ids.forEach((id) => wireInput(this.shadowRoot, id, onChange));

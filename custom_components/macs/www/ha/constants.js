@@ -49,13 +49,17 @@ export const DEFAULTS = {
     battery_charge_sensor_max: "",
     weather_conditions_enabled: false,
     weather_conditions: "",
+    auto_brightness_enabled: false,
+    auto_brightness_timeout_minutes: 5,
+    auto_brightness_min: 0,
+    auto_brightness_max: 100,
 };
 
 export const DEFAULT_MAX_TEMP_C = 30;
 export const DEFAULT_MIN_TEMP_C = 5;
 export const DEFAULT_MAX_WIND_MPH = 50;
 export const DEFAULT_MIN_WIND_MPH = 10;
-export const DEFAULT_MAX_RAIN_MM = 15;
+export const DEFAULT_MAX_RAIN_MM = 10;
 export const DEFAULT_MIN_RAIN_MM = 0; 
 
 

@@ -237,6 +237,42 @@ export function syncConditionControls(root, config, conditionItems) {
 	}
 }
 
+export function syncAutoBrightnessControls(root, config) {
+	// Sync auto-brightness controls from the saved config into the DOM.
+	if (!root) {
+		return;
+	}
+
+	var enabled = !!(config && config.auto_brightness_enabled);
+	var toggle = root.getElementById("auto_brightness_enabled");
+	var timeout = root.getElementById("auto_brightness_timeout_minutes");
+	var minBrightness = root.getElementById("auto_brightness_min");
+	var maxBrightness = root.getElementById("auto_brightness_max");
+
+	if (toggle && toggle.checked !== enabled) {
+		toggle.checked = enabled;
+	}
+
+	if (timeout) timeout.disabled = !enabled;
+	if (minBrightness) minBrightness.disabled = !enabled;
+	if (maxBrightness) maxBrightness.disabled = !enabled;
+
+	var timeoutVal = config && config.auto_brightness_timeout_minutes;
+	if (timeout && timeout.value !== timeoutVal) {
+		timeout.value = timeoutVal === null || typeof timeoutVal === "undefined" ? "" : String(timeoutVal);
+	}
+
+	var minVal = config && config.auto_brightness_min;
+	if (minBrightness && minBrightness.value !== minVal) {
+		minBrightness.value = minVal === null || typeof minVal === "undefined" ? "" : String(minVal);
+	}
+
+	var maxVal = config && config.auto_brightness_max;
+	if (maxBrightness && maxBrightness.value !== maxVal) {
+		maxBrightness.value = maxVal === null || typeof maxVal === "undefined" ? "" : String(maxVal);
+	}
+}
+
 export function readAssistStateInputs(root, e, config) {
 	// Read assist state inputs from the DOM, or fall back to config.
 	if (!root) {
@@ -293,6 +329,57 @@ export function readPipelineInputs(root, e, config) {
 		assist_pipeline_enabled: assist_pipeline_enabled,
 		assist_pipeline_entity: pipeline_entity,
 		assist_pipeline_custom: pipeline_custom,
+	};
+}
+
+export function readAutoBrightnessInputs(root, e, config) {
+	// Read auto-brightness inputs from the DOM, or fall back to config.
+	if (!root) {
+		return {
+			auto_brightness_enabled: !!(config && config.auto_brightness_enabled),
+			auto_brightness_timeout_minutes: String((config && config.auto_brightness_timeout_minutes) || ""),
+			auto_brightness_min: String((config && config.auto_brightness_min) || ""),
+			auto_brightness_max: String((config && config.auto_brightness_max) || ""),
+		};
+	}
+
+	var enabled = !!root.getElementById("auto_brightness_enabled")?.checked;
+	var timeout = root.getElementById("auto_brightness_timeout_minutes");
+	var minBrightness = root.getElementById("auto_brightness_min");
+	var maxBrightness = root.getElementById("auto_brightness_max");
+
+	if (timeout) timeout.disabled = !enabled;
+	if (minBrightness) minBrightness.disabled = !enabled;
+	if (maxBrightness) maxBrightness.disabled = !enabled;
+
+	var parseNumber = function (value) {
+		if (value === "" || value === null || typeof value === "undefined") {
+			return "";
+		}
+		var num = Number(value);
+		return Number.isFinite(num) ? num : "";
+	};
+
+	var rawTimeout = timeout ? timeout.value : undefined;
+	if (rawTimeout === "" || rawTimeout === null || typeof rawTimeout === "undefined") {
+		rawTimeout = config && config.auto_brightness_timeout_minutes;
+	}
+
+	var rawMin = minBrightness ? minBrightness.value : undefined;
+	if (rawMin === "" || rawMin === null || typeof rawMin === "undefined") {
+		rawMin = config && config.auto_brightness_min;
+	}
+
+	var rawMax = maxBrightness ? maxBrightness.value : undefined;
+	if (rawMax === "" || rawMax === null || typeof rawMax === "undefined") {
+		rawMax = config && config.auto_brightness_max;
+	}
+
+	return {
+		auto_brightness_enabled: enabled,
+		auto_brightness_timeout_minutes: parseNumber(rawTimeout),
+		auto_brightness_min: parseNumber(rawMin),
+		auto_brightness_max: parseNumber(rawMax),
 	};
 }
 

@@ -98,6 +98,13 @@ let idleFloatBase = IDLE_FLOAT_BASE_VMIN;
 let idleFloatDuration = IDLE_FLOAT_BASE_SECONDS;
 let idleFloatJitterTimer = null;
 let weatherConditions = {};
+let autoBrightnessEnabled = false;
+let autoBrightnessTimeoutMs = 0;
+let autoBrightnessMin = 0;
+let autoBrightnessMax = 100;
+let autoBrightnessTimer = null;
+let autoBrightnessIdle = false;
+let baseBrightness = 100;
 
 let rainParticles = null;
 let snowParticles = null;
@@ -112,6 +119,11 @@ const clampPercent = (value, fallback = 0) => {
 };
 
 const toIntensity = (value, fallback = 0) => clampPercent(value, fallback) / 100;
+const clampRange = (value, min, max) => Math.min(max, Math.max(min, value));
+const toNumber = (value, fallback) => {
+	const num = Number(value);
+	return Number.isFinite(num) ? num : fallback;
+};
 const isTruthy = (value) => {
 	if (value === null || value === undefined) return false;
 	const v = value.toString().trim().toLowerCase();
@@ -435,27 +447,90 @@ function setBattery(value){
 	document.documentElement.style.setProperty('--battery-intensity', intensity.toString());
 }
 
-// set brightness level (0-100)
-function setBrightness(userBrightness){
-	const brightness = Number(userBrightness);
-
+const setBrightnessValue = (value) => {
+	const brightness = Number(value);
 	if (!Number.isFinite(brightness)) return;
+	if (brightness < 0 || brightness > 100) return;
 
-    if (brightness < 0 || brightness > 100) return;
-
-	// convert to 0–1 for opacity
-    let opacity = 100;
-    if (brightness === 0){
-        opacity = 0;
-    }
-    else if (brightness < 100){
-	    opacity = brightness / 100;
-    }
+	let opacity = 100;
+	if (brightness === 0) {
+		opacity = 0;
+	} else if (brightness < 100) {
+		opacity = brightness / 100;
+	}
 
 	document.documentElement.style.setProperty(
 		'--brightness-level',
 		opacity.toString()
 	);
+};
+
+const applyBrightness = () => {
+	if (!autoBrightnessEnabled) {
+		setBrightnessValue(baseBrightness);
+		return;
+	}
+
+	const minValue = clampPercent(autoBrightnessMin, 0);
+	const maxValue = clampPercent(autoBrightnessMax, 100);
+	const safeMax = Math.max(minValue, maxValue);
+	const activeBrightness = clampRange(baseBrightness, minValue, safeMax);
+	const target = autoBrightnessIdle ? minValue : activeBrightness;
+
+	setBrightnessValue(target);
+};
+
+const scheduleAutoBrightness = () => {
+	if (autoBrightnessTimer) {
+		clearTimeout(autoBrightnessTimer);
+		autoBrightnessTimer = null;
+	}
+
+	if (!autoBrightnessEnabled) return;
+
+	if (!Number.isFinite(autoBrightnessTimeoutMs) || autoBrightnessTimeoutMs <= 0) {
+		autoBrightnessIdle = false;
+		applyBrightness();
+		return;
+	}
+
+	autoBrightnessTimer = setTimeout(() => {
+		autoBrightnessIdle = true;
+		applyBrightness();
+	}, autoBrightnessTimeoutMs);
+};
+
+const registerAutoBrightnessActivity = () => {
+	if (!autoBrightnessEnabled) return;
+
+	if (autoBrightnessIdle) {
+		autoBrightnessIdle = false;
+		applyBrightness();
+	}
+
+	scheduleAutoBrightness();
+};
+
+function setAutoBrightnessConfig(config){
+	const nextEnabled = !!(config && config.auto_brightness_enabled);
+	autoBrightnessEnabled = nextEnabled;
+	const timeoutMinutes = toNumber(config?.auto_brightness_timeout_minutes, 0);
+	autoBrightnessTimeoutMs = timeoutMinutes > 0 ? timeoutMinutes * 60 * 1000 : 0;
+	autoBrightnessMin = config?.auto_brightness_min ?? autoBrightnessMin;
+	autoBrightnessMax = config?.auto_brightness_max ?? autoBrightnessMax;
+	autoBrightnessIdle = false;
+	scheduleAutoBrightness();
+	applyBrightness();
+}
+
+// set brightness level (0-100)
+function setBrightness(userBrightness){
+	const brightness = Number(userBrightness);
+	if (!Number.isFinite(brightness)) return;
+	if (brightness < 0 || brightness > 100) return;
+
+	baseBrightness = brightness;
+	applyBrightness();
 }
 
 
@@ -483,6 +558,14 @@ if (conditionsParam !== null) {
 setBattery(qs.get('battery') ?? '0');
 setBrightness(qs.get('brightness') ?? '100');
 
+const activityEvents = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"];
+activityEvents.forEach((eventName) => {
+	window.addEventListener(eventName, registerAutoBrightnessActivity, { passive: true });
+});
+document.addEventListener("visibilitychange", () => {
+	if (!document.hidden) registerAutoBrightnessActivity();
+});
+
 window.addEventListener('resize', () => {
 	setRainViewBoxFromSvg();
 	updateRainDrops(rainIntensity < 0 ? 0 : rainIntensity);
@@ -494,6 +577,13 @@ window.addEventListener('message', (e) => {
     if (e.source !== window.parent) return;
     if (e.origin !== window.location.origin) return;
     if (!e.data || typeof e.data !== 'object') return;
+
+	if (e.data.type === 'macs:config') {
+		if (typeof e.data.auto_brightness_enabled !== "undefined") {
+			setAutoBrightnessConfig(e.data);
+		}
+		return;
+	}
 
     if (e.data.type === 'macs:mood') {
         setMood(e.data.mood || 'idle');
