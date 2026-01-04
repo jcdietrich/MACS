@@ -23,6 +23,112 @@ const DEBUG_ENABLED = false;
 const debug = createDebugger("macsCardEditor", DEBUG_ENABLED);
 
 
+const cssUrl = new URL("./editor.css", import.meta.url).toString();
+const styleSheet = `<link rel="stylesheet" href="${cssUrl}">`;
+
+const instructions = `
+	<!-- Show dialogue -->
+		<div class="group">
+			<div class="row">
+				<label>Custom Integrations</label>
+			<div>
+				<p>For custom integrations, Macs works like any other device and exposes entities which allow full control over his behavior.<br>Some examples are given below:</p>
+				<div class="entity-grid">
+					<div class="header">Entity</div>
+					<div class="header">Action</div>
+
+					<div>select.macs_mood</div>
+					<div>macs.set_mood</div>
+
+					<div>select.macs_weather</div>
+					<div>macs.set_weather</div>
+
+						<div>number.macs_brightness</div>
+						<div>macs.set_brightness</div>
+
+						<div>number.macs_temperature</div>
+						<div>macs.set_temperature</div>
+
+						<div>number.macs_windspeed</div>
+						<div>macs.set_windspeed</div>
+
+						<div>number.macs_rainfall</div>
+						<div>macs.set_rainfall</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	`;
+
+const about = `
+	<!-- About -->
+		<div class="group">
+			<div class="row about">
+				<div class="about-toggle" tabindex="0" role="button">
+					About M.A.C.S. 
+					<span class="about-arrow">&gt;</span>
+				</div>
+			</div>
+			<div class="about-content" hidden>
+				<p>
+					<strong>M.A.C.S.</strong> (Mood-Aware Character SVG) is a playful Home Assistant card that adds personality to your smart home, responding visually to system events such as voice interactions and custom automations.
+				</p>
+
+				<p>
+					M.A.C.S. is being developed by <strong>Glyn Davidson</strong> (Developer, climber, and chronic tinkerer of occasionally useful tools) in his free time.
+				</p>
+
+				<p class="support">
+					If you find M.A.C.S. useful and would like to encourage its ongoing development with new features and bug fixes, please consider 
+					<br>
+					<ha-icon icon="mdi:coffee"></ha-icon>
+					<a href="https://buymeacoffee.com/glyndavidson" target="_blank" rel="noopener">
+						buying me a coffee
+					</a>.
+				</p>
+			</div>
+		</div>
+	`;
+
+function createHtmlGroup({id, name, label, hint=null, placeholder, units=false, minMax=false}){
+	let htmlString = `
+		<!-- ${name} -->
+			<div class="group" id="${id}">
+				<div class="row">
+					<ha-switch id="${id}_enabled" label="${label}"></ha-switch>
+					${hint !== null ? `
+						<div class="hint">${hint}</div>
+					` : ""}
+				</div>
+
+				<div class="row">
+					<ha-combo-box id="${id}_select" label="${name} entity"></ha-combo-box>
+				</div>
+
+				<div class="row">
+					<ha-textfield id="${id}_entity" label="${name} ID" placeholder="${placeholder}"></ha-textfield>
+				</div>
+
+				${units ? `
+					<div class="row">
+						<ha-combo-box id="${id}_unit" label="${name} units"></ha-combo-box>
+					</div>
+				` : ""}
+
+				${minMax ? `
+					<div class="row double">
+						<ha-textfield id="${id}_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
+						<ha-textfield id="${id}_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
+					</div>
+				` : ""}
+			</div>
+		`;
+	return htmlString;
+}
+
+
+
+
 
 export class MacsCardEditor extends HTMLElement {
 	// get the defaults, and apply user's config
@@ -38,227 +144,89 @@ export class MacsCardEditor extends HTMLElement {
 
 	// render the card editor UI
 	async _render() {
-		if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+		if (!this.shadowRoot){
+			this.attachShadow({ mode: "open" });
+		}
+		
+		let htmlOutput;
 
 		const { satItems, pipelineItems, preferred } = await loadAssistantOptions(this._hass);
 		const weatherItems = await loadWeatherOptions(this._hass);
 
-		// Build DOM
-		this.shadowRoot.innerHTML = `
-			<style>
-				.group{margin-bottom:24px;border:1px solid var(--divider-color);border-radius:8px; padding:12px}
-				.row{display:block;width:100%;margin-bottom:12px;}
-				label{display:block;font-weight:500;margin-bottom:6px;}
-				.hint{opacity:0.7;font-size:90%;margin-top:4px;}
-				#satellite_select, #satellite_entity, #pipeline_select, #pipeline_id,
-				#temperature_select, #temperature_entity, #temperature_unit, #temperature_min, #temperature_max,
-				#wind_select, #wind_entity, #wind_unit, #wind_min, #wind_max,
-				#precipitation_select, #precipitation_entity, #precipitation_unit, #precipitation_min, #precipitation_max { width: 100%; }
-				.double{display: flex;gap:12px;}
-				.double > * {flex: 1 1 0;min-width: 0;}
-				.entity-grid {display: grid;grid-template-columns: 1fr 1fr;gap: 6px 12px;}
-				.entity-grid .header {font-weight: 600;border-bottom: 1px solid var(--divider-color);padding-bottom: 4px;}
-				.entity-grid > div {white-space: nowrap;}
-				.about-toggle{cursor:pointer;opacity:0.6;}
-				.about-content{padding-left:10px;opacity:0.9;}
-			</style>
+		// Build DOM...
+		
+		const htmlGroupAssistStates = createHtmlGroup({
+			id: "assist_satellite",
+			name: "Assist Satellite",
+			label: "React to Wake-Words?",
+			hint: "When enabled, Macs will mirror your selected Assist satellite.<br>(listening, processing, responding, idle, etc)",
+			placeholder: "assist_satellite.my_device",
+		});
 
-			<!-- Auto respond to assistant states -->
-			<div class="group">
-				<div class="row">
-					<label for="assist_states_enabled">React to Wake-Words?</label>
-					<ha-switch id="assist_states_enabled"></ha-switch>
-					<div class="hint">When enabled, Macs will mirror your selected Assist satellite.<br>(listening, processing, responding, idle, etc)</div>
-				</div>
+		const htmlGroupShowDialogue = createHtmlGroup({
+			id: "assist_pipeline",
+			name: "Assistant Pipeline",
+			label: "Display Dialogue?",
+			hint: "When enabled, Macs will display conversations with your assistant.",
+			placeholder: "01k..."
+		});
 
-				<div class="row">
-					<ha-combo-box id="satellite_select" label="Assist satellite"></ha-combo-box>
-				</div>
+		const htmlGroupTemperature = createHtmlGroup({
+			id: "temperature_sensor",
+			name: "Temperature",
+			label: "Use Temperature Sensor?",
+			hint: null,
+			placeholder: "sensor.my_temperature",
+			units: true,
+			minMax: true
+		});
 
-				<div class="row">
-					<ha-textfield id="satellite_entity" label="Assist Satellite Entity ID" placeholder="assist_satellite.my_device"></ha-textfield>
-				</div>
-			</div>
+		const htmlGroupWindspeed = createHtmlGroup({
+			id: "wind_sensor",
+			name: "Wind Sensor",
+			label: "Use Wind Sensor?",
+			hint: null,
+			placeholder: "sensor.my_wind_speed",
+			units: true,
+			minMax: true
+		});
 
-			<!-- Show dialogue -->
-			<div class="group">
-				<div class="row">
-					<label for="assist_pipeline_enabled">Display Dialogue?</label>
-					<ha-switch id="assist_pipeline_enabled"></ha-switch>
-					<div class="hint">When enabled, Macs will display conversations with your assistant.</div>
-				</div>
+		const htmlGroupRainfall = createHtmlGroup({
+			id: "precipitation_sensor",
+			name: "Rainfall Sensor",
+			label: "Use Rainfall Sensor?",
+			hint: null,
+			placeholder: "sensor.my_rain",
+			units: true,
+			minMax: true
+		});
 
-				<div class="row">
-					<ha-combo-box id="pipeline_select" label="Assistant"></ha-combo-box>
-				</div>
+		const htmlGroupSnow = createHtmlGroup({
+			id: "weather_condition",
+			name: "Weather Condition",
+			label: "Auto-Detect Snowing?",
+			hint: null,
+			placeholder: "weather.forecast_home",
+		});
 
-				<div class="row">
-					<ha-textfield id="pipeline_id" label="Assistant Pipeline ID" placeholder="01k..."></ha-textfield>
-				</div>
-			</div>
+		htmlOutput = styleSheet;
+		htmlOutput += htmlGroupAssistStates;
+		htmlOutput += htmlGroupShowDialogue;
+		htmlOutput += htmlGroupTemperature;
+		htmlOutput += htmlGroupWindspeed;
+		htmlOutput += htmlGroupRainfall;
+		htmlOutput += htmlGroupSnow;	
+		htmlOutput += instructions;	
+		htmlOutput += about;
 
-			<!-- Temperature sensor -->
-			<div class="group">
-				<div class="row">
-					<label for="temperature_sensor_enabled">Use Temperature Sensor?</label>
-					<ha-switch id="temperature_sensor_enabled"></ha-switch>
-				</div>
-
-				<div class="row">
-					<ha-combo-box id="temperature_select" label="Temperature sensor"></ha-combo-box>
-				</div>
-
-				<div class="row">
-					<ha-textfield id="temperature_entity" label="Temperature Sensor ID" placeholder="sensor.my_temperature"></ha-textfield>
-				</div>
-
-				<div class="row">
-					<ha-combo-box id="temperature_unit" label="Temperature units"></ha-combo-box>
-				</div>
-
-				<div class="row double">
-					<ha-textfield id="temperature_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
-					<ha-textfield id="temperature_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
-				</div>
-			</div>
-
-			<!-- Wind sensor -->
-			<div class="group">
-				<div class="row">
-					<label for="wind_sensor_enabled">Use Wind Sensor?</label>
-					<ha-switch id="wind_sensor_enabled"></ha-switch>
-				</div>
-
-				<div class="row">
-					<ha-combo-box id="wind_select" label="Wind speed sensor"></ha-combo-box>
-				</div>
-
-				<div class="row">
-					<ha-textfield id="wind_entity" label="Wind Speed Sensor ID" placeholder="sensor.my_wind_speed"></ha-textfield>
-				</div>
-
-				<div class="row">
-					<ha-combo-box id="wind_unit" label="Wind speed units"></ha-combo-box>
-				</div>
-
-				<div class="row double">
-					<ha-textfield id="wind_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
-					<ha-textfield id="wind_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
-				</div>
-			</div>
-
-			<!-- Rain / precipitation sensor -->
-			<div class="group">
-				<div class="row">
-					<label for="precipitation_sensor_enabled">Use Rainfall Sensor?</label>
-					<ha-switch id="precipitation_sensor_enabled"></ha-switch>
-				</div>
-
-				<div class="row">
-					<ha-combo-box id="precipitation_select" label="Rainfall sensor"></ha-combo-box>
-				</div>
-
-				<div class="row">
-					<ha-textfield id="precipitation_entity" label="Rainfall Sensor ID" placeholder="sensor.my_rain"></ha-textfield>
-				</div>
-
-				<div class="row">
-					<ha-combo-box id="precipitation_unit" label="Rainfall units"></ha-combo-box>
-				</div>
-
-				<div class="row double">
-					<ha-textfield id="precipitation_min" label="Min value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
-					<ha-textfield id="precipitation_max" label="Max value" placeholder="Leave empty for defaults" type="number" inputmode="decimal"></ha-textfield>
-				</div>
-			</div>
-
-			<!-- Snow sensor -->
-			<div class="group">
-				<div class="row">
-					<label for="weather_condition_enabled">Auto-Detect Snowing?</label>
-					<ha-switch id="weather_condition_enabled"></ha-switch>
-				</div>
-
-				<div class="row">
-					<ha-combo-box id="weather_source_select" label="weather condition entity"></ha-combo-box>
-				</div>
-
-				<div class="row">
-					<ha-textfield id="weather_entity" label="Weather Condition  ID" placeholder="weather.forecast_home"></ha-textfield>
-				</div>
-			</div>
-
-			<!-- Show dialogue -->
-			<div class="group">
-				<div class="row">
-					<label>Custom Integrations</label>
-					<div>
-						<p>For custom integrations, Macs works like any other device and exposes entities which allow full control over his behavior.<br>Some examples are given below:</p>
-						<div class="entity-grid">
-							<div class="header">Entity</div>
-							<div class="header">Action</div>
-
-							<div>select.macs_mood</div>
-							<div>macs.set_mood</div>
-
-							<div>select.macs_weather</div>
-							<div>macs.set_weather</div>
-
-								<div>number.macs_brightness</div>
-								<div>macs.set_brightness</div>
-
-								<div>number.macs_temperature</div>
-								<div>macs.set_temperature</div>
-
-								<div>number.macs_windspeed</div>
-								<div>macs.set_windspeed</div>
-
-								<div>number.macs_rainfall</div>
-								<div>macs.set_rainfall</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-
-			<!-- About -->
-			<div class="group">
-				<div class="row about">
-					<div class="about-toggle" tabindex="0" role="button">
-						About M.A.C.S. 
-						<span class="about-arrow">&gt;</span>
-					</div>
-				</div>
-				<div class="about-content" hidden>
-					<p>
-						<strong>M.A.C.S.</strong> (Mood-Aware Character SVG) is a playful Home Assistant card that adds personality to your smart home, responding visually to system events such as voice interactions and custom automations.
-					</p>
-
-					<p>
-						M.A.C.S. is being developed by <strong>Glyn Davidson</strong> (Developer, climber, and chronic tinkerer of occasionally useful tools) in his free time.
-					</p>
-
-					<p class="support">
-						If you find M.A.C.S. useful and would like to encourage its ongoing development with new features and bug fixes, please consider 
-						<br>
-						<ha-icon icon="mdi:coffee"></ha-icon>
-						<a href="https://buymeacoffee.com/glyndavidson" target="_blank" rel="noopener">
-							buying me a coffee
-						</a>.
-					</p>
-				</div>
-			</div>
-		`;
-
+		this.shadowRoot.innerHTML = htmlOutput;
 
 
 		// Page has rendered
 		this._rendered = true;
-		//this._pipelinesLoaded = false;
-
 
 		// Add satellites to combobox
-		const satSel = this.shadowRoot.getElementById("satellite_select");
+		const satSel = this.shadowRoot.getElementById("assist_satellite_select");
 		// add selects to combobox
 		if (satSel) {
 			satSel.items = satItems;
@@ -276,7 +244,7 @@ export class MacsCardEditor extends HTMLElement {
 
 
 		// Add pipelines to combobox
-		const sel = this.shadowRoot.getElementById("pipeline_select");
+		const sel = this.shadowRoot.getElementById("assist_pipeline_select");
 		if (sel) {
 			sel.items = pipelineItems;
 			sel.itemLabelPath = "name";
@@ -293,7 +261,7 @@ export class MacsCardEditor extends HTMLElement {
 		}
 
 		// Weather sensors: temperature
-		const tempSel = this.shadowRoot.getElementById("temperature_select");
+		const tempSel = this.shadowRoot.getElementById("temperature_sensor_select");
 		if (tempSel) {
 			tempSel.items = weatherItems.temperatureItems;
 			tempSel.itemLabelPath = "name";
@@ -308,7 +276,7 @@ export class MacsCardEditor extends HTMLElement {
 		}
 
 		// Weather sensors: wind
-		const windSel = this.shadowRoot.getElementById("wind_select");
+		const windSel = this.shadowRoot.getElementById("wind_sensor_select");
 		if (windSel) {
 			windSel.items = weatherItems.windItems;
 			windSel.itemLabelPath = "name";
@@ -323,7 +291,7 @@ export class MacsCardEditor extends HTMLElement {
 		}
 
 		// Weather sensors: precipitation
-		const rainSel = this.shadowRoot.getElementById("precipitation_select");
+		const rainSel = this.shadowRoot.getElementById("precipitation_sensor_select");
 		if (rainSel) {
 			rainSel.items = weatherItems.precipitationItems;
 			rainSel.itemLabelPath = "name";
@@ -338,7 +306,7 @@ export class MacsCardEditor extends HTMLElement {
 		}
 
 		// Weather: temperature sensor units
-		const temperatureUnitSelect = this.shadowRoot.getElementById("temperature_unit");
+		const temperatureUnitSelect = this.shadowRoot.getElementById("temperature_sensor_unit");
 		if (temperatureUnitSelect) {
 			temperatureUnitSelect.items = [
 				{ id: "", name: "Auto" },
@@ -351,7 +319,7 @@ export class MacsCardEditor extends HTMLElement {
             }
 
             // Weather: wind units
-            const windUnitSelect = this.shadowRoot.getElementById("wind_unit");
+            const windUnitSelect = this.shadowRoot.getElementById("wind_sensor_unit");
             if (windUnitSelect) {
                 windUnitSelect.items = [
                     { id: "", name: "Auto" },
@@ -366,7 +334,7 @@ export class MacsCardEditor extends HTMLElement {
             }
 
 			// Weather: precipitation units
-            const precipitationUnitSelect = this.shadowRoot.getElementById("precipitation_unit");
+            const precipitationUnitSelect = this.shadowRoot.getElementById("precipitation_sensor_unit");
             if (precipitationUnitSelect) {
                 precipitationUnitSelect.items = [
                     { id: "", name: "Auto" },
@@ -380,18 +348,18 @@ export class MacsCardEditor extends HTMLElement {
             }
 
 		// Weather min/max fields from config
-		const tempMin = this.shadowRoot.getElementById("temperature_min");
-		const tempMax = this.shadowRoot.getElementById("temperature_max");
+		const tempMin = this.shadowRoot.getElementById("temperature_sensor_min");
+		const tempMax = this.shadowRoot.getElementById("temperature_sensor_max");
 		if (tempMin) tempMin.value = (this._config.temperature_min ?? "").toString();
 		if (tempMax) tempMax.value = (this._config.temperature_max ?? "").toString();
 
-		const windMin = this.shadowRoot.getElementById("wind_min");
-		const windMax = this.shadowRoot.getElementById("wind_max");
+		const windMin = this.shadowRoot.getElementById("wind_sensor_min");
+		const windMax = this.shadowRoot.getElementById("wind_sensor_max");
 		if (windMin) windMin.value = (this._config.wind_min ?? "").toString();
 		if (windMax) windMax.value = (this._config.wind_max ?? "").toString();
 
-		const precipMin = this.shadowRoot.getElementById("precipitation_min");
-		const precipMax = this.shadowRoot.getElementById("precipitation_max");
+		const precipMin = this.shadowRoot.getElementById("precipitation_sensor_min");
+		const precipMax = this.shadowRoot.getElementById("precipitation_sensor_max");
 		if (precipMin) precipMin.value = (this._config.precipitation_min ?? "").toString();
 		if (precipMax) precipMax.value = (this._config.precipitation_max ?? "").toString();
 
@@ -472,17 +440,17 @@ export class MacsCardEditor extends HTMLElement {
 			this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true }));
 		};
 
-		["assist_states_enabled","satellite_select","satellite_entity","assist_pipeline_enabled","pipeline_select","pipeline_id"].forEach((id) => {
+		["assist_satellite_enabled","assist_satellite_select","assist_satellite_entity","assist_pipeline_enabled","assist_pipeline_select","assist_pipeline_entity"].forEach((id) => {
 			const el = this.shadowRoot.getElementById(id);
 			if (!el) return;
 			el.addEventListener("change", onChange);
-			if (id === "pipeline_select" || id === "satellite_select") el.addEventListener("value-changed", onChange);
+			if (id === "assist_satellite_select" || id === "assist_pipeline_select") el.addEventListener("value-changed", onChange);
 		});
 
 		[
-			"temperature_sensor_enabled","temperature_select","temperature_entity","temperature_unit","temperature_min","temperature_max",
-			"wind_sensor_enabled","wind_select","wind_entity","wind_unit","wind_min","wind_max",
-			"precipitation_sensor_enabled","precipitation_select","precipitation_entity","precipitation_unit","precipitation_min","precipitation_max"
+			"temperature_sensor_enabled","temperature_sensor_select","temperature_sensor_entity","temperature_sensor_unit","temperature_sensor_min","temperature_sensor_max",
+			"wind_sensor_enabled","wind_sensor_select","wind_sensor_entity","wind_sensor_unit","wind_sensor_min","wind_sensor_max",
+			"precipitation_sensor_enabled","precipitation_sensor_select","precipitation_sensor_entity","precipitation_sensor_unit","precipitation_sensor_min","precipitation_sensor_max"
 		].forEach((id) => {
 			const el = this.shadowRoot.getElementById(id);
 			if (!el) return;

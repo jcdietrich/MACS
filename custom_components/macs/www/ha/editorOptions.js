@@ -110,9 +110,9 @@ export function syncAssistStateControls(root, config, satelliteItems) {
 	}
 
 	var assistStateAutoMood = !!(config && config.assist_states_enabled);
-	var assistStateAutoMoodToggle = root.getElementById("assist_states_enabled");
-	var satelliteSelect = root.getElementById("satellite_select");
-	var satelliteEntity = root.getElementById("satellite_entity");
+	var assistStateAutoMoodToggle = root.getElementById("assist_satellite_enabled");
+	var satelliteSelect = root.getElementById("assist_satellite_select");
+	var satelliteEntity = root.getElementById("assist_satellite_entity");
 
 	if (assistStateAutoMoodToggle && assistStateAutoMoodToggle.checked !== assistStateAutoMood) {
 		assistStateAutoMoodToggle.checked = assistStateAutoMood;
@@ -157,8 +157,8 @@ export function syncPipelineControls(root, config, pipelineItems) {
 
 	var dialogueEnabled = !!(config && config.assist_pipeline_enabled);
 	var dialogueEnabledToggle = root.getElementById("assist_pipeline_enabled");
-	var pipelineSelect = root.getElementById("pipeline_select");
-	var pipelineId = root.getElementById("pipeline_id");
+	var pipelineSelect = root.getElementById("assist_pipeline_select");
+	var pipelineId = root.getElementById("assist_pipeline_entity");
 
 	if (dialogueEnabledToggle && dialogueEnabledToggle.checked !== dialogueEnabled) {
 		dialogueEnabledToggle.checked = dialogueEnabled;
@@ -201,9 +201,9 @@ export function readAssistStateInputs(root, e, config) {
 		};
 	}
 
-	var assistStateAutoMood = !!root.getElementById("assist_states_enabled")?.checked;
-	var satelliteSelect = root.getElementById("satellite_select");
-	var satelliteEntity = root.getElementById("satellite_entity");
+	var assistStateAutoMood = !!root.getElementById("assist_satellite_enabled")?.checked;
+	var satelliteSelect = root.getElementById("assist_satellite_select");
+	var satelliteEntity = root.getElementById("assist_satellite_entity");
 	var satelliteSelectValue = comboValue(satelliteSelect, e);
 	var satManualVal = (satelliteEntity && satelliteEntity.value) || "";
 	var assistSatelliteCustom = satelliteSelectValue === "custom";
@@ -231,8 +231,8 @@ export function readPipelineInputs(root, e, config) {
 	}
 
 	var assist_pipeline_enabled = !!root.getElementById("assist_pipeline_enabled")?.checked;
-	var pipelineSelect = root.getElementById("pipeline_select");
-	var pipelineIdInput = root.getElementById("pipeline_id");
+	var pipelineSelect = root.getElementById("assist_pipeline_select");
+	var pipelineIdInput = root.getElementById("assist_pipeline_entity");
 	var pipelineValue = comboValue(pipelineSelect, e);
 	var pipelineId = (pipelineIdInput && pipelineIdInput.value) || "";
 	var pipeline_custom = pipelineValue === "custom";
@@ -424,11 +424,11 @@ export function syncWeatherControls(root, config, items) {
 		items.temperatureItems,
 		{
 			enabled: "temperature_sensor_enabled",
-			select: "temperature_select",
-			entity: "temperature_entity",
-			unit: "temperature_unit",
-			min: "temperature_min",
-			max: "temperature_max",
+			select: "temperature_sensor_select",
+			entity: "temperature_sensor_entity",
+			unit: "temperature_sensor_unit",
+			min: "temperature_sensor_min",
+			max: "temperature_sensor_max",
 		},
 		"temperature_sensor_custom",
 		"temperature_sensor_entity",
@@ -444,11 +444,11 @@ export function syncWeatherControls(root, config, items) {
 		items.windItems,
 		{
 			enabled: "wind_sensor_enabled",
-			select: "wind_select",
-			entity: "wind_entity",
-			unit: "wind_unit",
-			min: "wind_min",
-			max: "wind_max",
+			select: "wind_sensor_select",
+			entity: "wind_sensor_entity",
+			unit: "wind_sensor_unit",
+			min: "wind_sensor_min",
+			max: "wind_sensor_max",
 		},
 		"wind_sensor_custom",
 		"wind_sensor_entity",
@@ -464,11 +464,11 @@ export function syncWeatherControls(root, config, items) {
 		items.precipitationItems,
 		{
 			enabled: "precipitation_sensor_enabled",
-			select: "precipitation_select",
-			entity: "precipitation_entity",
-			unit: "precipitation_unit",
-			min: "precipitation_min",
-			max: "precipitation_max",
+			select: "precipitation_sensor_select",
+			entity: "precipitation_sensor_entity",
+			unit: "precipitation_sensor_unit",
+			min: "precipitation_sensor_min",
+			max: "precipitation_sensor_max",
 		},
 		"precipitation_sensor_custom",
 		"precipitation_sensor_entity",
@@ -569,11 +569,11 @@ export function readWeatherInputs(root, e, config) {
 			e,
 			{
 				enabled: "temperature_sensor_enabled",
-				select: "temperature_select",
-				entity: "temperature_entity",
-				unit: "temperature_unit",
-				min: "temperature_min",
-				max: "temperature_max",
+				select: "temperature_sensor_select",
+				entity: "temperature_sensor_entity",
+				unit: "temperature_sensor_unit",
+				min: "temperature_sensor_min",
+				max: "temperature_sensor_max",
 			},
 			config,
 			"temperature_sensor_enabled",
@@ -588,11 +588,11 @@ export function readWeatherInputs(root, e, config) {
 			e,
 			{
 				enabled: "wind_sensor_enabled",
-				select: "wind_select",
-				entity: "wind_entity",
-				unit: "wind_unit",
-				min: "wind_min",
-				max: "wind_max",
+				select: "wind_sensor_select",
+				entity: "wind_sensor_entity",
+				unit: "wind_sensor_unit",
+				min: "wind_sensor_min",
+				max: "wind_sensor_max",
 			},
 			config,
 			"wind_sensor_enabled",
@@ -607,11 +607,11 @@ export function readWeatherInputs(root, e, config) {
 			e,
 			{
 				enabled: "precipitation_sensor_enabled",
-				select: "precipitation_select",
-				entity: "precipitation_entity",
-				unit: "precipitation_unit",
-				min: "precipitation_min",
-				max: "precipitation_max",
+				select: "precipitation_sensor_select",
+				entity: "precipitation_sensor_entity",
+				unit: "precipitation_sensor_unit",
+				min: "precipitation_sensor_min",
+				max: "precipitation_sensor_max",
 			},
 			config,
 			"precipitation_sensor_enabled",
