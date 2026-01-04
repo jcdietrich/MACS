@@ -8,23 +8,13 @@
 /** 
  * TO-DO
  * --------
- * Also add a macs.show_message
- * 
- * - Monitor idle time and set bored, then sleep state/mood.
- * - Allow the user to configure the mood timeout/duration when a conversation ends.
- * - Create a user config options:
- *    - Enable Kiosk Mode:
- *    - after N idle minutes, starting turning display brightness to X, over a duration of T
- *    - on wake, return display brightness to B
+ * - add a macs.show_message service
  * - test non-admin user
  * - add seasons: christmas, halloween etc.
  * - create a "charging" mood.
  * - train "Hey Macs" wakeword
  * - change happy trigger from idle to responding. Actually, idle OR responding, whichever comes first.
  * - update readme screenshot
- * - create bored / sleep sequence
- * wake word restore brightness
-
  */
 
 
