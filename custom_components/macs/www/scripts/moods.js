@@ -94,10 +94,6 @@ const EYE_LOOK_MAX_Y = 12;
 const STAGE_LOOK_MAX_X = 8;
 const STAGE_LOOK_MAX_Y = 6;
 const LOW_BATTERY_CUTOFF = 20;
-const BEZEL_WARM_MIN = 90;
-const BEZEL_COLD_MAX = 10;
-const BEZEL_WARM_RGB = [255, 102, 0];
-const BEZEL_COLD_RGB = [0, 228, 255];
 
 
 
@@ -331,41 +327,6 @@ function isChargingVisualActive() {
 	if (!batteryStateSensorEnabled) return true;
 	return Number.isFinite(lastBatteryPercent) && lastBatteryPercent <= LOW_BATTERY_CUTOFF;
 }
-
-const setBezelGlowFromTemperature = (percent) => {
-	const root = document.documentElement;
-	if (!root) return;
-	if (!Number.isFinite(percent)) {
-		root.style.setProperty("--bezel-glow-color", "rgba(0, 0, 0, 0)");
-		root.style.setProperty("--bezel-glow-y", "0px");
-		return;
-	}
-
-	const temp = clampRange(percent, 0, 100);
-	let alpha = 0;
-	let rgb = null;
-	let offsetY = 0;
-
-	if (temp <= BEZEL_COLD_MAX) {
-		alpha = (BEZEL_COLD_MAX - temp) / BEZEL_COLD_MAX;
-		rgb = BEZEL_COLD_RGB;
-		offsetY = alpha * 10;
-	} else if (temp >= BEZEL_WARM_MIN) {
-		alpha = (temp - BEZEL_WARM_MIN) / (100 - BEZEL_WARM_MIN);
-		rgb = BEZEL_WARM_RGB;
-		offsetY = -alpha * 10;
-	}
-
-	alpha = clampRange(alpha, 0, 1) * 0.8;
-	if (!rgb) {
-		root.style.setProperty("--bezel-glow-color", "rgba(0, 0, 0, 0)");
-		root.style.setProperty("--bezel-glow-y", "0px");
-		return;
-	}
-	const color = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha.toFixed(3)})`;
-	root.style.setProperty("--bezel-glow-color", color);
-	root.style.setProperty("--bezel-glow-y", `${offsetY.toFixed(2)}px`);
-};
 
 const applyIdleFloatJitter = () => {
 	const jitter = (Math.random() * 2) - 1;
@@ -783,7 +744,11 @@ function setTemperature(value){
 	const percent = clampPercent(value, 0);
 	const intensity = percent / 100;
 	document.documentElement.style.setProperty('--temperature-intensity', intensity.toString());
-	setBezelGlowFromTemperature(percent);
+	const body = document.body;
+	if (body) {
+		body.classList.toggle("temp-icicles", percent >= 0 && percent <= 5);
+		body.classList.toggle("temp-scarf", percent >= 0 && percent <= 10);
+	}
 }
 
 function setWindSpeed(value){

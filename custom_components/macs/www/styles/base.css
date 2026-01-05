@@ -41,9 +41,17 @@ body{
 	animation: idleFloat var(--idle-float-duration, 9s) ease-in-out infinite;
 }
 
-.bezel-glow{
-	filter: drop-shadow(var(--bezel-glow-x, 0px) var(--bezel-glow-y, 0px) 12px var(--bezel-glow-color, rgba(0, 0, 0, 0)));
-	transition: filter 0.2s linear;
+.icicle{
+	display: none;
+}
+body.temp-icicles .icicle{
+	display: block;
+}
+.scarf{
+	display: none;
+}
+body.temp-scarf .scarf{
+	display: block;
 }
 
 .brow{
