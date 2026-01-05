@@ -13,6 +13,7 @@ MACS_DEVICE = DeviceInfo(
 
 MOODS = (
     "bored",
+    "charging",
     "confused",
     "happy",
     "idle",

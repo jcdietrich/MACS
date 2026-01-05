@@ -11,6 +11,7 @@
           mode: dropdown
           options:
             - bored
+            - charging
             - confused
             - happy
             - idle
