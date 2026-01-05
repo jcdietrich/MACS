@@ -43,6 +43,12 @@ ATTR_BATTERY_CHARGE = "battery_charge"
 SERVICE_SET_ANIMATIONS_ENABLED = "set_animations_enabled"
 ATTR_ANIMATIONS_ENABLED = "animations_enabled"
 
+SERVICE_SEND_USER_MESSAGE = "send_user_message"
+SERVICE_SEND_ASSISTANT_MESSAGE = "send_assistant_message"
+ATTR_MESSAGE = "message"
+
+EVENT_MESSAGE = "macs_message"
+
 SERVICE_SET_WEATHER_CONDITIONS_SNOWY = "set_weather_conditions_snowy"
 ATTR_WEATHER_CONDITIONS_SNOWY = "weather_conditions_snowy"
 SERVICE_SET_WEATHER_CONDITIONS_CLOUDY = "set_weather_conditions_cloudy"

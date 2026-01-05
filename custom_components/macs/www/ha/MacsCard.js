@@ -17,7 +17,7 @@
  * and the M.A.C.S. frontend character.
  */
 
-import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, ANIMATIONS_ENTITY_ID, DEBUG_ENTITY_ID } from "./constants.js";
+import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, ANIMATIONS_ENTITY_ID, DEBUG_ENTITY_ID, MACS_MESSAGE_EVENT } from "./constants.js";
 import { normMood, normBrightness, safeUrl, getTargetOrigin, assistStateToMood} from "./validators.js";
 import { SatelliteTracker } from "./assistSatellite.js";
 import { AssistPipelineTracker } from "./assistPipeline.js";
@@ -109,6 +109,9 @@ export class MacsCard extends HTMLElement {
             this._lastTurnsSignature = null;
             this._lastAnimationsEnabled = null;
             this._lastConfigSignature = null;
+            this._syntheticTurns = [];
+            this._unsubMessageEvents = null;
+            this._messageSubToken = 0;
 
             // Keep home assistant state
             this._hass = null;
@@ -118,9 +121,9 @@ export class MacsCard extends HTMLElement {
 
             // Track pipeline turns (assistant chat history) and forward to iframe.
             this._pipelineTracker = new AssistPipelineTracker({
-                onTurns: (turns) => {
+                onTurns: () => {
                     if (!this._iframe) return;
-                    this._postToIframe({ type: "macs:turns", turns });
+                    this._sendTurnsToIframe();
                 }
             });
             if (this._pipelineTracker) this._pipelineTracker.setConfig(this._config);
@@ -168,6 +171,12 @@ export class MacsCard extends HTMLElement {
         try { this._weatherHandler?.dispose?.(); } catch (_) {}
         this._weatherHandler = null;
 
+        try {
+            const u = this._unsubMessageEvents;
+            if (typeof u === "function") u();
+        } catch (_) {}
+        this._unsubMessageEvents = null;
+
     }
 
     connectedCallback() {
@@ -176,9 +185,9 @@ export class MacsCard extends HTMLElement {
         if (this._config && !this._pipelineTracker) {
             debug("Recreating AssistPipelineTracker (reconnect)");
             this._pipelineTracker = new AssistPipelineTracker({
-            onTurns: (turns) => {
+            onTurns: () => {
                 if (!this._iframe) return;
-                this._postToIframe({ type: "macs:turns", turns });
+                this._sendTurnsToIframe();
             }
             });
             this._pipelineTracker.setConfig(this._config);
@@ -230,6 +239,7 @@ export class MacsCard extends HTMLElement {
         const enabled = !!this._config.assist_pipeline_enabled;
         const assistSatelliteEnabled = !!this._config.assist_satellite_enabled;
         const assist_pipeline_entity = enabled ? (this._config.assist_pipeline_entity || "").toString().trim() : "";
+        const maxTurns = this._config.max_turns ?? DEFAULTS.max_turns;
         const autoBrightnessEnabled = this._isPreview ? false : !!this._config.auto_brightness_enabled;
         const autoBrightnessTimeout = this._isPreview ? 0 : this._config.auto_brightness_timeout_minutes;
         const autoBrightnessMin = this._config.auto_brightness_min;
@@ -243,6 +253,7 @@ export class MacsCard extends HTMLElement {
             type: "macs:config",
             assist_satellite_enabled: assistSatelliteEnabled,
             assist_pipeline_entity,
+            max_turns: maxTurns,
             auto_brightness_enabled: autoBrightnessEnabled,
             auto_brightness_timeout_minutes: autoBrightnessTimeout,
             auto_brightness_min: autoBrightnessMin,
@@ -305,11 +316,19 @@ export class MacsCard extends HTMLElement {
     _sendTurnsToIframe() {
         // Turns are kept newest-first in the card, but sent as-is
         const turns = this._pipelineTracker?.getTurns?.() || [];
+        const synthetic = this._syntheticTurns || [];
+        const combined = [...synthetic, ...turns].sort((a, b) => {
+            const ta = Date.parse(a?.ts || "") || 0;
+            const tb = Date.parse(b?.ts || "") || 0;
+            return tb - ta;
+        });
+        const maxMessages = this._getMaxMessages();
+        const payloadTurns = maxMessages ? combined.slice(0, maxMessages) : combined;
         // Avoid spamming iframe with identical payloads.
-        const signature = JSON.stringify(turns);
+        const signature = JSON.stringify(payloadTurns);
         if (signature === this._lastTurnsSignature) return;
         this._lastTurnsSignature = signature;
-        this._postToIframe({ type: "macs:turns", turns });
+        this._postToIframe({ type: "macs:turns", turns: payloadTurns });
     }
 
     _onMessage(e) {
@@ -419,6 +438,55 @@ export class MacsCard extends HTMLElement {
         this._isPreview = !!this.closest(".element-preview");
     }
 
+    _getMaxMessages() {
+        const raw = Number(this._config?.max_turns ?? DEFAULTS.max_turns);
+        const maxTurns = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : DEFAULTS.max_turns;
+        return Math.max(1, maxTurns) * 2;
+    }
+
+    _ensureMessageSubscription() {
+        if (!this._hass || this._unsubMessageEvents) return;
+        const token = ++this._messageSubToken;
+        this._unsubMessageEvents = "pending";
+
+        this._hass.connection.subscribeEvents((ev) => {
+            try {
+                const data = ev?.data || {};
+                const role = (data.role || "assistant").toString().trim().toLowerCase();
+                const text = (data.text || "").toString().trim();
+                if (!text) return;
+                const ts = (data.ts || new Date().toISOString()).toString();
+                const runId = (data.id || `synthetic_${Date.now()}_${Math.random().toString(16).slice(2)}`).toString();
+                const turn = { runId, ts };
+                if (role === "user") {
+                    turn.heard = text;
+                } else {
+                    turn.reply = text;
+                }
+
+                const existing = this._syntheticTurns?.findIndex?.((entry) => entry.runId === runId) ?? -1;
+                if (existing >= 0) {
+                    this._syntheticTurns.splice(existing, 1);
+                }
+                if (!this._syntheticTurns) this._syntheticTurns = [];
+                this._syntheticTurns.unshift(turn);
+                const maxMessages = this._getMaxMessages();
+                if (maxMessages && this._syntheticTurns.length > maxMessages) {
+                    this._syntheticTurns.length = maxMessages;
+                }
+                this._sendTurnsToIframe();
+            } catch (_) {}
+        }, MACS_MESSAGE_EVENT).then((unsub) => {
+            if (token !== this._messageSubToken) {
+                try { unsub(); } catch (_) {}
+                return;
+            }
+            this._unsubMessageEvents = unsub;
+        }).catch(() => {
+            if (token === this._messageSubToken) this._unsubMessageEvents = null;
+        });
+    }
+
     _sendWeatherIfChanged() {
         if (!this._weatherHandler) return;
         // Only post deltas to keep iframe traffic minimal.
@@ -437,6 +505,7 @@ export class MacsCard extends HTMLElement {
 
         this._hass = hass;
         this._updatePreviewState();
+        this._ensureMessageSubscription();
 
         // Always keep hass fresh (safe + cheap)
         this._pipelineTracker?.setHass?.(hass);

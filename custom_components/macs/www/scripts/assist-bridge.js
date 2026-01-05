@@ -12,9 +12,11 @@ const debug = createDebugger("assist-bridge.js");
     =========================== */
 
 const MAX_TURNS_FALLBACK = 2;
+const MAX_MESSAGES_FALLBACK = MAX_TURNS_FALLBACK * 2;
 
 let injectedPipelineId = "";
-let turns = []; // newest first
+let messages = []; // newest first
+let maxMessages = MAX_MESSAGES_FALLBACK;
 
 const esc = (s) => (s ?? "").toString().replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
 
@@ -32,20 +34,18 @@ const renderChat = () => {
 
   el.innerHTML = `
     <div class="assist-chat">
-      ${turns.slice().reverse().map(t => {
-        const userText = t.heard || "";
-        const sysText = t.error || t.reply || "";
-        const ts = t.ts ? fmtTime(t.ts) : "";
+      ${messages.slice().reverse().map(m => {
+        const role = (m.role || "assistant").toString().toLowerCase();
+        const text = (m.text || "").toString();
+        if (!text) return "";
+        const ts = m.ts ? fmtTime(m.ts) : "";
+        const bubbleClass = role === "user" ? "user" : "system";
 
         return `
           <div class="assist-turn">
-            <div class="bubble user">
+            <div class="bubble ${bubbleClass}">
               ${ts ? `<div class="bubble-meta">${esc(ts)}</div>` : ""}
-              ${esc(userText)}
-            </div>
-            <div class="bubble system">
-              ${ts ? `<div class="bubble-meta">${esc(ts)}</div>` : ""}
-              ${esc(sysText)}
+              ${esc(text)}
             </div>
           </div>
         `;
@@ -70,26 +70,38 @@ window.addEventListener("message", (e) => {
 
   if (e.data.type === "macs:config") {
     injectedPipelineId = (e.data.assist_pipeline_entity || "").toString().trim();
-    debug("config", { assist_pipeline_entity: injectedPipelineId });
+    const maxTurns = Number(e.data.max_turns);
+    if (Number.isFinite(maxTurns) && maxTurns > 0) {
+      maxMessages = Math.max(1, Math.floor(maxTurns)) * 2;
+    } else {
+      maxMessages = MAX_MESSAGES_FALLBACK;
+    }
+    debug("config", { assist_pipeline_entity: injectedPipelineId, max_messages: maxMessages });
     return;
   }
 
   if (e.data.type === "macs:turns") {
     const incoming = Array.isArray(e.data.turns) ? e.data.turns : [];
-    debug("turns", { count: incoming.length, turns: incoming });
+    debug("turns", { count: incoming.length });
     // Keep newest-first, cap to something sane (card already caps, but belt & braces)
-    turns = incoming.slice(0, 30);
+    const nextMessages = [];
+    incoming.forEach((t) => {
+      const ts = (t?.ts || "").toString();
+      const reply = (t?.error || t?.reply || "").toString();
+      const heard = (t?.heard || "").toString();
+      if (reply) nextMessages.push({ role: "assistant", text: reply, ts });
+      if (heard) nextMessages.push({ role: "user", text: heard, ts });
+    });
+    messages = nextMessages.slice(0, maxMessages);
     renderChat();
     return;
   }
 });
 
 // Initial UI
-turns = [{
-  runId: "boot",
-  heard: "",
-  reply: "",
-  error: "Ready...",
+messages = [{
+  role: "assistant",
+  text: "Ready...",
   ts: new Date().toISOString()
 }];
 renderChat();

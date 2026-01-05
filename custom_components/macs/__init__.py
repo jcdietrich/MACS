@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from functools import partial
 from pathlib import Path
+from uuid import uuid4
 
 import voluptuous as vol
 
@@ -11,6 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import entity_registry as er
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.helpers import config_validation as cv
+from homeassistant.util import dt as dt_util
 
 # import constants
 from .const import (
@@ -30,6 +32,10 @@ from .const import (
     ATTR_BATTERY_CHARGE,
     SERVICE_SET_ANIMATIONS_ENABLED,
     ATTR_ANIMATIONS_ENABLED,
+    SERVICE_SEND_USER_MESSAGE,
+    SERVICE_SEND_ASSISTANT_MESSAGE,
+    ATTR_MESSAGE,
+    EVENT_MESSAGE,
     SERVICE_SET_WEATHER_CONDITIONS_SNOWY,
     ATTR_WEATHER_CONDITIONS_SNOWY,
     SERVICE_SET_WEATHER_CONDITIONS_CLOUDY,
@@ -377,6 +383,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "weather conditions exceptional"
         )
 
+    async def _handle_send_message(call: ServiceCall, role: str) -> None:
+        raw = call.data.get(ATTR_MESSAGE, None)
+        text = (raw or "").__str__().strip()
+        if not text:
+            raise vol.Invalid("Message cannot be empty.")
+
+        payload = {
+            "id": uuid4().hex,
+            "role": role,
+            "text": text,
+            "ts": dt_util.utcnow().isoformat(),
+        }
+        hass.bus.async_fire(EVENT_MESSAGE, payload)
+
+    async def handle_send_user_message(call: ServiceCall) -> None:
+        await _handle_send_message(call, "user")
+
+    async def handle_send_assistant_message(call: ServiceCall) -> None:
+        await _handle_send_message(call, "assistant")
 
 
     if not hass.services.has_service(DOMAIN, SERVICE_SET_MOOD):
@@ -539,6 +564,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=vol.Schema({vol.Required(ATTR_WEATHER_CONDITIONS_EXCEPTIONAL): cv.boolean}),
         )
 
+    if not hass.services.has_service(DOMAIN, SERVICE_SEND_USER_MESSAGE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SEND_USER_MESSAGE,
+            handle_send_user_message,
+            schema=vol.Schema({vol.Required(ATTR_MESSAGE): cv.string}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SEND_ASSISTANT_MESSAGE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SEND_ASSISTANT_MESSAGE,
+            handle_send_assistant_message,
+            schema=vol.Schema({vol.Required(ATTR_MESSAGE): cv.string}),
+        )
+
     # Auto-add/update Lovelace resource (storage mode)
     await _ensure_lovelace_resource(hass)
 
@@ -567,5 +608,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_POURING)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_CLEAR_NIGHT)
         hass.services.async_remove(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_EXCEPTIONAL)
+        hass.services.async_remove(DOMAIN, SERVICE_SEND_USER_MESSAGE)
+        hass.services.async_remove(DOMAIN, SERVICE_SEND_ASSISTANT_MESSAGE)
         hass.data.get(DOMAIN, {}).pop("static_path_registered", None)
     return unload_ok

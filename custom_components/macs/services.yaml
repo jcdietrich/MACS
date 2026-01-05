@@ -253,3 +253,25 @@ set_weather_conditions_exceptional:
       required: true
       selector:
         boolean:
+
+send_user_message:
+  name: Send user message
+  description: Add a user message bubble to the M.A.C.S. pipeline display.
+  fields:
+    message:
+      name: Message
+      description: Message text to show as a user bubble.
+      required: true
+      selector:
+        text:
+
+send_assistant_message:
+  name: Send assistant message
+  description: Add an assistant message bubble to the M.A.C.S. pipeline display.
+  fields:
+    message:
+      name: Message
+      description: Message text to show as an assistant bubble.
+      required: true
+      selector:
+        text:

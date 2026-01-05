@@ -8,18 +8,15 @@
 /** 
  * TO-DO
  * --------
- * - add a macs.show_message service
  * - test non-admin user
  * - add seasons: christmas, halloween etc.
  * - create a "charging" mood.
  * - train "Hey Macs" wakeword
  * - change happy trigger from idle to responding. Actually, idle OR responding, whichever comes first.
  * - update readme screenshot
- * - make bored mood look less sad. Maybe rename bored to sad and create new bored mood.
- * - create low batter / battery charge indicator / battery plugged in
- * - Update Custom Integrations examples
+ * - create battery plugged in
+ * - Update Custom Integrations examples and tooltips
  * - add a macs.show handler - "show me my shopping list", "show me my camera" etc? Shopping list likely easy, camera difficult.
- * - move glabal debugging flag to config yaml
  */
 
 
