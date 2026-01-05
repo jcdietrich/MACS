@@ -99,6 +99,17 @@ set_battery_charge:
           mode: slider
           unit_of_measurement: "%"
 
+set_animations_enabled:
+  name: Set animations enabled
+  description: Toggle MACS animations on/off.
+  fields:
+    animations_enabled:
+      name: Animations enabled
+      description: true to enable animations, false to pause
+      required: true
+      selector:
+        boolean:
+
 set_weather_conditions_snowy:
   name: Set weather conditions snowy
   description: Toggle MACS snowy effect on/off.

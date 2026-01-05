@@ -129,6 +129,7 @@ let moodBoredTimer = null;
 let cursorLookTimer = null;
 let cursorLookActive = false;
 let animationsPaused = false;
+let animationsToggleEnabled = true;
 
 let rainParticles = null;
 let snowParticles = null;
@@ -281,6 +282,18 @@ const setAnimationsPaused = (paused) => {
 	updateRainDrops(rainIntensity < 0 ? 0 : rainIntensity, true);
 	updateSnowFlakes(snowIntensity < 0 ? 0 : snowIntensity, true);
 	updateLeaves(true);
+};
+
+const applyAnimationsToggle = () => {
+	if (autoBrightnessEnabled) {
+		if (autoBrightnessAsleep) {
+			setAnimationsPaused(autoBrightnessPauseAnimations);
+		} else {
+			setAnimationsPaused(false);
+		}
+		return;
+	}
+	setAnimationsPaused(!animationsToggleEnabled);
 };
 
 const clearMoodTimers = () => {
@@ -696,7 +709,7 @@ const scheduleAutoBrightness = () => {
 	}
 
 	if (!autoBrightnessEnabled) {
-		setAnimationsPaused(false);
+		applyAnimationsToggle();
 		return;
 	}
 
@@ -704,7 +717,7 @@ const scheduleAutoBrightness = () => {
 		autoBrightnessIdle = false;
 		autoBrightnessAsleep = false;
 		autoBrightnessNextSleepAt = null;
-		setAnimationsPaused(false);
+		applyAnimationsToggle();
 		applyBrightness();
 		updateAutoBrightnessDebug();
 		return;
@@ -749,7 +762,7 @@ const registerAutoBrightnessActivity = () => {
 
 	scheduleAutoBrightness();
 	resetMoodSequence();
-	setAnimationsPaused(false);
+	applyAnimationsToggle();
 };
 
 const sendKioskToggle = () => {
@@ -832,7 +845,7 @@ function setAutoBrightnessConfig(config){
 		: !!nextPauseAnimations;
 	autoBrightnessIdle = false;
 	autoBrightnessAsleep = false;
-	setAnimationsPaused(false);
+	applyAnimationsToggle();
 	ensureAutoBrightnessDebugTimer();
 	scheduleAutoBrightness();
 	applyBrightness();
@@ -910,6 +923,12 @@ window.addEventListener('message', (e) => {
 		if (typeof e.data.auto_brightness_enabled !== "undefined") {
 			setAutoBrightnessConfig(e.data);
 		}
+		return;
+	}
+
+	if (e.data.type === 'macs:animations_enabled') {
+		animationsToggleEnabled = !!e.data.enabled;
+		applyAnimationsToggle();
 		return;
 	}
 

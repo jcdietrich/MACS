@@ -76,6 +76,9 @@ const instructions = `
 						<div>number.macs_brightness</div>
 						<div>macs.set_brightness</div>
 
+						<div>switch.macs_animations_enabled</div>
+						<div>macs.set_animations_enabled</div>
+
 						<div>number.macs_temperature</div>
 						<div>macs.set_temperature</div>
 

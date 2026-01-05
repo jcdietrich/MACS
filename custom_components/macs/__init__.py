@@ -27,6 +27,8 @@ from .const import (
     ATTR_PRECIPITATION,
     SERVICE_SET_BATTERY_CHARGE,
     ATTR_BATTERY_CHARGE,
+    SERVICE_SET_ANIMATIONS_ENABLED,
+    ATTR_ANIMATIONS_ENABLED,
     SERVICE_SET_WEATHER_CONDITIONS_SNOWY,
     ATTR_WEATHER_CONDITIONS_SNOWY,
     SERVICE_SET_WEATHER_CONDITIONS_CLOUDY,
@@ -252,6 +254,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             blocking=True,
         )
 
+    async def handle_set_animations_enabled(call: ServiceCall) -> None:
+        await _set_switch_entity(
+            call,
+            ATTR_ANIMATIONS_ENABLED,
+            "macs_animations_enabled",
+            "animations enabled"
+        )
+
     async def handle_set_weather_conditions_snowy(call: ServiceCall) -> None:
         await _set_switch_entity(
             call,
@@ -404,6 +414,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_SET_BATTERY_CHARGE,
             handle_set_battery_charge,
             schema=vol.Schema({vol.Required(ATTR_BATTERY_CHARGE): vol.Coerce(float)}),
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_ANIMATIONS_ENABLED):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_ANIMATIONS_ENABLED,
+            handle_set_animations_enabled,
+            schema=vol.Schema({vol.Required(ATTR_ANIMATIONS_ENABLED): cv.boolean}),
         )
 
     if not hass.services.has_service(DOMAIN, SERVICE_SET_WEATHER_CONDITIONS_SNOWY):

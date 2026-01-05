@@ -17,7 +17,7 @@
  * and the M.A.C.S. frontend character.
  */
 
-import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID } from "./constants.js";
+import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, ANIMATIONS_ENTITY_ID } from "./constants.js";
 import { normMood, normBrightness, safeUrl, getTargetOrigin, assistStateToMood} from "./validators.js";
 import { SatelliteTracker } from "./assistSatellite.js";
 import { AssistPipelineTracker } from "./assistPipeline.js";
@@ -27,7 +27,12 @@ import { createDebugger } from "./debugger.js";
 
 const DEBUG_ENABLED = false;
 const debug = createDebugger("macsCard", DEBUG_ENABLED);
-const cardCssUrl = new URL("./cards.css", import.meta.url).toString();
+const cardCssUrl = (() => {
+    const baseUrl = new URL(import.meta.url);
+    const cssUrl = new URL("./cards.css", baseUrl);
+    cssUrl.search = baseUrl.search;
+    return cssUrl.toString();
+})();
 // Kiosk UI hides HA chrome and forces the card to full-viewport.
 const KIOSK_STYLE_ID = "macs-kiosk-style";
 const kioskCssUrl = (() => {
@@ -103,6 +108,7 @@ export class MacsCard extends HTMLElement {
             this._isPreview = false;
             this._lastAssistSatelliteState = null;
             this._lastTurnsSignature = null;
+            this._lastAnimationsEnabled = null;
 
             // Keep home assistant state
             this._hass = null;
@@ -272,6 +278,17 @@ export class MacsCard extends HTMLElement {
     }
     _sendBrightnessToIframe(brightness) {
         this._postToIframe({ type: "macs:brightness", brightness });
+    }
+
+    _sendAnimationsEnabledToIframe(enabled) {
+        if (this._config?.auto_brightness_enabled) {
+            this._lastAnimationsEnabled = null;
+            return;
+        }
+        const next = !!enabled;
+        if (this._lastAnimationsEnabled === next) return;
+        this._lastAnimationsEnabled = next;
+        this._postToIframe({ type: "macs:animations_enabled", enabled: next });
     }
 
     _sendTurnsToIframe() {
@@ -459,6 +476,8 @@ export class MacsCard extends HTMLElement {
 
         const brightnessState = hass.states[BRIGHTNESS_ENTITY_ID] || null;
         const brightness = normBrightness(brightnessState?.state);
+        const animationsState = hass.states[ANIMATIONS_ENTITY_ID] || null;
+        const animationsEnabled = animationsState ? animationsState.state === "on" : true;
 
         // Weather handler normalizes raw HA entities into a single payload.
         let weatherValues = null;
@@ -484,6 +503,7 @@ export class MacsCard extends HTMLElement {
             this._sendMoodToIframe(mood);
             this._sendWeatherIfChanged();
             this._sendBrightnessToIframe(brightness);
+            this._sendAnimationsEnabledToIframe(animationsEnabled);
             this._sendTurnsToIframe();
         };
 
@@ -543,6 +563,7 @@ export class MacsCard extends HTMLElement {
                 this._lastBrightness = brightness;
                 this._sendBrightnessToIframe(brightness);
             }
+            this._sendAnimationsEnabledToIframe(animationsEnabled);
 
             // keep config/turns fresh
             this._sendConfigToIframe();
