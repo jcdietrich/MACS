@@ -20,9 +20,7 @@
  * - add wake from sleep service, sleeping toggle
  * - Update Custom Integrations examples
  * - add a macs.show handler - "show me my shopping list", "show me my camera" etc? Shopping list likely easy, camera difficult.
- * - disable weather effects after screentimeout (saves battery/power - does it really?) if useful, make it optional
- * 
- *  */
+ */
 
 
 

@@ -120,15 +120,27 @@ const about = `
 		</div>
 	`;
 
-function createHtmlGroup({ id, name, label, hint = null, placeholder, units = false, minMax = false, customInput = "", select = true, entity = true }) {
+function createHtmlGroup({ id, name, label, hint = null, tooltip = null, placeholder, units = false, minMax = false, customInput = "", select = true, entity = true }) {
+	const safeHint = hint
+		? hint.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+		: "";
+	const safeTooltipAttr = tooltip
+		? tooltip.toString().replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+		: "";
+	const safeTooltipHtml = tooltip
+		? tooltip.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+		: "";
 	let htmlString = `
 		<!-- ${name} -->
 			<div class="group" id="${id}">
 				<div class="row">
-					<label for="${id}_enabled">${label}</label>
+					<label for="${id}_enabled">${label}${safeTooltipAttr ? ` <ha-icon class="tooltip" icon="mdi:information-outline" tabindex="0" role="button" aria-label="${safeTooltipAttr}" data-target="${id}_hint"></ha-icon>` : ""}</label>
 					<ha-switch id="${id}_enabled"></ha-switch>
-					${hint !== null ? `
-						<div class="hint">${hint}</div>
+					${safeHint ? `
+						<div class="hint always">${safeHint}</div>
+					` : ""}
+					${safeTooltipHtml ? `
+						<div class="hint" id="${id}_hint">${safeTooltipHtml}</div>
 					` : ""}
 				</div>
 
@@ -203,6 +215,7 @@ function createInputGroup(groups, definition) {
 		name: definition.name,
 		label: definition.label,
 		hint: definition.hint,
+		tooltip: definition.tooltip,
 		placeholder: definition.placeholder,
 		units: !!definition.units,
 		minMax: !!definition.minMax,
@@ -314,7 +327,8 @@ export class MacsCardEditor extends HTMLElement {
 			id: "assist_satellite",
 			name: "Assist Satellite",
 			label: "React to Wake-Words?",
-			hint: "When enabled, Macs will mirror your selected Assist satellite.<br>(listening, processing, responding, idle, etc)",
+			hint: null,
+			tooltip: "When enabled, M.A.C.S. follows the selected Assist satellite state and overrides the mood select.",
 			placeholder: "assist_satellite.my_device",
 			selectItems: satItems,
 			selectValue: this._config.assist_satellite_entity ?? "",
@@ -325,7 +339,8 @@ export class MacsCardEditor extends HTMLElement {
 			id: "assist_pipeline",
 			name: "Assistant Pipeline",
 			label: "Display Dialogue?",
-			hint: "When enabled, Macs will display conversations with your assistant.",
+			hint: null,
+			tooltip: "When enabled, M.A.C.S. shows dialogue from the selected Assist pipeline.",
 			placeholder: "01k...",
 			selectItems: pipelineItems,
 			selectValue: this._config.assist_pipeline_entity ?? "",
@@ -337,6 +352,7 @@ export class MacsCardEditor extends HTMLElement {
 			name: "Temperature",
 			label: "Use Temperature Sensor?",
 			hint: null,
+			tooltip: "When enabled, the selected sensor is used and the M.A.C.S. Temperature entity/service is ignored.",
 			placeholder: "sensor.my_temperature",
 			units: true,
 			minMax: true,
@@ -352,6 +368,7 @@ export class MacsCardEditor extends HTMLElement {
 			name: "Wind Sensor",
 			label: "Use Wind Sensor?",
 			hint: null,
+			tooltip: "When enabled, the selected sensor is used and the M.A.C.S. Wind Speed entity/service is ignored.",
 			placeholder: "sensor.my_wind_speed",
 			units: true,
 			minMax: true,
@@ -367,6 +384,7 @@ export class MacsCardEditor extends HTMLElement {
 			name: "Rainfall Sensor",
 			label: "Use Rainfall Sensor?",
 			hint: null,
+			tooltip: "When enabled, the selected sensor is used and the M.A.C.S. Precipitation entity/service is ignored.",
 			placeholder: "sensor.my_rain",
 			units: true,
 			minMax: true,
@@ -381,7 +399,8 @@ export class MacsCardEditor extends HTMLElement {
 			id: "weather_conditions",
 			name: "Weather Conditions",
 			label: "Auto-Detect Weather Conditions?",
-			hint: "Allows Macs to know when it's snowing, foggy, lightning etc.",
+			hint: null,
+			tooltip: "When enabled, conditions come from the selected weather entity and the condition toggles are ignored.",
 			placeholder: "weather.forecast_home",
 			selectItems: conditionItems,
 			selectValue: this._config.weather_conditions ?? "",
@@ -393,6 +412,7 @@ export class MacsCardEditor extends HTMLElement {
 			name: "Battery Charge",
 			label: "Use Battery Sensor?",
 			hint: null,
+			tooltip: "When enabled, the selected sensor is used and the M.A.C.S. Battery Charge entity/service is ignored.",
 			placeholder: "sensor.my_battery",
 			units: true,
 			minMax: true,
@@ -407,7 +427,8 @@ export class MacsCardEditor extends HTMLElement {
 			id: "auto_brightness",
 			name: "Kiosk Mode",
 			label: "Enable Kiosk Mode?",
-			hint: "Hold anywhere on the card to toggle the sidebar and navbar.",
+			hint: null,
+			tooltip: "When enabled, the card uses its kiosk timer for dimming and sleep. Tip: hold anywhere on the card to toggle the sidebar and navbar.",
 			placeholder: "",
 			select: false,
 			entity: false,
@@ -416,7 +437,7 @@ export class MacsCardEditor extends HTMLElement {
 				<div class="row">
 					<label for="auto_brightness_pause_animations_enabled">Pause animations when asleep?</label>
 					<ha-switch id="auto_brightness_pause_animations_enabled"></ha-switch>
-					<div class="hint">Reduces power consumption</div>
+					<div class="hint always">Reduces power consumption</div>
 				</div>
 				<div class="row">
 					<ha-textfield id="auto_brightness_timeout_minutes" class="fullwidth" label="Screen timeout (minutes)" placeholder="5" type="number" inputmode="decimal" min="2"></ha-textfield>
@@ -460,6 +481,25 @@ export class MacsCardEditor extends HTMLElement {
 				arrow.textContent = open ? ">" : "v";
 			});
 		}
+
+		// Tooltip toggles show/hide the inline hint.
+		const tooltips = this.shadowRoot.querySelectorAll(".tooltip");
+		tooltips.forEach((tooltip) => {
+			tooltip.addEventListener("click", (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				const targetId = tooltip.getAttribute("data-target");
+				if (!targetId) return;
+				const hint = this.shadowRoot.getElementById(targetId);
+				if (!hint) return;
+				hint.classList.toggle("open");
+			});
+			tooltip.addEventListener("keydown", (event) => {
+				if (event.key !== "Enter" && event.key !== " ") return;
+				event.preventDefault();
+				tooltip.click();
+			});
+		});
 
 		// Wire once per render (safe because render rebuilds DOM)
 		this._wire();
