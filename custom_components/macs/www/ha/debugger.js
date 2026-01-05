@@ -101,6 +101,8 @@ export function createDebugger(namespace, enabled = true) {
     const toUiString = (value) => {
         if (value === null || typeof value === "undefined") return "";
         if (typeof value === "string") return value;
+        if (typeof value === "number" || typeof value === "boolean") return String(value);
+        try { return JSON.stringify(value, null, 2); } catch (_) {}
         try { return JSON.stringify(value); } catch (_) {}
         try { return String(value); } catch (_) {}
         return "";
@@ -115,7 +117,18 @@ export function createDebugger(namespace, enabled = true) {
         const el = ensureDebugDiv();
         ensureHeader(el);
         const log = ensureLogContainer(el);
-        const msg = args.map(toUiString).join(" ").trim();
+        const entries = args.map((arg) => ({
+            arg,
+            text: toUiString(arg)
+        }));
+        const hasObjectArg = entries.some((entry, index) => {
+            if (index === 0) return false;
+            return entry.arg && typeof entry.arg === "object";
+        });
+        const msg = (hasObjectArg
+            ? entries.map((entry) => entry.text).join("\n")
+            : entries.map((entry) => entry.text).join(" ")
+        ).trim();
         if (log){
             const line = document.createElement("div");
             line.textContent = msg;

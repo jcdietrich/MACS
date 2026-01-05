@@ -145,8 +145,9 @@ body{
 
 #debug{
     position: fixed;
-    top: 4px;
-    left: 8px;
+    top: 0px;
+    left: 0px;
+	padding:10px 6px;
     font-size: 10px;
     color: #aaa;
     display:none;
@@ -156,4 +157,27 @@ body{
     -moz-user-select: text;
     -ms-user-select: text;
     z-index:1000;
+	max-height:100%;
+	direction: rtl; /* move scrollbar to left */
+	scrollbar-width: thin;
+	scrollbar-color: #555 #1e1e1e;
+}
+/* prevent debug content rtl */
+#debug .debug-title, #debug .debug-version, #debug .debug-log, #debug .debug-sleep-timer {direction: ltr;text-align: left;}
+
+#debug::-webkit-scrollbar{
+	width: 8px;
+}
+
+#debug::-webkit-scrollbar-track{
+	background: rgba(0, 0, 0, 0.35);
+}
+
+#debug::-webkit-scrollbar-thumb{
+	background: rgba(85, 85, 85, 0.9);
+	border-radius: 6px;
+}
+
+#debug::-webkit-scrollbar-thumb:hover{
+	background: rgba(120, 120, 120, 0.95);
 }
