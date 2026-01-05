@@ -62,37 +62,11 @@ function normalizeChargingState(value) {
     if (value === null || typeof value === "undefined") return null;
     if (typeof value === "boolean") return value;
     if (typeof value === "number") return value !== 0;
-    const text = value.toString().trim().toLowerCase();
-    if (!text || text === "unknown" || text === "unavailable") return null;
-
-    if (
-        text.includes("discharging") ||
-        text.includes("not charging") ||
-        text.includes("unplugged") ||
-        text === "off" ||
-        text === "false" ||
-        text === "no" ||
-        text === "0"
-    ) {
-        return false;
-    }
-
-    if (
-        text.includes("charging") ||
-        text.includes("plugged") ||
-        text.includes("plug") ||
-        text.includes("power") ||
-        text.includes("ac") ||
-        text === "on" ||
-        text === "true" ||
-        text === "yes" ||
-        text === "1" ||
-        text === "full"
-    ) {
-        return true;
-    }
-
-    return null;
+    const raw = value.toString().trim().toLowerCase();
+    if (!raw || raw === "unknown" || raw === "unavailable") return null;
+    const normalized = raw.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+    if (normalized === "charging") return true;
+    return false;
 }
 
 export class WeatherHandler {

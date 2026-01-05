@@ -94,6 +94,10 @@ const EYE_LOOK_MAX_Y = 12;
 const STAGE_LOOK_MAX_X = 8;
 const STAGE_LOOK_MAX_Y = 6;
 const LOW_BATTERY_CUTOFF = 20;
+const TEMP_NEUTRAL_MIN = 20;
+const TEMP_NEUTRAL_MAX = 80;
+const TEMP_COLD_COLOR = "#1e55ff";
+const TEMP_WARM_COLOR = "#ff9a3c";
 
 
 
@@ -134,8 +138,10 @@ let cursorLookActive = false;
 let animationsPaused = false;
 let animationsToggleEnabled = true;
 let lastBatteryPercent = null;
-let batteryBaseColors = null;
+let baseColors = null;
+let temperatureColors = null;
 let batteryCharging = null;
+let batteryStateSensorEnabled = false;
 
 let rainParticles = null;
 let snowParticles = null;
@@ -201,6 +207,19 @@ const LOW_BATTERY_BLACK_VARS = [
 	"--sclera-gradient-highlight"
 ];
 
+const TEMP_TINT_VARS = [
+	"--sclera-gradient-fill",
+	"--sclera-gradient-shadow",
+	"--sclera-outer-glow",
+	"--sclera-inner-glow",
+	"--iris-outer-glow",
+	"--iris-inner-glow",
+	"--mouth-fill",
+	"--mouth-glow",
+	"--brow-fill",
+	"--brow-glow"
+];
+
 const LOW_BATTERY_FADE_VARS = [
 	"--sclera-outer-glow",
 	"--sclera-inner-glow",
@@ -210,6 +229,17 @@ const LOW_BATTERY_FADE_VARS = [
 	"--mouth-fill",
 	"--brow-fill"
 ];
+
+const BASE_COLOR_VARS = (() => {
+	const vars = [
+		...LOW_BATTERY_ZERO_VARS,
+		...LOW_BATTERY_BLACK_VARS,
+		...LOW_BATTERY_FADE_VARS,
+		...TEMP_TINT_VARS,
+		"--sclera-charging-glow"
+	];
+	return Array.from(new Set(vars));
+})();
 
 const parseColor = (value) => {
 	const v = (value || "").toString().trim();
@@ -252,57 +282,176 @@ const toRgba = (value, alpha) => {
 	return `rgba(${Math.round(parsed.r)}, ${Math.round(parsed.g)}, ${Math.round(parsed.b)}, ${a})`;
 };
 
-const ensureBatteryColors = () => {
+const clamp01 = (value) => Math.max(0, Math.min(1, value));
+
+const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+const linearToSrgb = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+
+const toOkLab = (color) => {
+	if (!color) return null;
+	const r = srgbToLinear(color.r / 255);
+	const g = srgbToLinear(color.g / 255);
+	const b = srgbToLinear(color.b / 255);
+
+	const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+	const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+	const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+
+	return {
+		L: 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+		a: 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+		b: 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+	};
+};
+
+const okLabToRgb = (lab) => {
+	if (!lab) return null;
+	const l = lab.L + 0.3963377774 * lab.a + 0.2158037573 * lab.b;
+	const m = lab.L - 0.1055613458 * lab.a - 0.0638541728 * lab.b;
+	const s = lab.L - 0.0894841775 * lab.a - 1.2914855480 * lab.b;
+
+	const l3 = l * l * l;
+	const m3 = m * m * m;
+	const s3 = s * s * s;
+
+	const r = linearToSrgb(4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3);
+	const g = linearToSrgb(-1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3);
+	const b = linearToSrgb(-0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3);
+
+	return {
+		r: Math.round(clamp01(r) * 255),
+		g: Math.round(clamp01(g) * 255),
+		b: Math.round(clamp01(b) * 255)
+	};
+};
+
+const mixOkLab = (from, to, t) => ({
+	L: from.L + (to.L - from.L) * t,
+	a: from.a + (to.a - from.a) * t,
+	b: from.b + (to.b - from.b) * t
+});
+
+const rgbToString = (rgb) => {
+	if (!rgb) return "";
+	return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+};
+
+const ensureBaseColors = () => {
 	const root = document.documentElement;
 	if (!root) return;
 	const styles = getComputedStyle(root);
-	if (!batteryBaseColors) {
-		batteryBaseColors = {};
+	if (!baseColors) {
+		baseColors = {};
 	}
-	[...LOW_BATTERY_ZERO_VARS, ...LOW_BATTERY_BLACK_VARS, ...LOW_BATTERY_FADE_VARS].forEach((key) => {
-		if (typeof batteryBaseColors[key] === "undefined") {
-			batteryBaseColors[key] = styles.getPropertyValue(key).trim();
+	BASE_COLOR_VARS.forEach((key) => {
+		if (typeof baseColors[key] === "undefined") {
+			baseColors[key] = styles.getPropertyValue(key).trim();
 		}
 	});
 };
 
-const restoreBatteryColors = () => {
-	if (!batteryBaseColors) return;
+const applyColorSet = (colors) => {
+	if (!colors) return;
 	const root = document.documentElement;
 	if (!root) return;
-	Object.keys(batteryBaseColors).forEach((key) => {
-		root.style.setProperty(key, batteryBaseColors[key]);
+	Object.keys(colors).forEach((key) => {
+		if (typeof colors[key] !== "undefined") {
+			root.style.setProperty(key, colors[key]);
+		}
 	});
 };
 
+const getActiveColors = () => {
+	const colors = temperatureColors || baseColors;
+	if (!colors) return null;
+	if (isChargingVisualActive() && colors["--sclera-charging-glow"]) {
+		return {
+			...colors,
+			"--sclera-inner-glow": colors["--sclera-charging-glow"]
+		};
+	}
+	return colors;
+};
+
 const applyBatteryDimming = (percent) => {
-	ensureBatteryColors();
-	if (!batteryBaseColors) return;
+	ensureBaseColors();
+	const colors = getActiveColors();
+	if (!colors) return;
 	const root = document.documentElement;
 	if (!root) return;
-	if (!Number.isFinite(percent)) {
-		restoreBatteryColors();
-		return;
-	}
-	if (batteryCharging === true) {
-		restoreBatteryColors();
-		return;
-	}
-	if (percent > LOW_BATTERY_CUTOFF) {
-		restoreBatteryColors();
+	if (!Number.isFinite(percent) || batteryCharging === true || percent > LOW_BATTERY_CUTOFF) {
+		applyColorSet(colors);
 		return;
 	}
 	LOW_BATTERY_ZERO_VARS.forEach((key) => {
-		root.style.setProperty(key, toRgba(batteryBaseColors[key], 0));
+		root.style.setProperty(key, toRgba(colors[key], 0));
 	});
 	LOW_BATTERY_BLACK_VARS.forEach((key) => {
 		root.style.setProperty(key, "rgba(0, 0, 0, 1)");
 	});
 	const fade = Math.max(0, Math.min(1, percent / LOW_BATTERY_CUTOFF));
 	LOW_BATTERY_FADE_VARS.forEach((key) => {
-		root.style.setProperty(key, toRgba(batteryBaseColors[key], fade));
+		root.style.setProperty(key, toRgba(colors[key], fade));
 	});
 };
+
+const applyTemperatureTint = (percent) => {
+	ensureBaseColors();
+	if (!baseColors) return;
+	if (!Number.isFinite(percent)) {
+		temperatureColors = null;
+		applyBatteryDimming(lastBatteryPercent);
+		return;
+	}
+
+	const temp = clampRange(percent, 0, 100);
+	let ratio = 0;
+	let targetHex = "";
+	if (temp < TEMP_NEUTRAL_MIN) {
+		ratio = (TEMP_NEUTRAL_MIN - temp) / TEMP_NEUTRAL_MIN;
+		targetHex = TEMP_COLD_COLOR;
+	} else if (temp > TEMP_NEUTRAL_MAX) {
+		ratio = (temp - TEMP_NEUTRAL_MAX) / (100 - TEMP_NEUTRAL_MAX);
+		targetHex = TEMP_WARM_COLOR;
+	}
+
+	if (!targetHex || ratio <= 0) {
+		temperatureColors = null;
+		applyBatteryDimming(lastBatteryPercent);
+		return;
+	}
+
+	const targetOk = toOkLab(parseColor(targetHex));
+	if (!targetOk) {
+		temperatureColors = null;
+		applyBatteryDimming(lastBatteryPercent);
+		return;
+	}
+
+	const next = { ...baseColors };
+	TEMP_TINT_VARS.forEach((key) => {
+		const base = baseColors[key];
+		const parsed = parseColor(base);
+		if (!parsed) return;
+		const baseOk = toOkLab(parsed);
+		if (!baseOk) return;
+		const mixed = mixOkLab(baseOk, targetOk, ratio);
+		next[key] = rgbToString(okLabToRgb(mixed)) || base;
+	});
+
+	if (isChargingVisualActive() && baseColors["--sclera-charging-glow"]) {
+		next["--sclera-inner-glow"] = baseColors["--sclera-charging-glow"];
+	}
+
+	temperatureColors = next;
+	applyBatteryDimming(lastBatteryPercent);
+};
+
+function isChargingVisualActive() {
+	if (batteryCharging !== true) return false;
+	if (!batteryStateSensorEnabled) return true;
+	return Number.isFinite(lastBatteryPercent) && lastBatteryPercent <= LOW_BATTERY_CUTOFF;
+}
 
 const applyIdleFloatJitter = () => {
 	const jitter = (Math.random() * 2) - 1;
@@ -717,8 +866,10 @@ const updateLeaves = (forceUpdate = false) => {
 };
 
 function setTemperature(value){
-	const intensity = toIntensity(value);
+	const percent = clampPercent(value, 0);
+	const intensity = percent / 100;
 	document.documentElement.style.setProperty('--temperature-intensity', intensity.toString());
+	applyTemperatureTint(percent);
 }
 
 function setWindSpeed(value){
@@ -767,6 +918,7 @@ function setBattery(value){
 	const intensity = percent / 100;
 	lastBatteryPercent = percent;
 	document.documentElement.style.setProperty('--battery-intensity', intensity.toString());
+	setChargingActive(isChargingVisualActive());
 	applyBatteryDimming(percent);
 }
 
@@ -784,7 +936,7 @@ function setBatteryState(value) {
 		return;
 	}
 	batteryCharging = !!value;
-	setChargingActive(batteryCharging);
+	setChargingActive(isChargingVisualActive());
 	applyBatteryDimming(lastBatteryPercent);
 }
 
@@ -1115,6 +1267,11 @@ window.addEventListener('message', (e) => {
 		}
 		if (typeof e.data.auto_brightness_enabled !== "undefined") {
 			setAutoBrightnessConfig(e.data);
+		}
+		if (typeof e.data.battery_state_sensor_enabled !== "undefined") {
+			batteryStateSensorEnabled = !!e.data.battery_state_sensor_enabled;
+			setChargingActive(isChargingVisualActive());
+			applyBatteryDimming(lastBatteryPercent);
 		}
 		if (typeof e.data.debug_mode !== "undefined") {
 			setDebugOverride(e.data.debug_mode);

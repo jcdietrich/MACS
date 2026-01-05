@@ -245,6 +245,7 @@ export class MacsCard extends HTMLElement {
         const autoBrightnessMin = this._config.auto_brightness_min;
         const autoBrightnessMax = this._config.auto_brightness_max;
         const autoBrightnessPauseAnimations = !!this._config.auto_brightness_pause_animations;
+        const batteryStateSensorEnabled = !!this._config.battery_state_sensor_enabled;
         const debugMode = typeof window !== "undefined" && typeof window.__MACS_DEBUG__ !== "undefined"
             ? window.__MACS_DEBUG__
             : "None";
@@ -259,6 +260,7 @@ export class MacsCard extends HTMLElement {
             auto_brightness_min: autoBrightnessMin,
             auto_brightness_max: autoBrightnessMax,
             auto_brightness_pause_animations: autoBrightnessPauseAnimations,
+            battery_state_sensor_enabled: batteryStateSensorEnabled,
             debug_mode: debugMode
         };
         const signature = JSON.stringify(payload);
