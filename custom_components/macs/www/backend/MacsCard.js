@@ -17,11 +17,11 @@
  * and the M.A.C.S. frontend character.
  */
 
-import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, ANIMATIONS_ENTITY_ID, DEBUG_ENTITY_ID, MACS_MESSAGE_EVENT } from "./constants.js";
+import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, ANIMATIONS_ENTITY_ID, DEBUG_ENTITY_ID, MACS_MESSAGE_EVENT } from "../shared/constants.js";
 import { normMood, normBrightness, safeUrl, getTargetOrigin, assistStateToMood} from "./validators.js";
 import { SatelliteTracker } from "./assistSatellite.js";
 import { AssistPipelineTracker } from "./assistPipeline.js";
-import { WeatherHandler } from "./weatherHandler.js";
+import { SensorHandler } from "./sensorHandler.js";
 import { createDebugger } from "../shared/debugger.js";
 import { MessagePoster } from "../shared/postmessage.js";
 
@@ -89,6 +89,8 @@ export class MacsCard extends HTMLElement {
             `;
             this._iframe = this._root.querySelector("iframe");
             this._messagePoster = new MessagePoster({
+                sender: "backend",
+                recipient: "iframe",
                 getRecipientWindow: () => this._iframe?.contentWindow,
                 getTargetOrigin: () => {
                     const base = safeUrl(this._config?.url);
@@ -117,6 +119,7 @@ export class MacsCard extends HTMLElement {
             this._iframeReady = false;
             this._iframeLoaded = false;
             this._iframeBootstrapped = false;
+            this._initSent = false;
             this._pendingState = null;
             this._lastAssistSatelliteState = null;
             this._lastTurnsSignature = null;
@@ -141,9 +144,9 @@ export class MacsCard extends HTMLElement {
             });
             if (this._pipelineTracker) this._pipelineTracker.setConfig(this._config);
 
-            // Normalize and cache weather data so we only post changes to the iframe.
-            this._weatherHandler = new WeatherHandler();
-            this._weatherHandler.setConfig(this._config);
+            // Normalize and cache sensor data so we only post changes to the iframe.
+            this._sensorHandler = new SensorHandler();
+            this._sensorHandler.setConfig(this._config);
 
 
             // Listen for messages from HA to the iframe
@@ -153,15 +156,15 @@ export class MacsCard extends HTMLElement {
         }
         else {
             // Reapply config to existing handlers when HA updates config for this card.
-            if (!this._weatherHandler) {
-                this._weatherHandler = new WeatherHandler();
+            if (!this._sensorHandler) {
+                this._sensorHandler = new SensorHandler();
             }
-            if (this._weatherHandler) this._weatherHandler.setConfig(this._config);
-            if (this._hass && this._weatherHandler) {
-                this._weatherHandler.setHass(this._hass);
-                this._weatherHandler.update?.();
-                this._weatherHandler.resetChangeTracking?.();
-                this._sendWeatherIfChanged();
+            if (this._sensorHandler) this._sensorHandler.setConfig(this._config);
+            if (this._hass && this._sensorHandler) {
+                this._sensorHandler.setHass(this._hass);
+                this._sensorHandler.update?.();
+                this._sensorHandler.resetChangeTracking?.();
+                this._sendSensorIfChanged();
             }
             this._lastConfigSignature = null;
         }
@@ -181,8 +184,8 @@ export class MacsCard extends HTMLElement {
         try { this._assistSatelliteOutcome?.dispose?.(); } catch (_) {}
         this._assistSatelliteOutcome = null;
 
-        try { this._weatherHandler?.dispose?.(); } catch (_) {}
-        this._weatherHandler = null;
+        try { this._sensorHandler?.dispose?.(); } catch (_) {}
+        this._sensorHandler = null;
 
         try {
             const u = this._unsubMessageEvents;
@@ -212,15 +215,15 @@ export class MacsCard extends HTMLElement {
             this._assistSatelliteOutcome = new SatelliteTracker({});
         }
 
-        if (this._config && !this._weatherHandler) {
-            debug("Recreating WeatherHandler (reconnect)");
-            this._weatherHandler = new WeatherHandler();
-            this._weatherHandler.setConfig(this._config);
+        if (this._config && !this._sensorHandler) {
+            debug("Recreating SensorHandler (reconnect)");
+            this._sensorHandler = new SensorHandler();
+            this._sensorHandler.setConfig(this._config);
             if (this._hass) {
-                this._weatherHandler.setHass(this._hass);
-                this._weatherHandler.update?.();
-                this._weatherHandler.resetChangeTracking?.();
-                this._sendWeatherIfChanged();
+                this._sensorHandler.setHass(this._hass);
+                this._sensorHandler.update?.();
+                this._sensorHandler.resetChangeTracking?.();
+                this._sendSensorIfChanged();
             }
         }
 
@@ -242,50 +245,7 @@ export class MacsCard extends HTMLElement {
         this._messagePoster.post(payload);
     }
 
-    _sendAllToIframe(state, options = {}) {
-        const snapshot = state || this._pendingState;
-        if (!snapshot) return;
-        if (options.forceWeather) {
-            this._weatherHandler?.resetChangeTracking?.();
-        }
-        if (options.forceConfig) {
-            this._sendConfigToIframe(true);
-        } else {
-            this._sendConfigToIframe();
-        }
-        if (snapshot.mood) {
-            this._sendMoodToIframe(snapshot.mood);
-        }
-        this._sendWeatherIfChanged();
-        if (Number.isFinite(snapshot.brightness)) {
-            this._sendBrightnessToIframe(snapshot.brightness);
-        }
-        this._sendAnimationsEnabledToIframe(snapshot.animationsEnabled);
-        this._sendTurnsToIframe();
-        this._lastMood = snapshot.mood;
-        this._lastBrightness = snapshot.brightness;
-    }
-
-    _handleIframeReady() {
-        if (this._iframeBootstrapped) return;
-        if (!this._iframeReady || !this._iframeLoaded) return;
-        this._iframeBootstrapped = true;
-        this._sendAllToIframe(this._pendingState, { forceWeather: true, forceConfig: true });
-        this._pipelineTracker?.triggerFetchNewest?.();
-        if (this._thumb) {
-            this._thumb.classList.add("hidden");
-            this._thumb.hidden = true;
-        }
-        if (this._iframe) {
-            this._iframe.classList.remove("hidden");
-            this._iframe.hidden = false;
-        }
-    }
-
-
-
-
-    _sendConfigToIframe(force = false) {
+    _buildConfigPayload() {
         this._updatePreviewState();
         const enabled = !!this._config.assist_pipeline_enabled;
         const assistSatelliteEnabled = !!this._config.assist_satellite_enabled;
@@ -300,9 +260,7 @@ export class MacsCard extends HTMLElement {
         const debugMode = typeof window !== "undefined" && typeof window.__MACS_DEBUG__ !== "undefined"
             ? window.__MACS_DEBUG__
             : "None";
-        // Preview mode forces kiosk/auto-brightness off so the editor stays usable.
-        const payload = {
-            type: "macs:config",
+        return {
             assist_satellite_enabled: assistSatelliteEnabled,
             assist_pipeline_entity,
             max_turns: maxTurns,
@@ -313,6 +271,95 @@ export class MacsCard extends HTMLElement {
             auto_brightness_pause_animations: autoBrightnessPauseAnimations,
             battery_state_sensor_enabled: batteryStateSensorEnabled,
             debug_mode: debugMode
+        };
+    }
+
+    _buildTurnsPayload() {
+        const turns = this._pipelineTracker?.getTurns?.() || [];
+        const synthetic = this._syntheticTurns || [];
+        const combined = [...synthetic, ...turns].sort((a, b) => {
+            const ta = Date.parse(a?.ts || "") || 0;
+            const tb = Date.parse(b?.ts || "") || 0;
+            return tb - ta;
+        });
+        const maxMessages = this._getMaxMessages();
+        return maxMessages ? combined.slice(0, maxMessages) : combined;
+    }
+
+    _sendInitToIframe(state) {
+        const snapshot = state || this._pendingState;
+        if (!snapshot) return;
+        const config = this._buildConfigPayload();
+        const turns = this._buildTurnsPayload();
+        const payload = {
+            type: "macs:init",
+            config,
+            mood: snapshot.mood ?? null,
+            sensors: snapshot.sensorValues ?? null,
+            brightness: Number.isFinite(snapshot.brightness) ? snapshot.brightness : null,
+            animations_enabled: typeof snapshot.animationsEnabled === "boolean" ? snapshot.animationsEnabled : null,
+            turns
+        };
+
+        this._postToIframe(payload);
+        this._initSent = true;
+
+        this._lastConfigSignature = JSON.stringify({ type: "macs:config", ...config });
+        this._lastTurnsSignature = JSON.stringify(turns);
+
+        this._lastMood = snapshot.mood;
+        this._lastBrightness = snapshot.brightness;
+        this._lastAnimationsEnabled = typeof snapshot.animationsEnabled === "boolean"
+            ? snapshot.animationsEnabled
+            : this._lastAnimationsEnabled;
+        this._sensorHandler?.syncChangeTracking?.();
+    }
+
+    _flushPendingState() {
+        const snapshot = this._pendingState;
+        if (!snapshot) return;
+        const mood = snapshot.mood;
+        if (mood && mood !== this._lastMood) {
+            this._lastMood = mood;
+            this._sendMoodToIframe(mood);
+        }
+        if (Number.isFinite(snapshot.brightness) && snapshot.brightness !== this._lastBrightness) {
+            this._lastBrightness = snapshot.brightness;
+            this._sendBrightnessToIframe(snapshot.brightness);
+        }
+        this._sendAnimationsEnabledToIframe(snapshot.animationsEnabled);
+        this._sendSensorIfChanged();
+        this._sendConfigToIframe();
+        this._sendTurnsToIframe();
+    }
+
+    _handleIframeReady() {
+        if (this._iframeBootstrapped) return;
+        if (!this._iframeReady || !this._iframeLoaded) return;
+        if (!this._initSent) {
+            this._sendInitToIframe(this._pendingState);
+        }
+        this._pipelineTracker?.triggerFetchNewest?.();
+    }
+
+    _revealIframe() {
+        if (this._thumb) {
+            this._thumb.classList.add("hidden");
+            this._thumb.hidden = true;
+        }
+        if (this._iframe) {
+            this._iframe.classList.remove("hidden");
+            this._iframe.hidden = false;
+        }
+    }
+
+
+
+
+    _sendConfigToIframe(force = false) {
+        const payload = {
+            type: "macs:config",
+            ...this._buildConfigPayload(),
         };
         const signature = JSON.stringify(payload);
         if (!force && signature === this._lastConfigSignature) return;
@@ -327,32 +374,32 @@ export class MacsCard extends HTMLElement {
         this._postToIframe(payload);
     }
     _sendTemperatureToIframe(temperature) {
-        if (this._weatherHandler.getTemperatureHasChanged?.()) {
+        if (this._sensorHandler.getTemperatureHasChanged?.()) {
             this._postToIframe({ type: "macs:temperature", temperature });
         }
     }
     _sendWindSpeedToIframe(windspeed) {
-        if (this._weatherHandler.getWindSpeedHasChanged?.()) {
+        if (this._sensorHandler.getWindSpeedHasChanged?.()) {
             this._postToIframe({ type: "macs:windspeed", windspeed });
         }
     }
     _sendPrecipitationToIframe(precipitation) {
-        if (this._weatherHandler.getPrecipitationHasChanged?.()) {
+        if (this._sensorHandler.getPrecipitationHasChanged?.()) {
             this._postToIframe({ type: "macs:precipitation", precipitation });
         }
     }
     _sendWeatherConditionsToIframe(conditions) {
-        if (this._weatherHandler.getWeatherConditionsHasChanged?.()) {
+        if (this._sensorHandler.getWeatherConditionsHasChanged?.()) {
             this._postToIframe({ type: "macs:weather_conditions", conditions: conditions || {} });
         }
     }
     _sendBatteryToIframe(battery) {
-        if (this._weatherHandler.getBatteryHasChanged?.()) {
+        if (this._sensorHandler.getBatteryHasChanged?.()) {
             this._postToIframe({ type: "macs:battery", battery });
         }
     }
     _sendBatteryStateToIframe(state) {
-        if (this._weatherHandler.getBatteryStateHasChanged?.()) {
+        if (this._sensorHandler.getBatteryStateHasChanged?.()) {
             this._postToIframe({ type: "macs:battery_state", battery_state: state });
         }
     }
@@ -373,15 +420,7 @@ export class MacsCard extends HTMLElement {
 
     _sendTurnsToIframe() {
         // Turns are kept newest-first in the card, but sent as-is
-        const turns = this._pipelineTracker?.getTurns?.() || [];
-        const synthetic = this._syntheticTurns || [];
-        const combined = [...synthetic, ...turns].sort((a, b) => {
-            const ta = Date.parse(a?.ts || "") || 0;
-            const tb = Date.parse(b?.ts || "") || 0;
-            return tb - ta;
-        });
-        const maxMessages = this._getMaxMessages();
-        const payloadTurns = maxMessages ? combined.slice(0, maxMessages) : combined;
+        const payloadTurns = this._buildTurnsPayload();
         // Avoid spamming iframe with identical payloads.
         const signature = JSON.stringify(payloadTurns);
         if (signature === this._lastTurnsSignature) return;
@@ -401,6 +440,15 @@ export class MacsCard extends HTMLElement {
             return;
         }
 
+        if (e.data.type === "macs:init_ack") {
+            debug("iframe init ack");
+            debug("init: ack received");
+            this._iframeBootstrapped = true;
+            this._revealIframe();
+            this._flushPendingState();
+            return;
+        }
+
         // Long-press gesture in the iframe toggles HA chrome visibility.
         if (e.data.type === "macs:toggle_kiosk") {
             if (this._isPreview) {
@@ -413,8 +461,14 @@ export class MacsCard extends HTMLElement {
 
         // Iframe requests initial config and current turns
         if (e.data.type === "macs:request_config") {
-            this._sendConfigToIframe(true);
-            this._sendTurnsToIframe();
+            if (!this._iframeBootstrapped) {
+                if (!this._initSent) {
+                    this._sendInitToIframe(this._pendingState);
+                }
+            } else {
+                this._sendConfigToIframe(true);
+                this._sendTurnsToIframe();
+            }
         }
     }
 
@@ -546,15 +600,15 @@ export class MacsCard extends HTMLElement {
         });
     }
 
-    _sendWeatherIfChanged() {
-        if (!this._weatherHandler) return;
+    _sendSensorIfChanged() {
+        if (!this._sensorHandler) return;
         // Only post deltas to keep iframe traffic minimal.
-        this._sendTemperatureToIframe(this._weatherHandler.getTemperature?.());
-        this._sendWindSpeedToIframe(this._weatherHandler.getWindSpeed?.());       
-        this._sendPrecipitationToIframe(this._weatherHandler.getPrecipitation?.());
-        this._sendWeatherConditionsToIframe(this._weatherHandler.getWeatherConditions?.());
-        this._sendBatteryToIframe(this._weatherHandler.getBattery?.());
-        this._sendBatteryStateToIframe(this._weatherHandler.getBatteryState?.());
+        this._sendTemperatureToIframe(this._sensorHandler.getTemperature?.());
+        this._sendWindSpeedToIframe(this._sensorHandler.getWindSpeed?.());       
+        this._sendPrecipitationToIframe(this._sensorHandler.getPrecipitation?.());
+        this._sendWeatherConditionsToIframe(this._sensorHandler.getWeatherConditions?.());
+        this._sendBatteryToIframe(this._sensorHandler.getBattery?.());
+        this._sendBatteryStateToIframe(this._sensorHandler.getBatteryState?.());
     }
 
 
@@ -578,7 +632,7 @@ export class MacsCard extends HTMLElement {
             this._pipelineTracker?.setConfig?.(this._config);
         }
 
-        if (this._weatherHandler) this._weatherHandler.setConfig(this._config);
+        if (this._sensorHandler) this._sensorHandler.setConfig(this._config);
         
 
         //this._ensureSubscriptions();
@@ -620,15 +674,15 @@ export class MacsCard extends HTMLElement {
             window.__MACS_DEBUG__ = debugMode;
         }
 
-        // Weather handler normalizes raw HA entities into a single payload.
-        let weatherValues = null;
-        if (this._weatherHandler) {
-            this._weatherHandler.setHass(hass);
-            weatherValues = this._weatherHandler.update?.() || this._weatherHandler.getPayload?.() || null;
+        // Sensor handler normalizes raw HA entities into a single payload.
+        let sensorValues = null;
+        if (this._sensorHandler) {
+            this._sensorHandler.setHass(hass);
+            sensorValues = this._sensorHandler.update?.() || this._sensorHandler.getPayload?.() || null;
         }
-        const batteryActive = Number.isFinite(weatherValues?.battery);
-        const batteryLow = batteryActive && weatherValues.battery <= 20;
-        const batteryCharging = weatherValues?.battery_state === true;
+        const batteryActive = Number.isFinite(sensorValues?.battery);
+        const batteryLow = batteryActive && sensorValues.battery <= 20;
+        const batteryCharging = sensorValues?.battery_state === true;
 
         // const now = Date.now();
         const overrideMood = this._assistSatelliteOutcome?.getOverrideMood?.();
@@ -650,23 +704,26 @@ export class MacsCard extends HTMLElement {
         } else {
             base.searchParams.delete("v");
         }
-        this._pendingState = { mood, brightness, animationsEnabled, weatherValues };
+        this._pendingState = { mood, brightness, animationsEnabled, sensorValues };
+        if (!this._initSent && this._iframeReady && this._iframeLoaded) {
+            this._sendInitToIframe(this._pendingState);
+        }
 
         if (!this._loadedOnce) {
             // First load: set iframe src and send initial state
             base.searchParams.set("mood", mood);
             base.searchParams.set("brightness", brightness.toString());
-            if (weatherValues && Number.isFinite(weatherValues.temperature)) {
-                base.searchParams.set("temperature", weatherValues.temperature.toString());
+            if (sensorValues && Number.isFinite(sensorValues.temperature)) {
+                base.searchParams.set("temperature", sensorValues.temperature.toString());
             }
-            if (weatherValues && Number.isFinite(weatherValues.windspeed)) {
-                base.searchParams.set("windspeed", weatherValues.windspeed.toString());
+            if (sensorValues && Number.isFinite(sensorValues.windspeed)) {
+                base.searchParams.set("windspeed", sensorValues.windspeed.toString());
             }
-            if (weatherValues && Number.isFinite(weatherValues.precipitation)) {
-                base.searchParams.set("precipitation", weatherValues.precipitation.toString());
+            if (sensorValues && Number.isFinite(sensorValues.precipitation)) {
+                base.searchParams.set("precipitation", sensorValues.precipitation.toString());
             }
-            if (weatherValues && Number.isFinite(weatherValues.battery)) {
-                base.searchParams.set("battery", weatherValues.battery.toString());
+            if (sensorValues && Number.isFinite(sensorValues.battery)) {
+                base.searchParams.set("battery", sensorValues.battery.toString());
             }
 
             const src = base.toString();
@@ -679,6 +736,7 @@ export class MacsCard extends HTMLElement {
                 this._iframeReady = false;
                 this._iframeLoaded = false;
                 this._iframeBootstrapped = false;
+                this._initSent = false;
                 this._iframe.src = src;
                 this._lastSrc = src;
             }
@@ -700,7 +758,7 @@ export class MacsCard extends HTMLElement {
                 this._lastMood = mood;
                 this._sendMoodToIframe(mood);
             }
-            this._sendWeatherIfChanged();
+            this._sendSensorIfChanged();
             if(brightness !== this._lastBrightness) {
                 this._lastBrightness = brightness;
                 this._sendBrightnessToIframe(brightness);
@@ -717,3 +775,8 @@ export class MacsCard extends HTMLElement {
         return 6;
     }
 }
+
+
+
+
+

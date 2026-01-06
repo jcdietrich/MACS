@@ -2,7 +2,7 @@
  * Shared helpers for normalising values and safely handling URLs
  */
 
-import {DEFAULTS, DEFAULT_MAX_TEMP_C, DEFAULT_MIN_TEMP_C, DEFAULT_MAX_WIND_MPH, DEFAULT_MIN_WIND_MPH, DEFAULT_MAX_RAIN_MM, DEFAULT_MIN_RAIN_MM} from "./constants.js";
+import {DEFAULTS, DEFAULT_MAX_TEMP_C, DEFAULT_MIN_TEMP_C, DEFAULT_MAX_WIND_MPH, DEFAULT_MIN_WIND_MPH, DEFAULT_MAX_RAIN_MM, DEFAULT_MIN_RAIN_MM} from "../shared/constants.js";
 
 
 

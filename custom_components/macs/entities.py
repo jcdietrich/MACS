@@ -269,7 +269,8 @@ DEBUG_OPTIONS = (
     "MacsCardEditor.js",
     "assistPipeline.js",
     "assistSatellite.js",
-    "weatherHandler.js",
+    "sensorHandler.js",
+    "postmessage.js",
     "moods.js",
     "assist-bridge.js",
 )

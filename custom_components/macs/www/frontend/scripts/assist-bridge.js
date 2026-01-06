@@ -3,6 +3,9 @@ import { MessagePoster } from "../../shared/postmessage.js";
 
 const debug = createDebugger("assist-bridge.js");
 const messagePoster = new MessagePoster({
+  sender: "assist-bridge",
+  recipient: "backend",
+  logReceive: false,
   getRecipientWindow: () => window.parent,
   getTargetOrigin: () => window.location.origin,
 });
@@ -59,42 +62,51 @@ const renderChat = () => {
   `;
 };
 
-const requestConfigFromParent = () => {
-  messagePoster.post({ type: "macs:request_config" });
+const applyConfigPayload = (payload) => {
+  const data = payload || {};
+  injectedPipelineId = (data.assist_pipeline_entity || "").toString().trim();
+  const maxTurns = Number(data.max_turns);
+  if (Number.isFinite(maxTurns) && maxTurns > 0) {
+    maxMessages = Math.max(1, Math.floor(maxTurns)) * 2;
+  } else {
+    maxMessages = MAX_MESSAGES_FALLBACK;
+  }
+  debug("config", { assist_pipeline_entity: injectedPipelineId, max_messages: maxMessages });
+};
+
+const applyTurnsPayload = (turns) => {
+  const incoming = Array.isArray(turns) ? turns : [];
+  debug("turns", { count: incoming.length });
+  // Keep newest-first, cap to something sane (card already caps, but belt & braces)
+  const nextMessages = [];
+  incoming.forEach((t) => {
+    const ts = (t?.ts || "").toString();
+    const reply = (t?.error || t?.reply || "").toString();
+    const heard = (t?.heard || "").toString();
+    if (reply) nextMessages.push({ role: "assistant", text: reply, ts });
+    if (heard) nextMessages.push({ role: "user", text: heard, ts });
+  });
+  messages = nextMessages.slice(0, maxMessages);
+  renderChat();
 };
 
 window.addEventListener("message", (e) => {
   if (!messagePoster.isValidEvent(e)) return;
   if (!e.data || typeof e.data !== "object") return;
 
-  debug("message", e.data);
+  if (e.data.type === "macs:init") {
+    applyConfigPayload(e.data.config);
+    applyTurnsPayload(e.data.turns);
+    return;
+  }
 
   if (e.data.type === "macs:config") {
-    injectedPipelineId = (e.data.assist_pipeline_entity || "").toString().trim();
-    const maxTurns = Number(e.data.max_turns);
-    if (Number.isFinite(maxTurns) && maxTurns > 0) {
-      maxMessages = Math.max(1, Math.floor(maxTurns)) * 2;
-    } else {
-      maxMessages = MAX_MESSAGES_FALLBACK;
-    }
-    debug("config", { assist_pipeline_entity: injectedPipelineId, max_messages: maxMessages });
+    applyConfigPayload(e.data);
     return;
   }
 
   if (e.data.type === "macs:turns") {
-    const incoming = Array.isArray(e.data.turns) ? e.data.turns : [];
-    debug("turns", { count: incoming.length });
-    // Keep newest-first, cap to something sane (card already caps, but belt & braces)
-    const nextMessages = [];
-    incoming.forEach((t) => {
-      const ts = (t?.ts || "").toString();
-      const reply = (t?.error || t?.reply || "").toString();
-      const heard = (t?.heard || "").toString();
-      if (reply) nextMessages.push({ role: "assistant", text: reply, ts });
-      if (heard) nextMessages.push({ role: "user", text: heard, ts });
-    });
-    messages = nextMessages.slice(0, maxMessages);
-    renderChat();
+    applyTurnsPayload(e.data.turns);
     return;
   }
 });
@@ -106,7 +118,4 @@ messages = [{
   ts: new Date().toISOString()
 }];
 renderChat();
-
-requestConfigFromParent();
-
 debug("Macs Bridge Loaded...");

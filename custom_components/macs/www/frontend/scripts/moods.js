@@ -4,6 +4,8 @@ import { Particle, SVG_NS } from "./particles.js";
 
 const debug = createDebugger("moods.js");
 const messagePoster = new MessagePoster({
+	sender: "frontend",
+	recipient: "backend",
 	getRecipientWindow: () => window.parent,
 	getTargetOrigin: () => window.location.origin,
 });
@@ -189,6 +191,9 @@ const setDebugOverride = (mode) => {
 	if (typeof mode === "undefined") return;
 	if (typeof window !== "undefined") {
 		window.__MACS_DEBUG__ = mode;
+		if (window.dispatchEvent) {
+			window.dispatchEvent(new CustomEvent("macs-debug-update"));
+		}
 	}
 	if (typeof debug?.show === "function") {
 		debug.show();
@@ -1073,6 +1078,46 @@ function setAutoBrightnessConfig(config){
 	updateAutoBrightnessDebug();
 }
 
+const applyConfigPayload = (config) => {
+	if (!config || typeof config !== "object") return;
+	if (typeof config.assist_satellite_enabled !== "undefined") {
+		setIdleSequenceEnabled(!!config.assist_satellite_enabled);
+	}
+	if (typeof config.auto_brightness_enabled !== "undefined") {
+		setAutoBrightnessConfig(config);
+	}
+	if (typeof config.battery_state_sensor_enabled !== "undefined") {
+		batteryStateSensorEnabled = !!config.battery_state_sensor_enabled;
+		setChargingActive(isChargingVisualActive());
+		applyBatteryDimming(lastBatteryPercent);
+	}
+	if (typeof config.debug_mode !== "undefined") {
+		setDebugOverride(config.debug_mode);
+	}
+};
+
+const applySensorPayload = (sensors) => {
+	if (!sensors || typeof sensors !== "object") return;
+	if (typeof sensors.temperature !== "undefined") {
+		setTemperature(sensors.temperature);
+	}
+	if (typeof sensors.windspeed !== "undefined") {
+		setWindSpeed(sensors.windspeed);
+	}
+	if (typeof sensors.precipitation !== "undefined") {
+		setPrecipitation(sensors.precipitation);
+	}
+	if (typeof sensors.conditions !== "undefined") {
+		setWeatherConditions(sensors.conditions);
+	}
+	if (typeof sensors.battery !== "undefined") {
+		setBattery(sensors.battery);
+	}
+	if (typeof sensors.battery_state !== "undefined") {
+		setBatteryState(sensors.battery_state);
+	}
+};
+
 // set brightness level (0-100)
 function setBrightness(userBrightness){
 	const brightness = Number(userBrightness);
@@ -1133,21 +1178,26 @@ window.addEventListener('message', (e) => {
     if (!messagePoster.isValidEvent(e)) return;
     if (!e.data || typeof e.data !== 'object') return;
 
+	if (e.data.type === 'macs:init') {
+		const payload = e.data || {};
+		applyConfigPayload(payload.config);
+		if (typeof payload.mood !== "undefined") {
+			setBaseMood(payload.mood || 'idle');
+		}
+		applySensorPayload(payload.sensors);
+		if (typeof payload.brightness !== "undefined") {
+			setBrightness(payload.brightness);
+		}
+		if (typeof payload.animations_enabled !== "undefined") {
+			animationsToggleEnabled = !!payload.animations_enabled;
+			applyAnimationsToggle();
+		}
+		messagePoster.post({ type: "macs:init_ack" });
+		return;
+	}
+
 	if (e.data.type === 'macs:config') {
-		if (typeof e.data.assist_satellite_enabled !== "undefined") {
-			setIdleSequenceEnabled(!!e.data.assist_satellite_enabled);
-		}
-		if (typeof e.data.auto_brightness_enabled !== "undefined") {
-			setAutoBrightnessConfig(e.data);
-		}
-		if (typeof e.data.battery_state_sensor_enabled !== "undefined") {
-			batteryStateSensorEnabled = !!e.data.battery_state_sensor_enabled;
-			setChargingActive(isChargingVisualActive());
-			applyBatteryDimming(lastBatteryPercent);
-		}
-		if (typeof e.data.debug_mode !== "undefined") {
-			setDebugOverride(e.data.debug_mode);
-		}
+		applyConfigPayload(e.data);
 		return;
 	}
 

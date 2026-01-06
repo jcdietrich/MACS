@@ -4,6 +4,8 @@ export function createDebugger(namespace, enabled = true) {
     const ns = (namespace || "general").toString();
     let debugDiv = null;
     let visible = false;
+    let backlog = [];
+    const BACKLOG_LIMIT = 200;
 
     const normalizeToken = (value) => (value ?? "").toString().trim().toLowerCase();
     const stripJs = (value) => (value.endsWith(".js") ? value.slice(0, -3) : value);
@@ -122,6 +124,7 @@ export function createDebugger(namespace, enabled = true) {
         ensureHeader(el);
         el.style.display = "block";
         visible = true;
+        flushBacklog();
     };
 
     const hideDebug = () => {
@@ -139,6 +142,10 @@ export function createDebugger(namespace, enabled = true) {
         }
     };
 
+    if (typeof window !== "undefined" && window?.addEventListener) {
+        window.addEventListener("macs-debug-update", updateVisibility);
+    }
+
     const looksLikeJson = (value) => {
         if (typeof value !== "string") return false;
         const trimmed = value.trim();
@@ -148,6 +155,37 @@ export function createDebugger(namespace, enabled = true) {
         if (starts === "{" && ends === "}") return true;
         if (starts === "[" && ends === "]") return true;
         return false;
+    };
+
+    const appendLine = (logEl, msg) => {
+        if (!logEl) return;
+        const line = document.createElement("div");
+        line.textContent = msg;
+        if (msg.includes("\n")) {
+            line.style.whiteSpace = "pre-wrap";
+        }
+        logEl.appendChild(line);
+    };
+
+    const enqueue = (msg) => {
+        if (!msg) return;
+        backlog.push(msg);
+        if (backlog.length > BACKLOG_LIMIT) {
+            backlog.shift();
+        }
+    };
+
+    const flushBacklog = () => {
+        if (!backlog.length) return;
+        const el = ensureDebugDiv();
+        if (!el) return;
+        ensureHeader(el);
+        const log = ensureLogContainer(el);
+        backlog.forEach((msg) => appendLine(log, msg));
+        backlog = [];
+        if (isAutoScrollEnabled() && el) {
+            el.scrollTop = el.scrollHeight;
+        }
     };
 
     const toUiString = (value) => {
@@ -172,14 +210,12 @@ export function createDebugger(namespace, enabled = true) {
     };
 
     const log = (...args) => {
-        if (!isEnabled()) {
+        const enabledNow = isEnabled();
+        if (!enabledNow) {
             hideDebug();
-            return;
         }
-        showDebug();
         const el = ensureDebugDiv();
-        ensureHeader(el);
-        const log = ensureLogContainer(el);
+        const log = el ? ensureLogContainer(el) : null;
         const entries = args.map((arg) => ({
             arg,
             text: toUiString(arg)
@@ -193,13 +229,11 @@ export function createDebugger(namespace, enabled = true) {
             ? entries.map((entry) => entry.text).join("\n")
             : entries.map((entry) => entry.text).join(" ")
         ).trim();
-        if (log){
-            const line = document.createElement("div");
-            line.textContent = msg;
-            if (msg.includes("\n")) {
-                line.style.whiteSpace = "pre-wrap";
-            }
-            log.appendChild(line);
+        if (!enabledNow || !log) {
+            enqueue(msg);
+        } else {
+            showDebug();
+            appendLine(log, msg);
             if (isAutoScrollEnabled() && el) {
                 el.scrollTop = el.scrollHeight;
             }
@@ -209,5 +243,7 @@ export function createDebugger(namespace, enabled = true) {
 
     log.show = updateVisibility;
     log.enabled = isEnabled;
+    log.flush = flushBacklog;
+    updateVisibility();
     return log;
 }

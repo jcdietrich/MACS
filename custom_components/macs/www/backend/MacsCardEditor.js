@@ -17,7 +17,7 @@
 
 
 
-import { DEFAULTS } from "./constants.js";
+import { DEFAULTS } from "../shared/constants.js";
 import { createDebugger } from "../shared/debugger.js";
 import { loadAssistantOptions, loadWeatherOptions, readAssistStateInputs, readAutoBrightnessInputs, readPipelineInputs, readWeatherInputs, syncAssistStateControls, syncConditionControls, syncAutoBrightnessControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
 

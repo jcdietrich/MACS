@@ -1,4 +1,4 @@
-import { DEFAULTS, CONVERSATION_ENTITY_ID } from "./constants.js";
+import { DEFAULTS, CONVERSATION_ENTITY_ID } from "../shared/constants.js";
 import { createDebugger } from "../shared/debugger.js";
 
 const debug = createDebugger("assistPipeline.js");

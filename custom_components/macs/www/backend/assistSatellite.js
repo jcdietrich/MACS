@@ -3,7 +3,7 @@
 // If the state goes idle > listening > idle, then it hasn't understood.
 // this functions keeps track of the satellite's state.
 
-import {DEFAULTS} from "./constants.js";
+import {DEFAULTS} from "../shared/constants.js";
 
 import { createDebugger } from "../shared/debugger.js";
 const debug = createDebugger("assistSatellite.js");

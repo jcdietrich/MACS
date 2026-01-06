@@ -1,8 +1,8 @@
-import { TEMPERATURE_ENTITY_ID, WIND_ENTITY_ID, PRECIPITATION_ENTITY_ID, BATTERY_CHARGE_ENTITY_ID, BATTERY_STATE_ENTITY_ID } from "./constants.js";
+import { TEMPERATURE_ENTITY_ID, WIND_ENTITY_ID, PRECIPITATION_ENTITY_ID, BATTERY_CHARGE_ENTITY_ID, BATTERY_STATE_ENTITY_ID } from "../shared/constants.js";
 import { toNumber, normalizeTemperatureValue, normalizeWindValue, normalizeRainValue, normalizeBatteryValue, normalizeWeatherUnit, normalizeBatteryUnit } from "./validators.js";
 import { createDebugger } from "../shared/debugger.js";
 
-const debug = createDebugger("weatherHandler.js");
+const debug = createDebugger("sensorHandler.js");
 
 const CONDITION_KEYS = [
     "snowy",
@@ -69,7 +69,7 @@ function normalizeChargingState(value) {
     return false;
 }
 
-export class WeatherHandler {
+export class SensorHandler {
     constructor() {
         this._config = null;
         this._hass = null;
@@ -79,7 +79,7 @@ export class WeatherHandler {
         this._battery = null;
         this._batteryState = null;
         this._conditions = emptyConditions();
-        this._weather = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, conditions: null };
+        this._sensors = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, conditions: null };
         this._lastTemperature = undefined;
         this._lastWindspeed = undefined;
         this._lastPrecipitation = undefined;
@@ -106,7 +106,7 @@ export class WeatherHandler {
         const batteryState = this._normalizeBatteryState();
         const conditions = this._normalizeConditions();
 
-        this._weather = { temperature, wind, precipitation, battery, battery_state: batteryState, conditions };
+        this._sensors = { temperature, wind, precipitation, battery, battery_state: batteryState, conditions };
         this._temperature = Number.isFinite(temperature?.normalized) ? temperature.normalized : null;
         this._windspeed = Number.isFinite(wind?.normalized) ? wind.normalized : null;
         this._precipitation = Number.isFinite(precipitation?.normalized) ? precipitation.normalized : null;
@@ -480,7 +480,7 @@ export class WeatherHandler {
                 flags.exceptional = true;
             }
 
-            debug("weather conditions", JSON.stringify({
+            debug("condition sensors", JSON.stringify({
                 entityId,
                 raw,
                 conditions: flags,
@@ -508,9 +508,18 @@ export class WeatherHandler {
         return flags;
     }
 
-    getWeather() {
-        debug("getWeather");
-        return this._weather;
+    getSensors() {
+        debug("getSensors");
+        return this._sensors;
+    }
+
+    syncChangeTracking() {
+        this._lastTemperature = this._temperature;
+        this._lastWindspeed = this._windspeed;
+        this._lastPrecipitation = this._precipitation;
+        this._lastBattery = this._battery;
+        this._lastBatteryState = this._batteryState;
+        this._lastConditionsSignature = JSON.stringify(this._conditions || emptyConditions());
     }
 
     getPayload() {
@@ -603,7 +612,7 @@ export class WeatherHandler {
         this._battery = null;
         this._batteryState = null;
         this._conditions = emptyConditions();
-        this._weather = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, conditions: null };
+        this._sensors = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, conditions: null };
         this._lastTemperature = undefined;
         this._lastWindspeed = undefined;
         this._lastPrecipitation = undefined;
@@ -614,4 +623,3 @@ export class WeatherHandler {
 
 
 }
-

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Shared constants and default configuration for the M.A.C.S. Lovelace card.
  */
 
@@ -29,15 +29,15 @@ htmlUrl.search = selfUrl.search; // query params, including manifest version (ma
 
 // default config values
 export const DEFAULTS = {
-    url: htmlUrl.toString(),		// URL to Macs HTML file (auto adds version from manifest.json)
+    url: htmlUrl.toString(),        // URL to Macs HTML file (auto adds version from manifest.json)
     assist_pipeline_enabled: false, // show discussion text output in iframe
     assist_pipeline_entity: "",     // assistant pipeline ID to use for discussion text output
     assist_pipeline_custom: false,  // whether the pipeline ID is custom (true) or selected from HA assistant pipelines (false)
     assist_satellite_enabled: false, // automatically change mood based on assistant state (listening, idle, processing etc)
     assist_satellite_entity: "",    // entity_id of a satellite device to monitor assistant state from
-    assist_satellite_custom: false, // whether the satellite entity is custom (true) or selected from HA assistant satellites (false)	
-    max_turns: 2,  			 		// number of turns (voice requests) to show in the iframe		
-    preview_image: new URL("frontend/images/card_preview.png", rootUrl).toString(), 
+    assist_satellite_custom: false, // whether the satellite entity is custom (true) or selected from HA assistant satellites (false)
+    max_turns: 2,                   // number of turns (voice requests) to show in the iframe
+    preview_image: new URL("frontend/images/card_preview.png", rootUrl).toString(),
     assist_outcome_duration_ms: 1000,
     // Weather sensor inputs (frontend UI defaults)
     temperature_sensor_enabled: false,
@@ -83,7 +83,7 @@ export const DEFAULT_MIN_WIND_MPH = 10;
 export const DEFAULT_MAX_RAIN_MM = 10;
 
 export const MACS_MESSAGE_EVENT = "macs_message";
-export const DEFAULT_MIN_RAIN_MM = 0; 
+export const DEFAULT_MIN_RAIN_MM = 0;
 
 
 // HA entity IDs this card listens to
@@ -97,5 +97,3 @@ export const BATTERY_STATE_ENTITY_ID = "switch.macs_charging";
 export const ANIMATIONS_ENTITY_ID = "switch.macs_animations_enabled";
 export const DEBUG_ENTITY_ID = "select.macs_debug";
 export const CONVERSATION_ENTITY_ID = "conversation.home_assistant";
-
-
