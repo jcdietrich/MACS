@@ -3,6 +3,10 @@
  * ---------
  * Drives eye and stage offsets based on pointer movement.
  */
+
+import { createDebugger } from "../../shared/debugger.js";
+const debug = createDebugger(import.meta.url);
+
 const CURSOR_LOOK_IDLE_MS = 5000;
 const EYE_LOOK_MAX_X = 20;
 const EYE_LOOK_MAX_Y = 12;
@@ -90,3 +94,6 @@ export function createCursorFx() {
 		reset
 	};
 }
+
+
+debug("Cursor Effects Ready");

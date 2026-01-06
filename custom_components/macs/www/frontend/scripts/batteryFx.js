@@ -3,6 +3,10 @@
  * ----------
  * Handles charging visuals and low-battery dimming.
  */
+
+import { createDebugger } from "../../shared/debugger.js";
+const debug = createDebugger(import.meta.url);
+
 const LOW_BATTERY_CUTOFF = 20;
 
 const LOW_BATTERY_ZERO_VARS = [
@@ -197,3 +201,6 @@ export function createBatteryFx() {
 		setBatteryStateSensorEnabled
 	};
 }
+
+
+debug("Battery Effects Ready");

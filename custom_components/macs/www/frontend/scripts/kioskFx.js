@@ -6,6 +6,9 @@
 const KIOSK_HOLD_MS = 800;
 const BRIGHTNESS_FADE_SECONDS = 10;
 
+import { createDebugger } from "../../shared/debugger.js";
+const debug = createDebugger(import.meta.url);
+
 export function createKioskFx({
 	debug,
 	isEditor,
@@ -348,3 +351,6 @@ export function createKioskFx({
 		updateAutoBrightnessDebug
 	};
 }
+
+
+debug("Kiosk Effects Ready");

@@ -3,7 +3,7 @@
  * -------------
  * Coordinates frontend effects, message handling, and runtime setup.
  */
-import { createDebugger } from "../../shared/debugger.js";
+
 import { MessagePoster } from "../../shared/messagePoster.js";
 import { MessageListener } from "../../shared/messageListener.js";
 import { createBatteryFx } from "./batteryFx.js";
@@ -12,7 +12,9 @@ import { createKioskFx } from "./kioskFx.js";
 import { createMoodFx } from "./moodFx.js";
 import { createWeatherFx } from "./weatherFx.js";
 
+import { createDebugger } from "../../shared/debugger.js";
 const debug = createDebugger(import.meta.url);
+
 const messagePoster = new MessagePoster({
 	sender: "frontend",
 	recipient: "backend",
@@ -304,9 +306,10 @@ function handleMessage(payload) {
     }
 }
 
+debug("Macs Frontend Ready");
+debug("Starting Communication");
 
 messageListener.start();
-debug("Macs Moods Loaded");
 if (!readySent) {
 	readySent = true;
 	messagePoster.post({ type: "macs:ready", recipient: "backend" });

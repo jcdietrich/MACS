@@ -122,4 +122,4 @@ messages = [{
   ts: new Date().toISOString()
 }];
 renderChat();
-debug("Macs Bridge Loaded...");
+debug("Assistant Bridge Ready");

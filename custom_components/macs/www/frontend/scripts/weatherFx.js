@@ -6,6 +6,9 @@
 import { Particle, SVG_NS } from "./particles.js";
 import * as FX_CONFIG from "./weatherFxTweaker.js";
 
+import { createDebugger } from "../../shared/debugger.js";
+const debug = createDebugger(import.meta.url);
+
 const clampPercent = (value, fallback = 0) => {
 	const num = Number(value);
 	if (!Number.isFinite(num)) return fallback;
@@ -332,3 +335,5 @@ export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
 		handleResize,
 	};
 }
+
+debug("Weather Effects Ready");

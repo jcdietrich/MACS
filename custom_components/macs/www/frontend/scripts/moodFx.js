@@ -3,6 +3,11 @@
  * -------
  * Applies mood classes and runs idle->bored->sleep sequence logic.
  */
+
+import { createDebugger } from "../../shared/debugger.js";
+const debug = createDebugger(import.meta.url);
+
+
 const MOODS = ['bored','confused','happy','idle','listening','sad','sleeping','surprised','thinking'];
 const MOOD_IDLE_TO_BORED_MS = 30000;
 const MOOD_BORED_TO_SLEEP_MS = 30000;
@@ -103,3 +108,5 @@ export function createMoodFx({ isEditor, onMoodChange } = {}) {
 		resetMoodSequence
 	};
 }
+
+debug("Mood Effects Ready");
