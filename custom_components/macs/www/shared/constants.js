@@ -124,3 +124,71 @@ export const BATTERY_STATE_ENTITY_ID = "switch.macs_charging";
 export const ANIMATIONS_ENTITY_ID = "switch.macs_animations_enabled";
 export const DEBUG_ENTITY_ID = "select.macs_debug";
 export const CONVERSATION_ENTITY_ID = "conversation.home_assistant";
+
+
+
+
+const CARD_EDITOR_INFO = `
+	<!-- Show dialogue -->
+		<div class="group">
+			<div class="row">
+				<label>Custom Integrations</label>
+			<div>
+				<p>For custom integrations, like making him look surprised when a motion sensor is triggered, Macs works like any other device and exposes entities which allow full control over his behavior.
+				<br>Some examples are given below:</p>
+				<div class="entity-grid">
+					<div class="header">Entity</div>
+					<div class="header">Action</div>
+
+					<div>select.macs_mood</div>
+					<div>macs.set_mood</div>
+
+						<div>number.macs_brightness</div>
+						<div>macs.set_brightness</div>
+
+						<div>switch.macs_animations_enabled</div>
+						<div>macs.set_animations_enabled</div>
+
+						<div>number.macs_temperature</div>
+						<div>macs.set_temperature</div>
+
+						<div>number.macs_windspeed</div>
+						<div>macs.set_windspeed</div>
+
+						<div>number.macs_precipitation</div>
+						<div>macs.set_precipitation</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	`;
+
+const CARD_EDITOR_ABOUT = `
+	<!-- About -->
+		<div class="group">
+			<div class="row about">
+				<div class="about-toggle" tabindex="0" role="button">
+					About M.A.C.S. 
+					<span class="about-arrow">&gt;</span>
+				</div>
+			</div>
+			<div class="about-content" hidden>
+				<p>
+					<strong>M.A.C.S.</strong> (Mood-Aware Character SVG) is a playful Home Assistant card that adds personality to your smart home, responding visually to system events such as voice interactions and custom automations.
+				</p>
+
+				<p>
+					M.A.C.S. is being developed by <strong>Glyn Davidson</strong> (Developer, climber, and chronic tinkerer of occasionally useful tools) in his free time.
+				</p>
+
+				<p class="support">
+					If you find M.A.C.S. useful and would like to encourage its ongoing development with new features and bug fixes, please consider 
+					<br>
+					<ha-icon icon="mdi:coffee"></ha-icon>
+					<a href="https://buymeacoffee.com/glyndavidson" target="_blank" rel="noopener">
+						buying me a coffee
+					</a>.
+				</p>
+			</div>
+		</div>
+	`;

@@ -4,10 +4,7 @@
  * Home Assistant Lovelace card editor for M.A.C.S. (Mood-Aware Character SVG).
  *
  * This file defines the custom editor UI shown in the Lovelace card configuration
- * panel. It allows users to configure how M.A.C.S. integrates with Home Assistant's
- * Assist system, including:
- * - Enabling automatic mood changes based on assistant state
- * - Enabling or disabling dialogue display from the assistant
+ * panel. 
  *
  * User selections are merged with default values and emitted via `config-changed`
  * events so Home Assistant can persist the card configuration.
@@ -17,81 +14,12 @@
 
 
 
-import { DEFAULTS, TEMPERATURE_UNIT_ITEMS, WIND_UNIT_ITEMS, PRECIPITATION_UNIT_ITEMS, BATTERY_CHARGE_UNIT_ITEMS } from "../shared/constants.js";
+import { DEFAULTS, TEMPERATURE_UNIT_ITEMS, WIND_UNIT_ITEMS, PRECIPITATION_UNIT_ITEMS, BATTERY_CHARGE_UNIT_ITEMS, CARD_EDITOR_INFO, CARD_EDITOR_ABOUT } from "../shared/constants.js";
 import { createDebugger } from "../shared/debugger.js";
 import { getValidUrl } from "./validators.js";
 import { loadAssistantOptions, loadWeatherOptions, readAssistStateInputs, readAutoBrightnessInputs, readPipelineInputs, readWeatherInputs, syncAssistStateControls, syncConditionControls, syncAutoBrightnessControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
 
 const debug = createDebugger("MacsCardEditor.js");
-
-
-const cssUrl = getValidUrl("backend/editor.css");
-const styleSheet = `<link rel="stylesheet" href="${cssUrl}">`;
-
-const instructions = `
-	<!-- Show dialogue -->
-		<div class="group">
-			<div class="row">
-				<label>Custom Integrations</label>
-			<div>
-				<p>For custom integrations, like making him look surprised when a motion sensor is triggered, Macs works like any other device and exposes entities which allow full control over his behavior.
-				<br>Some examples are given below:</p>
-				<div class="entity-grid">
-					<div class="header">Entity</div>
-					<div class="header">Action</div>
-
-					<div>select.macs_mood</div>
-					<div>macs.set_mood</div>
-
-						<div>number.macs_brightness</div>
-						<div>macs.set_brightness</div>
-
-						<div>switch.macs_animations_enabled</div>
-						<div>macs.set_animations_enabled</div>
-
-						<div>number.macs_temperature</div>
-						<div>macs.set_temperature</div>
-
-						<div>number.macs_windspeed</div>
-						<div>macs.set_windspeed</div>
-
-						<div>number.macs_precipitation</div>
-						<div>macs.set_precipitation</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	`;
-
-const about = `
-	<!-- About -->
-		<div class="group">
-			<div class="row about">
-				<div class="about-toggle" tabindex="0" role="button">
-					About M.A.C.S. 
-					<span class="about-arrow">&gt;</span>
-				</div>
-			</div>
-			<div class="about-content" hidden>
-				<p>
-					<strong>M.A.C.S.</strong> (Mood-Aware Character SVG) is a playful Home Assistant card that adds personality to your smart home, responding visually to system events such as voice interactions and custom automations.
-				</p>
-
-				<p>
-					M.A.C.S. is being developed by <strong>Glyn Davidson</strong> (Developer, climber, and chronic tinkerer of occasionally useful tools) in his free time.
-				</p>
-
-				<p class="support">
-					If you find M.A.C.S. useful and would like to encourage its ongoing development with new features and bug fixes, please consider 
-					<br>
-					<ha-icon icon="mdi:coffee"></ha-icon>
-					<a href="https://buymeacoffee.com/glyndavidson" target="_blank" rel="noopener">
-						buying me a coffee
-					</a>.
-				</p>
-			</div>
-		</div>
-	`;
 
 function createHtmlGroup({ id, name, label, hint = null, tooltip = null, placeholder, units = false, minMax = false, customInput = "", select = true, entity = true }) {
 	const safeHint = hint
@@ -431,10 +359,13 @@ export class MacsCardEditor extends HTMLElement {
 			extraIds: ["auto_brightness_timeout_minutes", "auto_brightness_pause_animations_enabled"]
 		});
 
+		const cssUrl = getValidUrl("backend/editor.css");
+		const styleSheet = `<link rel="stylesheet" href="${cssUrl}">`;
+
 		htmlOutput = styleSheet;
 		htmlOutput += inputGroups.map((group) => group.html).join("");
-		htmlOutput += instructions;
-		htmlOutput += about;
+		htmlOutput += CARD_EDITOR_INFO;
+		htmlOutput += CARD_EDITOR_ABOUT;
 
 		this.shadowRoot.innerHTML = htmlOutput;
 
@@ -602,9 +533,3 @@ export class MacsCardEditor extends HTMLElement {
 
 	}
 }
-
-
-
-
-
-
