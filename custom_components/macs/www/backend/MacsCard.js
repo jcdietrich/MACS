@@ -23,6 +23,7 @@ import { SatelliteTracker } from "./assistSatellite.js";
 import { AssistPipelineTracker } from "./assistPipeline.js";
 import { WeatherHandler } from "./weatherHandler.js";
 import { createDebugger } from "../shared/debugger.js";
+import { MessagePoster } from "../shared/postmessage.js";
 
 
 const debug = createDebugger("MacsCard.js");
@@ -87,6 +88,14 @@ export class MacsCard extends HTMLElement {
                 <ha-card><div class="wrap"><img class="thumb" /><iframe class="hidden" hidden></iframe></div></ha-card>
             `;
             this._iframe = this._root.querySelector("iframe");
+            this._messagePoster = new MessagePoster({
+                getRecipientWindow: () => this._iframe?.contentWindow,
+                getTargetOrigin: () => {
+                    const base = safeUrl(this._config?.url);
+                    return getTargetOrigin(base.toString());
+                },
+                allowNullOrigin: true,
+            });
 
             // preview image (shown before iframe is ready)
             this._thumb = this._root.querySelector("img.thumb");
@@ -105,6 +114,10 @@ export class MacsCard extends HTMLElement {
             this._lastSrc = undefined;
             this._kioskHidden = false;
             this._isPreview = false;
+            this._iframeReady = false;
+            this._iframeLoaded = false;
+            this._iframeBootstrapped = false;
+            this._pendingState = null;
             this._lastAssistSatelliteState = null;
             this._lastTurnsSignature = null;
             this._lastAnimationsEnabled = null;
@@ -224,11 +237,49 @@ export class MacsCard extends HTMLElement {
     /* ---------- Send data to iFrame ---------- */
 
     _postToIframe(payload) {
-        if (!this._iframe?.contentWindow) return;
-        const base = safeUrl(this._config?.url);
-        const targetOrigin = getTargetOrigin(base.toString());
+        if (!this._messagePoster) return;
         // Always target the iframe origin to avoid cross-origin leaks.
-        try { this._iframe.contentWindow.postMessage(payload, targetOrigin); } catch (_) {}
+        this._messagePoster.post(payload);
+    }
+
+    _sendAllToIframe(state, options = {}) {
+        const snapshot = state || this._pendingState;
+        if (!snapshot) return;
+        if (options.forceWeather) {
+            this._weatherHandler?.resetChangeTracking?.();
+        }
+        if (options.forceConfig) {
+            this._sendConfigToIframe(true);
+        } else {
+            this._sendConfigToIframe();
+        }
+        if (snapshot.mood) {
+            this._sendMoodToIframe(snapshot.mood);
+        }
+        this._sendWeatherIfChanged();
+        if (Number.isFinite(snapshot.brightness)) {
+            this._sendBrightnessToIframe(snapshot.brightness);
+        }
+        this._sendAnimationsEnabledToIframe(snapshot.animationsEnabled);
+        this._sendTurnsToIframe();
+        this._lastMood = snapshot.mood;
+        this._lastBrightness = snapshot.brightness;
+    }
+
+    _handleIframeReady() {
+        if (this._iframeBootstrapped) return;
+        if (!this._iframeReady || !this._iframeLoaded) return;
+        this._iframeBootstrapped = true;
+        this._sendAllToIframe(this._pendingState, { forceWeather: true, forceConfig: true });
+        this._pipelineTracker?.triggerFetchNewest?.();
+        if (this._thumb) {
+            this._thumb.classList.add("hidden");
+            this._thumb.hidden = true;
+        }
+        if (this._iframe) {
+            this._iframe.classList.remove("hidden");
+            this._iframe.hidden = false;
+        }
     }
 
 
@@ -339,15 +390,16 @@ export class MacsCard extends HTMLElement {
     }
 
     _onMessage(e) {
-        if (!this._iframe?.contentWindow) return;
-        if (e.source !== this._iframe.contentWindow) return;
-
-        // Origin check: allow "null" for sandboxed iframes; otherwise require the iframe URL origin.
-        const base = safeUrl(this._config?.url);
-        const expectedOrigin = getTargetOrigin(base.toString());
-        if (e.origin !== expectedOrigin && e.origin !== "null") return;
+        if (!this._messagePoster || !this._messagePoster.isValidEvent(e)) return;
 
         if (!e.data || typeof e.data !== "object") return;
+
+        if (e.data.type === "macs:ready") {
+            debug("iframe ready");
+            this._iframeReady = true;
+            this._handleIframeReady();
+            return;
+        }
 
         // Long-press gesture in the iframe toggles HA chrome visibility.
         if (e.data.type === "macs:toggle_kiosk") {
@@ -598,15 +650,7 @@ export class MacsCard extends HTMLElement {
         } else {
             base.searchParams.delete("v");
         }
-        // Helper to send the full state bundle to the iframe.
-        const sendAll = () => {
-            this._sendConfigToIframe();
-            this._sendMoodToIframe(mood);
-            this._sendWeatherIfChanged();
-            this._sendBrightnessToIframe(brightness);
-            this._sendAnimationsEnabledToIframe(animationsEnabled);
-            this._sendTurnsToIframe();
-        };
+        this._pendingState = { mood, brightness, animationsEnabled, weatherValues };
 
         if (!this._loadedOnce) {
             // First load: set iframe src and send initial state
@@ -627,31 +671,26 @@ export class MacsCard extends HTMLElement {
 
             const src = base.toString();
             this._iframe.onload = () => {
-                // Reset change tracking so the first postMessage burst sends everything.
-                this._weatherHandler?.resetChangeTracking?.();
-                sendAll();
-                // First fetch after iframe is alive
-                this._pipelineTracker?.triggerFetchNewest?.();
-                if (this._thumb){
-                    this._thumb.classList.add("hidden");
-                    this._thumb.hidden = true;
-                    this._iframe.classList.remove("hidden");
-                    this._iframe.hidden = false;
-                }
+                this._iframeLoaded = true;
+                this._handleIframeReady();
             };
 
             if (src !== this._lastSrc) {
+                this._iframeReady = false;
+                this._iframeLoaded = false;
+                this._iframeBootstrapped = false;
                 this._iframe.src = src;
                 this._lastSrc = src;
             }
 
             this._loadedOnce = true;
-            this._lastMood = mood;
-            this._lastBrightness = brightness;
-
-            setTimeout(sendAll, 0);
+            this._lastMood = undefined;
+            this._lastBrightness = undefined;
         }
         else {
+            if (!this._iframeBootstrapped) {
+                return;
+            }
             // Subsequent updates: only send what changed
             if (wakewordTriggered) {
                 this._lastMood = mood;

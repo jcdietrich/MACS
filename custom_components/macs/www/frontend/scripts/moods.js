@@ -1,7 +1,13 @@
 ﻿import { createDebugger } from "../../shared/debugger.js";
+import { MessagePoster } from "../../shared/postmessage.js";
 import { Particle, SVG_NS } from "./particles.js";
 
 const debug = createDebugger("moods.js");
+const messagePoster = new MessagePoster({
+	getRecipientWindow: () => window.parent,
+	getTargetOrigin: () => window.location.origin,
+});
+let readySent = false;
 
 const moods = ['bored','confused','happy','idle','listening','sad','sleeping','surprised','thinking'];
 
@@ -983,10 +989,8 @@ const registerAutoBrightnessActivity = () => {
 };
 
 const sendKioskToggle = () => {
-	try {
-		debug("Kiosk hold: toggling sidebar/navbar");
-		window.parent.postMessage({ type: "macs:toggle_kiosk" }, window.location.origin);
-	} catch (_) {}
+	debug("Kiosk hold: toggling sidebar/navbar");
+	messagePoster.post({ type: "macs:toggle_kiosk" });
 };
 
 const startKioskHold = () => {
@@ -1126,8 +1130,7 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('message', (e) => {
-    if (e.source !== window.parent) return;
-    if (e.origin !== window.location.origin) return;
+    if (!messagePoster.isValidEvent(e)) return;
     if (!e.data || typeof e.data !== 'object') return;
 
 	if (e.data.type === 'macs:config') {
@@ -1204,3 +1207,7 @@ window.addEventListener('message', (e) => {
 
 
 debug("Macs Moods Loaded");
+if (!readySent) {
+	readySent = true;
+	messagePoster.post({ type: "macs:ready" });
+}

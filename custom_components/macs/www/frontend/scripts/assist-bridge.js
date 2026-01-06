@@ -1,6 +1,11 @@
 import { createDebugger } from "../../shared/debugger.js";
+import { MessagePoster } from "../../shared/postmessage.js";
 
 const debug = createDebugger("assist-bridge.js");
+const messagePoster = new MessagePoster({
+  getRecipientWindow: () => window.parent,
+  getTargetOrigin: () => window.location.origin,
+});
 
 
 /* ===========================
@@ -54,16 +59,12 @@ const renderChat = () => {
   `;
 };
 
-// Lock to same-origin parent.
-const PARENT_ORIGIN = window.location.origin;
-
 const requestConfigFromParent = () => {
-  try { window.parent.postMessage({ type: "macs:request_config" }, PARENT_ORIGIN); } catch {}
+  messagePoster.post({ type: "macs:request_config" });
 };
 
 window.addEventListener("message", (e) => {
-  if (e.source !== window.parent) return;
-  if (e.origin !== PARENT_ORIGIN) return;
+  if (!messagePoster.isValidEvent(e)) return;
   if (!e.data || typeof e.data !== "object") return;
 
   debug("message", e.data);
