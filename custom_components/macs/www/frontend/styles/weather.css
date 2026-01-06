@@ -59,25 +59,3 @@ body.weather-wind .char{ animation: windSway 2.8s ease-in-out infinite; }
 	from{ transform: translateX(-20%); }
 	to{ transform: translateX(140%); }
 }
-
-/* Hot */
-.sweat{ fill: rgb(255 129 0 / 30%); animation: sweatDrip 2.6s ease-in-out infinite; }
-@keyframes sweatDrip{
-	0%,60%{ transform: translateY(-6px); opacity:0; }
-	70%{ opacity:0.6; }
-	100%{ transform: translateY(40px); opacity:0; }
-}
-
-/* Cold */
-body.weather-cold .char{ animation: coldShiver 0.22s infinite alternate; }
-@keyframes coldShiver{
-	from{ transform: translate(-1px,1px); }
-	to{ transform: translate(1px,-1px); }
-}
-.breath{ fill: rgb(82 172 249 / 26%); filter: blur(6px); animation: breath 3.2s infinite; }
-@keyframes breath{
-	0%{ opacity:0; transform: translate(230px,350px) scale(0.8); }
-	18%{ opacity:0.55; }
-	60%{ opacity:0.0; }
-	100%{opacity:0.0;  transform: translate(600px,-100px) scale(1.5); }
-}
