@@ -15,6 +15,14 @@ const messageListener = new MessageListener({
 });
 messageListener.start();
 
+const errorListener = new MessageListener({
+  recipient: "assist-bridge",
+  getExpectedSource: () => window,
+  getExpectedOrigin: () => window.location.origin,
+  onMessage: handleMessage,
+});
+errorListener.start();
+
 
 /* ===========================
     ASSIST DISPLAY — BRIDGE MODE

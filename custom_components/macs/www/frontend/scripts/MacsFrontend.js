@@ -21,6 +21,16 @@ const messagePoster = new MessagePoster({
 	getRecipientWindow: () => window.parent,
 	getTargetOrigin: () => window.location.origin,
 });
+const assistMessagePoster = new MessagePoster({
+	sender: "frontend",
+	recipient: "all",
+	getRecipientWindow: () => window,  // Same window
+	getTargetOrigin: () => window.location.origin,
+});
+
+
+
+
 const messageListener = new MessageListener({
 	recipient: "frontend",
 	getExpectedSource: () => window.parent,
@@ -54,7 +64,17 @@ let animationsPaused = false;
 const warnIfNull = (label, value) => {
 	if (value !== null) return false;
 	debug(`<span class="error">${label} is null</span>`);
-	return true;
+
+	assistMessagePoster.post({
+        type: "macs:turns",
+        recipient: "all",
+        turns: [
+            {
+                "ts": "2026-01-07T17:45:50.028019+00:00",
+                "reply": `Looks like there might be a problem with [${label}]`
+            },
+        ]
+	});
 };
 
 const parseConditionsParam = (value) => {
