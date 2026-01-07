@@ -22,7 +22,7 @@ const messagePoster = new MessagePoster({
 	getTargetOrigin: () => window.location.origin,
 });
 const messageListener = new MessageListener({
-	recipient: "moods",
+	recipient: "frontend",
 	getExpectedSource: () => window.parent,
 	getExpectedOrigin: () => window.location.origin,
 	allowNullOrigin: true,
@@ -307,11 +307,12 @@ function handleMessage(payload) {
 }
 
 debug("Macs Frontend Ready");
-debug("Starting Communication");
+debug("Starting Communication with Backend...");
 
 messageListener.start();
 if (!readySent) {
 	readySent = true;
-	messagePoster.post({ type: "macs:ready", recipient: "backend" });
+	setTimeout(() => {
+		messagePoster.post({ type: "macs:ready", recipient: "backend" });
+	}, 50);
 }
-

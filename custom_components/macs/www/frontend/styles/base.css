@@ -179,8 +179,8 @@ body.temp-scarf .scarf{
 	overflow-x: inherit;
 }
 /* prevent debug content rtl */
-#debug .debug-title, #debug .debug-version, #debug .debug-log, #debug .debug-sleep-timer, #debug .debug-autoscroll {direction: ltr;text-align: left;}
-#debug .debug-title, #debug .debug-version, #debug .debug-sleep-timer, #debug .debug-autoscroll {
+#debug .debug-title, #debug .debug-subtitle, #debug .debug-log, #debug .debug-sleep-timer, #debug .debug-autoscroll {direction: ltr;text-align: left;}
+#debug .debug-title, #debug .debug-subtitle, #debug .debug-sleep-timer, #debug .debug-autoscroll {
 	position: sticky;
 	left: 0;
 	right: 0;
@@ -189,7 +189,7 @@ body.temp-scarf .scarf{
 	padding-left:6px;
 }
 #debug .debug-title { top: 0; padding-top:10px;}
-#debug .debug-version { top: var(--debug-line-height); }
+#debug .debug-subtitle { top: var(--debug-line-height); }
 #debug .debug-sleep-timer { top: calc(var(--debug-line-height) * 2); }
 #debug .debug-autoscroll { top: calc(var(--debug-line-height) * 3); }
 #debug .debug-autoscroll{

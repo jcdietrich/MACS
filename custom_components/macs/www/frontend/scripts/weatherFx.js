@@ -256,8 +256,9 @@ export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
 		if (isPaused()) return;
 		setRainViewBoxFromSvg();
 		if (!leafParticles) return;
+		const leafWindIntensity = getConditionFlag("windy") ? windIntensity : 0;
 		leafParticles.updateFromEnvironment({
-			windIntensity,
+			windIntensity: leafWindIntensity,
 			rainIntensity,
 			snowIntensity,
 			forceUpdate

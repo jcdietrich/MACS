@@ -298,7 +298,7 @@ export class MacsCard extends HTMLElement {
         const turns = this._buildTurnsPayload();
         const moodPayload = {
             type: "macs:init",
-            recipient: "moods",
+            recipient: "frontend",
             config,
             mood: snapshot.mood ?? null,
             sensors: snapshot.sensorValues ?? null,
@@ -316,7 +316,7 @@ export class MacsCard extends HTMLElement {
         this._postToIframe(bridgePayload);
         this._initSent = true;
 
-        this._lastConfigSignature = JSON.stringify({ type: "macs:config", recipient: "moods", ...config });
+        this._lastConfigSignature = JSON.stringify({ type: "macs:config", recipient: "frontend", ...config });
         this._lastBridgeConfigSignature = JSON.stringify({ type: "macs:config", recipient: "assist-bridge", ...bridgeConfig });
         this._lastTurnsSignature = JSON.stringify(turns);
 
@@ -372,7 +372,7 @@ export class MacsCard extends HTMLElement {
     _sendConfigToIframe(force = false) {
         const moodPayload = {
             type: "macs:config",
-            recipient: "moods",
+            recipient: "frontend",
             ...this._buildConfigPayload(),
         };
         const moodSignature = JSON.stringify(moodPayload);
@@ -394,43 +394,43 @@ export class MacsCard extends HTMLElement {
     }
 
     _sendMoodToIframe(mood, options = {}) {
-        const payload = { type: "macs:mood", recipient: "moods", mood };
+        const payload = { type: "macs:mood", recipient: "frontend", mood };
         // reset_sleep tells the iframe to reset its idle/sleep timers.
         if (options.resetSleep) payload.reset_sleep = true;
         this._postToIframe(payload);
     }
     _sendTemperatureToIframe(temperature) {
         if (this._sensorHandler.getTemperatureHasChanged?.()) {
-            this._postToIframe({ type: "macs:temperature", recipient: "moods", temperature });
+            this._postToIframe({ type: "macs:temperature", recipient: "frontend", temperature });
         }
     }
     _sendWindSpeedToIframe(windspeed) {
         if (this._sensorHandler.getWindSpeedHasChanged?.()) {
-            this._postToIframe({ type: "macs:windspeed", recipient: "moods", windspeed });
+            this._postToIframe({ type: "macs:windspeed", recipient: "frontend", windspeed });
         }
     }
     _sendPrecipitationToIframe(precipitation) {
         if (this._sensorHandler.getPrecipitationHasChanged?.()) {
-            this._postToIframe({ type: "macs:precipitation", recipient: "moods", precipitation });
+            this._postToIframe({ type: "macs:precipitation", recipient: "frontend", precipitation });
         }
     }
     _sendWeatherConditionsToIframe(conditions) {
         if (this._sensorHandler.getWeatherConditionsHasChanged?.()) {
-            this._postToIframe({ type: "macs:weather_conditions", recipient: "moods", conditions: conditions || {} });
+            this._postToIframe({ type: "macs:weather_conditions", recipient: "frontend", conditions: conditions || {} });
         }
     }
     _sendBatteryToIframe(battery) {
         if (this._sensorHandler.getBatteryHasChanged?.()) {
-            this._postToIframe({ type: "macs:battery", recipient: "moods", battery });
+            this._postToIframe({ type: "macs:battery", recipient: "frontend", battery });
         }
     }
     _sendBatteryStateToIframe(state) {
         if (this._sensorHandler.getBatteryStateHasChanged?.()) {
-            this._postToIframe({ type: "macs:battery_state", recipient: "moods", battery_state: state });
+            this._postToIframe({ type: "macs:battery_state", recipient: "frontend", battery_state: state });
         }
     }
     _sendBrightnessToIframe(brightness) {
-        this._postToIframe({ type: "macs:brightness", recipient: "moods", brightness });
+        this._postToIframe({ type: "macs:brightness", recipient: "frontend", brightness });
     }
 
     _sendAnimationsEnabledToIframe(enabled) {
@@ -441,7 +441,7 @@ export class MacsCard extends HTMLElement {
         const next = !!enabled;
         if (this._lastAnimationsEnabled === next) return;
         this._lastAnimationsEnabled = next;
-        this._postToIframe({ type: "macs:animations_enabled", recipient: "moods", enabled: next });
+        this._postToIframe({ type: "macs:animations_enabled", recipient: "frontend", enabled: next });
     }
 
     _sendTurnsToIframe() {

@@ -3,6 +3,10 @@
  * ----------------
  * Shared postMessage listener with origin filtering and routing.
  */
+import { createDebugger } from "./debugger.js";
+
+const debug = createDebugger(import.meta.url);
+
 export class MessageListener {
 	constructor({
 		recipient = "unknown",
@@ -38,6 +42,11 @@ export class MessageListener {
 		if (!payload || typeof payload !== "object") return;
 		const target = (payload.recipient || "").toString().trim().toLowerCase();
 		if (target && target !== "all" && target !== this._recipient.toLowerCase()) return;
+		debug("postmessage:receive", {
+			sender: payload.sender || "backend",
+			// origin: event.origin || "",
+			message: payload,
+		});
 		if (this._onMessage) this._onMessage(payload, event);
 	}
 

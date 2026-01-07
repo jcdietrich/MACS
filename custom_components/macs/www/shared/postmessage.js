@@ -1,11 +1,6 @@
-/**
- * Message Poster
- * --------------
- * Shared postMessage sender with debug logging.
- */
 import { createDebugger } from "./debugger.js";
 
-const debug = createDebugger(import.meta.url);
+const debug = createDebugger("postmessage.js");
 
 export class MessagePoster {
 	constructor({
@@ -34,6 +29,7 @@ export class MessagePoster {
 			if (this._logSend) {
 				debug("postmessage:send", {
 					sender: this._sender,
+					recipient: this._recipient,
 					// origin,
 					message: payload,
 				});
@@ -56,6 +52,7 @@ export class MessagePoster {
 		if (this._logReceive) {
 			debug("postmessage:receive", {
 				sender: this._recipient,
+				recipient: this._sender,
 				// origin: event.origin || "",
 				message: event.data,
 			});

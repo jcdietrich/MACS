@@ -9,7 +9,6 @@ export function createDebugger(namespace, enabled = true) {
     const nsSource = (namespace || "general").toString();
     let debugDiv = null;
     let visible = false;
-    let backlog = [];
     const BACKLOG_LIMIT = 200;
 
     const normalizeToken = (value) => (value ?? "").toString().trim().toLowerCase();
@@ -184,24 +183,31 @@ export function createDebugger(namespace, enabled = true) {
 
     const ensureHeader = (el) => {
         if (!el) return;
-        if (!el.querySelector(".debug-title")) {
-            const title = document.createElement("div");
+        let title = el.querySelector(".debug-title");
+        if (!title) {
+            title = document.createElement("div");
             title.className = "debug-title";
-            title.textContent = "Debugging";
             el.prepend(title);
         }
-        if (!el.querySelector(".debug-version")) {
-            const version = document.createElement("div");
-            version.className = "debug-version";
-            version.textContent = `v${VERSION}`;
-            const title = el.querySelector(".debug-title");
+        title.textContent = `Debugging | v${VERSION}`;
+
+        let subtitle = el.querySelector(".debug-subtitle");
+        if (!subtitle) {
+            subtitle = document.createElement("div");
+            subtitle.className = "debug-subtitle";
             if (title?.nextSibling) {
-                el.insertBefore(version, title.nextSibling);
+                el.insertBefore(subtitle, title.nextSibling);
             } else if (title) {
-                title.after(version);
+                title.after(subtitle);
             } else {
-                el.prepend(version);
+                el.prepend(subtitle);
             }
+        }
+        subtitle.textContent = "(Frontend only, see console for backend)";
+
+        const version = el.querySelector(".debug-version");
+        if (version) {
+            version.remove();
         }
         const log = ensureLogContainer(el);
         ensureAutoScrollPlacement(el, log);
@@ -213,7 +219,7 @@ export function createDebugger(namespace, enabled = true) {
         ensureHeader(el);
         el.style.display = "block";
         visible = true;
-        flushBacklog();
+        flushQueue();
     };
 
     const hideDebug = () => {
@@ -258,23 +264,62 @@ export function createDebugger(namespace, enabled = true) {
         logEl.appendChild(line);
     };
 
+    const getQueue = () => {
+        if (typeof window === "undefined") return null;
+        if (!Array.isArray(window.__MACS_DEBUG_QUEUE__)) {
+            window.__MACS_DEBUG_QUEUE__ = [];
+        }
+        return window.__MACS_DEBUG_QUEUE__;
+    };
+
+    const getNextSeq = () => {
+        if (typeof window === "undefined") return 0;
+        if (typeof window.__MACS_DEBUG_SEQ__ !== "number") {
+            window.__MACS_DEBUG_SEQ__ = 0;
+        }
+        window.__MACS_DEBUG_SEQ__ += 1;
+        return window.__MACS_DEBUG_SEQ__;
+    };
+
+    const getRenderedSeq = () => {
+        if (typeof window === "undefined") return 0;
+        if (typeof window.__MACS_DEBUG_RENDERED__ !== "number") {
+            window.__MACS_DEBUG_RENDERED__ = 0;
+        }
+        return window.__MACS_DEBUG_RENDERED__;
+    };
+
+    const setRenderedSeq = (value) => {
+        if (typeof window === "undefined") return;
+        window.__MACS_DEBUG_RENDERED__ = value;
+    };
+
     const enqueue = (msg) => {
         if (!msg) return;
-        backlog.push(msg);
-        if (backlog.length > BACKLOG_LIMIT) {
-            backlog.shift();
+        const queue = getQueue();
+        if (!queue) return;
+        queue.push({ seq: getNextSeq(), text: msg });
+        if (queue.length > BACKLOG_LIMIT) {
+            queue.shift();
         }
     };
 
-    const flushBacklog = () => {
-        if (!backlog.length) return;
+    const flushQueue = () => {
         const el = ensureDebugDiv();
         if (!el) return;
         ensureHeader(el);
         const log = ensureLogContainer(el);
-        backlog.forEach((msg) => appendLine(log, msg));
-        backlog = [];
-        if (isAutoScrollEnabled() && el) {
+        const queue = getQueue();
+        if (!queue || !log) return;
+        let last = getRenderedSeq();
+        queue.forEach((entry) => {
+            if (entry.seq > last) {
+                appendLine(log, entry.text);
+                last = entry.seq;
+            }
+        });
+        setRenderedSeq(last);
+        if (isAutoScrollEnabled()) {
             el.scrollTop = el.scrollHeight;
         }
     };
@@ -317,8 +362,6 @@ export function createDebugger(namespace, enabled = true) {
         if (!enabledNow) {
             hideDebug();
         }
-        const el = ensureDebugDiv();
-        const log = el ? ensureLogContainer(el) : null;
         const entries = args.map((arg) => ({
             arg,
             text: toUiString(arg)
@@ -332,21 +375,17 @@ export function createDebugger(namespace, enabled = true) {
             ? entries.map((entry) => entry.text).join("\n")
             : entries.map((entry) => entry.text).join(" ")
         ).trim();
-        if (!enabledNow || !log) {
-            enqueue(msg);
-        } else {
+        enqueue(msg);
+        if (enabledNow) {
             showDebug();
-            appendLine(log, msg);
-            if (isAutoScrollEnabled() && el) {
-                el.scrollTop = el.scrollHeight;
-            }
+            flushQueue();
         }
         console.log(`[*MACS:${ns}]`, ...args);
     };
 
     log.show = updateVisibility;
     log.enabled = isEnabled;
-    log.flush = flushBacklog;
+    log.flush = flushQueue;
     updateVisibility();
     return log;
 }

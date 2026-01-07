@@ -242,9 +242,19 @@ export function createKioskFx({
 		poster.post({ type: "macs:toggle_kiosk", recipient: "backend" });
 	};
 
-	const startKioskHold = () => {
+	const isDebugInteraction = (event) => {
+		if (!event) return false;
+		const target = event.target;
+		if (target?.closest?.("#debug")) return true;
+		const path = typeof event.composedPath === "function" ? event.composedPath() : null;
+		if (!path || !path.length) return false;
+		return path.some((node) => node?.id === "debug");
+	};
+
+	const startKioskHold = (event) => {
 		if (getIsEditor()) return;
 		if (!autoBrightnessEnabled) return;
+		if (isDebugInteraction(event)) return;
 		log("Kiosk hold: start");
 		if (kioskHoldTimer) clearTimeout(kioskHoldTimer);
 		kioskHoldTimer = setTimeout(() => {
