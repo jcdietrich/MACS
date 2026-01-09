@@ -15,7 +15,7 @@
 import { DEFAULTS, TEMPERATURE_UNIT_ITEMS, WIND_UNIT_ITEMS, PRECIPITATION_UNIT_ITEMS, BATTERY_CHARGE_UNIT_ITEMS, CARD_EDITOR_INFO, CARD_EDITOR_ABOUT } from "../shared/constants.js";
 import { createDebugger } from "../shared/debugger.js";
 import { getValidUrl } from "./validators.js";
-import { loadAssistantOptions, loadWeatherOptions, readAssistStateInputs, readAutoBrightnessInputs, readPipelineInputs, readWeatherInputs, syncAssistStateControls, syncConditionControls, syncAutoBrightnessControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
+import { getComboboxItems, readInputs, syncAssistStateControls, syncConditionControls, syncAutoBrightnessControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
 
 const debug = createDebugger(import.meta.url);
 
@@ -248,8 +248,8 @@ export class MacsCardEditor extends HTMLElement {
 
 		let htmlOutput;
 
-		const { satItems, pipelineItems, preferred } = await loadAssistantOptions(this._hass);
-		const { temperatureItems, windItems, precipitationItems, batteryItems, batteryStateItems, conditionItems } = await loadWeatherOptions(this._hass);
+		const { satelliteItems, pipelineItems, preferred, temperatureItems, windItems, precipitationItems, conditionItems, batteryItems, batteryStateItems } = await getComboboxItems(this._hass);
+
 
 		// Build DOM...
 		const inputGroups = [];
@@ -264,7 +264,7 @@ export class MacsCardEditor extends HTMLElement {
 			tRequired: "An Assistant Satellite (Microphone), which broadcasts listening, processing, and idle states. (Macs was developed using the Atom Echo)",
 			tOverrides: "When enabled, Macs will ignore the value set in macs.mood",
 			placeholder: "assist_satellite.my_device",
-			selectItems: satItems,
+			selectItems: satelliteItems,
 			selectValue: this._config.assist_satellite_entity ?? "",
 			selectOptions: { allowCustom: true, customFlag: !!this._config.assist_satellite_custom }
 		});
@@ -353,7 +353,7 @@ export class MacsCardEditor extends HTMLElement {
 			placeholder: "weather.forecast_home",
 			selectItems: conditionItems,
 			selectValue: this._config.weather_conditions ?? "",
-			selectOptions: { allowCustom: true }
+			selectOptions: { allowCustom: true, customFlag: !!this._config.weather_conditions_custom  }
 		});
 
 		createInputGroup(inputGroups, {
@@ -431,7 +431,7 @@ export class MacsCardEditor extends HTMLElement {
 		this._rendered = true;
 
 		this._inputGroups = inputGroups;
-		this._satelliteItems = satItems;
+		this._satelliteItems = satelliteItems;
 		this._pipelineItems = pipelineItems;
 		this._temperatureItems = temperatureItems;
 		this._windItems = windItems;
@@ -439,6 +439,7 @@ export class MacsCardEditor extends HTMLElement {
 		this._batteryItems = batteryItems;
 		this._batteryStateItems = batteryStateItems;
 		this._conditionItems = conditionItems;
+
 
 		inputGroups.forEach((group) => setupInputGroup(this.shadowRoot, this._config, group));
 
@@ -486,16 +487,10 @@ export class MacsCardEditor extends HTMLElement {
 		// If user hasn't set a pipeline yet, pick HA's preferred
 		const currentPid = (this._config.assist_pipeline_entity ?? "").toString().trim();
 		if (!currentPid && preferred && !this._config.assist_pipeline_custom) {
-			const assistConfig = readAssistStateInputs(this.shadowRoot, null, this._config);
-			const pipelineConfig = readPipelineInputs(this.shadowRoot, null, this._config);
-			const weatherConfig = readWeatherInputs(this.shadowRoot, null, this._config);
-			const autoBrightnessConfig = readAutoBrightnessInputs(this.shadowRoot, null, this._config);
+			const inputConfig = readInputs(this.shadowRoot, null, this._config);
 			const next = {
 				type: "custom:macs-card",
-				...assistConfig,
-				...pipelineConfig,
-				...weatherConfig,
-				...autoBrightnessConfig,
+				...inputConfig,
 				assist_pipeline_entity: preferred,
 				assist_pipeline_custom: false,
 			};
@@ -538,18 +533,12 @@ export class MacsCardEditor extends HTMLElement {
 				});
 			}
 
-			const assistConfig = readAssistStateInputs(this.shadowRoot, e, this._config);
-			const pipelineConfig = readPipelineInputs(this.shadowRoot, e, this._config);
-			const weatherConfig = readWeatherInputs(this.shadowRoot, e, this._config);
-			const autoBrightnessConfig = readAutoBrightnessInputs(this.shadowRoot, e, this._config);
+			const inputConfig = readInputs(this.shadowRoot, e, this._config);
 
 			// Commit new config
 			const next = {
 				type: "custom:macs-card",
-				...assistConfig,
-				...pipelineConfig,
-				...weatherConfig,
-				...autoBrightnessConfig
+				...inputConfig,
 			};
 
 			this._config = { ...DEFAULTS, ...next };

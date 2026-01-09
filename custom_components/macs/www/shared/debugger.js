@@ -391,7 +391,9 @@ export function createDebugger(namespace) {
             showDebug();
             flushQueue();
         }
-        console.log(`[O]‿[O] MACS: ${ns}`, ...args);
+        console.log(`[🟢] ‿ [🟢] MACS: ${ns}`, ...args);
+
+        // could do [🔵] _ [🔵] for warn, and [🟣] O [🟣] for error
     };
 
     log.show = updateVisibility;
