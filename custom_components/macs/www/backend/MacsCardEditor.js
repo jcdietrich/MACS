@@ -73,7 +73,7 @@ function createHtmlGroup({ id, name, label, tOverview, tPurpose, tExpections, tR
 
 				${select ? `
 					<div class="row">
-						<ha-combo-box id="${id}_select" label="${name} entity"></ha-combo-box>
+						<ha-select id="${id}_select" label="${name} entity" class="fullwidth"></ha-select>
 					</div>
 				` : ""}
 
@@ -87,7 +87,7 @@ function createHtmlGroup({ id, name, label, tOverview, tPurpose, tExpections, tR
 
 				${units ? `
 					<div class="row">
-						<ha-combo-box id="${id}_unit" label="${name} units"></ha-combo-box>
+						<ha-select id="${id}_unit" label="${name} units" class="fullwidth"></ha-select>
 					</div>
 				` : ""}
 
@@ -120,25 +120,52 @@ function populateCombobox(root, id, items, selectedId, options = {}) {
 	const allowCustom = !!options.allowCustom;
 	const customFlag = !!options.customFlag;
 
-	el.items = Array.isArray(items) ? items : [];
-	el.itemLabelPath = labelPath;
-	el.itemValuePath = valuePath;
+	const safeItems = Array.isArray(items) ? [...items] : [];
 
-	const selected = selectedId === null || typeof selectedId === "undefined" ? "" : String(selectedId);
+	// Prevent HA editor from treating menu close as a click-away
+	if (!el._macsOptionsSet) {
+		el.addEventListener("closed", (ev) => ev.stopPropagation());
+
+		// Build list items
+		for (const item of safeItems) {
+			if (!item) continue;
+			const opt = document.createElement("ha-list-item");
+			opt.value = String(item[valuePath] ?? "");
+			opt.textContent = String(item[labelPath] ?? "");
+			el.appendChild(opt);
+		}
+
+		el._macsOptionsSet = true;
+	}
+
+	const selected = selectedId == null ? "" : String(selectedId);
 	const hasSelected = selected.length > 0;
 
+	let valueToSet = selected;
+
 	if (allowCustom) {
-		const known =
-			Array.isArray(items) &&
-			items.some((item) => item && item[valuePath] === selected && item[valuePath] !== customValue);
+		const known = safeItems.some((it) => it && String(it[valuePath]) === selected && String(it[valuePath]) !== customValue);
 		const isCustom = customFlag || (!known && hasSelected);
-		el.value = isCustom ? customValue : selected;
-	} else {
-		el.value = selected;
+		valueToSet = isCustom ? customValue : selected;
+
+		// Inject "Custom" option ONCE (check DOM, not safeItems)
+		const alreadyHasCustom = Array.from(el.children).some((c) => c.tagName === "HA-LIST-ITEM" && c.value === customValue);
+		if (!alreadyHasCustom) {
+			const customOpt = document.createElement("ha-list-item");
+			customOpt.value = customValue;
+			customOpt.textContent = "Custom";
+			el.insertBefore(customOpt, el.firstChild);
+		}
 	}
+
+	el.value = valueToSet;
+
+	// Lit refresh (safe no-op if not present)
+	el.requestUpdate?.();
 
 	return el;
 }
+
 
 
 function setupInputGroup(root, config, group) {
