@@ -387,27 +387,27 @@ export function readAutoBrightnessInputs(root, e, config) {
 	if (maxBrightness) maxBrightness.disabled = !enabled;
 	if (pauseToggle) pauseToggle.disabled = !enabled;
 
-	var parseNumber = function (value) {
-		if (value === "" || value === null || typeof value === "undefined") {
-			return "";
-		}
-		var num = Number(value);
-		return Number.isFinite(num) ? num : "";
-	};
+    var parseNumber = function (value) {
+        if (value === "" || value === null || typeof value === "undefined") {
+            return undefined;
+        }
+        var num = Number(value);
+        return Number.isFinite(num) ? num : "";
+    };
 
 	var rawTimeout = timeout ? timeout.value : undefined;
 	if (rawTimeout === "" || rawTimeout === null || typeof rawTimeout === "undefined") {
-		rawTimeout = config && config.auto_brightness_timeout_minutes;
+		rawTimeout = config.auto_brightness_timeout_minutes;
 	}
 
 	var rawMin = minBrightness ? minBrightness.value : undefined;
 	if (rawMin === "" || rawMin === null || typeof rawMin === "undefined") {
-		rawMin = config && config.auto_brightness_min;
+		rawMin = config.auto_brightness_min;
 	}
 
 	var rawMax = maxBrightness ? maxBrightness.value : undefined;
 	if (rawMax === "" || rawMax === null || typeof rawMax === "undefined") {
-		rawMax = config && config.auto_brightness_max;
+		rawMax = config.auto_brightness_max;
 	}
 
 	return {
@@ -418,6 +418,79 @@ export function readAutoBrightnessInputs(root, e, config) {
 		auto_brightness_pause_animations: readToggleValue(pauseToggle, e, config && config.auto_brightness_pause_animations),
 	};
 }
+
+
+function readSingleWeather(
+	root,
+	e,
+	ids,
+	config,
+	enabledKey,
+	entityKey,
+	customKey,
+	unitKey,
+	minKey,
+	maxKey
+) {
+	// Read a single weather section from the DOM.
+	var enabledEl = root.getElementById(ids.enabled);
+	var select = root.getElementById(ids.select);
+	var entityInput = root.getElementById(ids.entity);
+	var unit = unitKey ? root.getElementById(ids.unit) : null;
+	var min = minKey ? root.getElementById(ids.min) : null;
+	var max = maxKey ? root.getElementById(ids.max) : null;
+
+	var enabled = readToggleValue(enabledEl, e, config && config[enabledKey]);
+	var selectValue = comboValue(select, e);
+	var manualVal = (entityInput && entityInput.value) || "";
+	var isCustom = selectValue === "custom";
+	var entityVal = isCustom ? manualVal : selectValue;
+
+	if (entityInput) entityInput.disabled = !enabled || !isCustom;
+	if (select) select.disabled = !enabled;
+	if (unit) unit.disabled = !enabled;
+	if (min) min.disabled = !enabled;
+	if (max) max.disabled = !enabled;
+
+    // Parse numeric values only if they are valid numbers.
+    var parseNumber = function (value) {
+        if (value === "" || value === null || typeof value === "undefined") {
+            return undefined;
+        }
+        var num = Number(value);
+        return Number.isFinite(num) ? num : "";
+    };
+
+    var rawMin = min ? min.value : undefined;
+    if (rawMin === "" || rawMin === null || typeof rawMin === "undefined") {
+        rawMin = config[minKey];
+    }
+    var rawMax = max ? max.value : undefined;
+    if (rawMax === "" || rawMax === null || typeof rawMax === "undefined") {
+        rawMax = config[maxKey];
+    }
+	var payload = {
+		[enabledKey]: enabled,
+		[entityKey]: entityVal,
+		[customKey]: isCustom,
+    };
+	if (unitKey) {
+		payload[unitKey] = String(unit ? comboValue(unit, e) : ((config && config[unitKey]) || ""));
+	}
+	if (minKey) {
+		const v = parseNumber(min ? min.value : undefined);
+		if (typeof v !== "undefined") payload[minKey] = v;
+		//payload[minKey] = parseNumber(rawMin);
+	}
+	if (maxKey) {
+		const v = parseNumber(max ? max.value : undefined);
+		if (typeof v !== "undefined") payload[maxKey] = v;
+		//payload[maxKey] = parseNumber(rawMax);
+	}
+	return payload;
+}
+
+
 
 export function readConditionInputs(root, e, config) {
 	// Read weather condition inputs from the DOM, or fall back to config.
@@ -834,72 +907,6 @@ export function syncWeatherControls(root, config, temperatureItems, windItems, p
 		"battery_state_sensor_entity",
 		"battery_state_sensor_enabled"
 	);
-}
-
-function readSingleWeather(
-	root,
-	e,
-	ids,
-	config,
-	enabledKey,
-	entityKey,
-	customKey,
-	unitKey,
-	minKey,
-	maxKey
-) {
-	// Read a single weather section from the DOM.
-	var enabledEl = root.getElementById(ids.enabled);
-	var select = root.getElementById(ids.select);
-	var entityInput = root.getElementById(ids.entity);
-	var unit = unitKey ? root.getElementById(ids.unit) : null;
-	var min = minKey ? root.getElementById(ids.min) : null;
-	var max = maxKey ? root.getElementById(ids.max) : null;
-
-	var enabled = readToggleValue(enabledEl, e, config && config[enabledKey]);
-	var selectValue = comboValue(select, e);
-	var manualVal = (entityInput && entityInput.value) || "";
-	var isCustom = selectValue === "custom";
-	var entityVal = isCustom ? manualVal : selectValue;
-
-	if (entityInput) entityInput.disabled = !enabled || !isCustom;
-	if (select) select.disabled = !enabled;
-	if (unit) unit.disabled = !enabled;
-	if (min) min.disabled = !enabled;
-	if (max) max.disabled = !enabled;
-
-    // Parse numeric values only if they are valid numbers.
-    var parseNumber = function (value) {
-        if (value === "" || value === null || typeof value === "undefined") {
-            return "";
-        }
-        var num = Number(value);
-        return Number.isFinite(num) ? num : "";
-    };
-
-    var rawMin = min ? min.value : undefined;
-    if (rawMin === "" || rawMin === null || typeof rawMin === "undefined") {
-        rawMin = config && config[minKey];
-    }
-    var rawMax = max ? max.value : undefined;
-    if (rawMax === "" || rawMax === null || typeof rawMax === "undefined") {
-        rawMax = config && config[maxKey];
-    }
-	var payload = {
-		[enabledKey]: enabled,
-		[entityKey]: entityVal,
-		[customKey]: isCustom,
-    };
-	if (unitKey) {
-		payload[unitKey] = String(unit ? comboValue(unit, e) : ((config && config[unitKey]) || ""));
-	}
-	if (minKey) {
-		payload[minKey] = parseNumber(rawMin);
-	}
-	if (maxKey) {
-		payload[maxKey] = parseNumber(rawMax);
-	}
-	return payload;
 }
 
 export function readWeatherInputs(root, e, config) {

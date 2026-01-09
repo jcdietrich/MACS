@@ -66,7 +66,7 @@ function createHtmlGroup({ id, name, label, tOverview, tPurpose, tExpections, tR
 		<!-- ${name} -->
 			<div class="group" id="${id}">
 				<div class="row">
-					<label for="${id}_enabled">${label}<ha-icon class="tooltip" icon="mdi:information-outline" tabindex="0" role="button" aria-label="${hint}" data-target="${id}_hint"></ha-icon></label>
+					<label for="${id}_enabled">${label}<ha-icon class="tooltip" icon="mdi:information-outline" tabindex="0" role="button" data-target="${id}_hint"></ha-icon></label>
 					<ha-switch id="${id}_enabled"></ha-switch>
 					<div class="hint" id="${id}_hint">${hint}</div>
 				</div>
@@ -461,6 +461,7 @@ export class MacsCardEditor extends HTMLElement {
 		const tooltips = this.shadowRoot.querySelectorAll(".tooltip");
 		tooltips.forEach((tooltip) => {
 			tooltip.addEventListener("click", (event) => {
+				console.log("Hint Clicked");
 				event.preventDefault();
 				event.stopPropagation();
 				const targetId = tooltip.getAttribute("data-target");
@@ -542,7 +543,6 @@ export class MacsCardEditor extends HTMLElement {
 			const pipelineConfig = readPipelineInputs(this.shadowRoot, e, this._config);
 			const weatherConfig = readWeatherInputs(this.shadowRoot, e, this._config);
 			const autoBrightnessConfig = readAutoBrightnessInputs(this.shadowRoot, e, this._config);
-			debug("weather-config", weatherConfig);
 
 			// Commit new config
 			const next = {
