@@ -12,5 +12,6 @@
   { "key": "weather_fx", "label": "Weather Effects", "filename": "weatherFx.js" },
   { "key": "mood_fx", "label": "Mood Effects", "filename": "moodFx.js" },
   { "key": "kiosk_fx", "label": "Kiosk Effects", "filename": "kioskFx.js" },
-  { "key": "cursor_fx", "label": "Cursor Effects", "filename": "cursorFx.js" }
+  { "key": "cursor_fx", "label": "Cursor Effects", "filename": "cursorFx.js" },
+  { "key": "particles_fx", "label": "Paricle Effects", "filename": "particles.js" }
 ]

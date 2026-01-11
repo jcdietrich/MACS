@@ -15,7 +15,7 @@
 import { DEFAULTS, TEMPERATURE_UNIT_ITEMS, WIND_UNIT_ITEMS, PRECIPITATION_UNIT_ITEMS, BATTERY_CHARGE_UNIT_ITEMS, CARD_EDITOR_INFO, CARD_EDITOR_ABOUT } from "../shared/constants.js";
 import { createDebugger } from "../shared/debugger.js";
 import { getValidUrl } from "./validators.js";
-import { getComboboxItems, readInputs, syncAssistStateControls, syncConditionControls, syncAutoBrightnessControls, syncPipelineControls, syncWeatherControls } from "./editorOptions.js";
+import { getComboboxItems, readInputs, syncInputs } from "./editorOptions.js";
 
 const debug = createDebugger(import.meta.url);
 
@@ -434,15 +434,14 @@ export class MacsCardEditor extends HTMLElement {
 		this._satelliteItems = satelliteItems;
 		this._pipelineItems = pipelineItems;
 		this._temperatureItems = temperatureItems;
-		this._windItems = windItems;
+		this._windspeedItems = windItems;
 		this._precipitationItems = precipitationItems;
-		this._batteryItems = batteryItems;
+		this._weatherConditionItems = conditionItems;
+		this._batteryChargeItems = batteryItems;
 		this._batteryStateItems = batteryStateItems;
-		this._conditionItems = conditionItems;
-
+		this._autoBrightnessItems = []; // doesn't have a comboxItems
 
 		inputGroups.forEach((group) => setupInputGroup(this.shadowRoot, this._config, group));
-
 
 		// About/Support toggle
 		const toggle = this.shadowRoot.querySelector(".about-toggle");
@@ -502,21 +501,19 @@ export class MacsCardEditor extends HTMLElement {
 
 	// sync UI state from this._config
 	async _sync() {
-		if (!this.shadowRoot) return;
-
-		syncAssistStateControls(this.shadowRoot, this._config, this._satelliteItems);
-		syncPipelineControls(this.shadowRoot, this._config, this._pipelineItems);
-		syncWeatherControls(
+		syncInputs(
 			this.shadowRoot,
-			this._config,
+			this._config || [],
+			this._satelliteItems || [],
+			this._pipelineItems || [],
 			this._temperatureItems || [],
-			this._windItems || [],
+			this._windspeedItems || [],
 			this._precipitationItems || [],
-			this._batteryItems || [],
-			this._batteryStateItems || []
+			this._weatherConditionItems || [],
+			this._batteryChargeItems || [],
+			this._batteryStateItems || [],
+			this._autoBrightnessItems || [],
 		);
-		syncConditionControls(this.shadowRoot, this._config, this._conditionItems || []);
-		syncAutoBrightnessControls(this.shadowRoot, this._config);
 	}
 
 	// wire up event listeners for user config changes

@@ -6,6 +6,88 @@
  */
 
 
+// Assistant Satellite
+const assistSatelitteKeys = {
+	enabled: "assist_satellite_enabled",
+	select:  "assist_satellite_select",
+	entity:  "assist_satellite_entity",
+	custom: "assist_satellite_custom"
+};
+
+// Assistant Pipeline
+const assistPipelineKeys = {
+	enabled: "assist_pipeline_enabled",
+	select:  "assist_pipeline_select",
+	entity:  "assist_pipeline_entity",
+	custom: "assist_pipeline_custom"
+};
+
+// Temperature
+const temperatureKeys = {
+	enabled: "temperature_sensor_enabled",
+	select: "temperature_sensor_select",
+	entity: "temperature_sensor_entity",
+	unit: "temperature_sensor_unit",
+	min: "temperature_sensor_min",
+	max: "temperature_sensor_max"
+};
+
+// Windspeed
+const windspeedKeys = {
+	enabled: "wind_sensor_enabled",
+	select: "wind_sensor_select",
+	entity: "wind_sensor_entity",
+	unit: "wind_sensor_unit",
+	min: "wind_sensor_min",
+	max: "wind_sensor_max"
+};
+
+// Rainfall
+const precipitationKeys = {
+	enabled: "precipitation_sensor_enabled",
+	select: "precipitation_sensor_select",
+	entity: "precipitation_sensor_entity",
+	unit: "precipitation_sensor_unit",
+	min: "precipitation_sensor_min",
+	max: "precipitation_sensor_max"
+};
+
+// Weather Condition
+const weatherConditionKeys = {
+	enabled: "weather_conditions_enabled",
+	select:  "weather_conditions_select",
+	entity:  "weather_conditions_entity",
+	custom: "weather_conditions_custom"
+};
+
+// Battery charge %
+const batteryChargeKeys = {
+	enabled: "battery_charge_sensor_enabled",
+	select: "battery_charge_sensor_select",
+	entity: "battery_charge_sensor_entity",
+	unit: "battery_charge_sensor_unit",
+	min: "battery_charge_sensor_min",
+	max: "battery_charge_sensor_max"
+};
+
+// Battery is Plugged in
+const batteryStateKeys = {
+	enabled: "battery_state_sensor_enabled",
+	select: "battery_state_sensor_select",
+	entity: "battery_state_sensor_entity"
+};
+
+// Kiosk Mode
+const autoBrightnessKeys = {
+	enabled: "auto_brightness_enabled",
+	min: "auto_brightness_min",
+	max: "auto_brightness_max",
+	kioskAnimations: "auto_brightness_pause_animations_enabled",
+	kioskTimeout: "auto_brightness_timeout_minutes"
+};
+
+
+
 
 //###############################################################################################
 //                                                                                              #
@@ -226,7 +308,7 @@ function getNumberOrDefault(elem, defaultVal){
 
 
 // Reads all inputs for a HTML group
-function getUserInputs(root, e, config, ids) {
+function getUserInputs(shadowRoot, e, config, ids) {
 	// see why keys are available in the current group
 	const enabledKey = ids.enabled ? ids.enabled : false;
 	const selectKey = ids.select ? ids.select : false;
@@ -239,15 +321,15 @@ function getUserInputs(root, e, config, ids) {
 	const kioskTimeoutKey = ids.kioskTimeout ? ids.kioskTimeout : false;
 
 	// get the corresponding html elements
-	const elemEnabled      = enabledKey 	 ? root.getElementById(enabledKey) : null;
-	const elemSelect       = selectKey 		 ? root.getElementById(selectKey) : null;
+	const elemEnabled      = enabledKey 	 ? shadowRoot.getElementById(enabledKey) : null;
+	const elemSelect       = selectKey 		 ? shadowRoot.getElementById(selectKey) : null;
 	//const elemCustom       = customKey 		 ? root.getElementById(customKey) : null;
-	const elemEntityInput  = entityKey 		 ? root.getElementById(entityKey) : null;
-	const elemUnit         = unitKey 		 ? root.getElementById(unitKey) : null;
-	const elemMin          = minKey 		 ? root.getElementById(minKey) : null;
-	const elemMax          = maxKey 		 ? root.getElementById(maxKey) : null;
-	const elemKioskAnims   = kioskAnimKey 	 ? root.getElementById(kioskAnimKey) : null;
-	const elemKioskTimeout = kioskTimeoutKey ? root.getElementById(kioskTimeoutKey) : null;
+	const elemEntityInput  = entityKey 		 ? shadowRoot.getElementById(entityKey) : null;
+	const elemUnit         = unitKey 		 ? shadowRoot.getElementById(unitKey) : null;
+	const elemMin          = minKey 		 ? shadowRoot.getElementById(minKey) : null;
+	const elemMax          = maxKey 		 ? shadowRoot.getElementById(maxKey) : null;
+	const elemKioskAnims   = kioskAnimKey 	 ? shadowRoot.getElementById(kioskAnimKey) : null;
+	const elemKioskTimeout = kioskTimeoutKey ? shadowRoot.getElementById(kioskTimeoutKey) : null;
 
 	// get the combo box selected val and chosen entity
 	const enabled = getToggleValue(elemEnabled, e, config && config[enabledKey]);
@@ -277,9 +359,14 @@ function getUserInputs(root, e, config, ids) {
 }
 
 
-export function readInputs(root, e, config) {
+
+
+
+
+
+export function readInputs(shadowRoot, e, config) {
 	// Read all inputs or fall back to config.
-	if (!root) {
+	if (!shadowRoot) {
 		return {
 			// Assistant Satellite
 			assist_satellite_enabled: !!(config && config.assist_satellite_enabled),
@@ -342,90 +429,15 @@ export function readInputs(root, e, config) {
 	}
 
 	return {
-		// Assistant Satellite
-		...getUserInputs(root, e, config, {
-				enabled: "assist_satellite_enabled",
-				select:  "assist_satellite_select",
-				entity:  "assist_satellite_entity",
-				custom:  "assist_satellite_custom",
-			}),
-
-		// Assistant Pipeline
-		...getUserInputs(root, e, config, {
-				enabled: "assist_pipeline_enabled",
-				select:  "assist_pipeline_select",
-				entity:  "assist_pipeline_entity",
-				custom:  "assist_pipeline_custom",
-			}),
-
-		// Temperature
-		...getUserInputs(root, e, config, {
-				enabled: "temperature_sensor_enabled",
-				select:  "temperature_sensor_select",
-				entity:  "temperature_sensor_entity",
-				custom:  "temperature_sensor_custom",
-				unit:    "temperature_sensor_unit",
-				min:     "temperature_sensor_min",
-				max:     "temperature_sensor_max",
-			}),
-
-		// Windspeed
-		...getUserInputs(root, e, config, {
-				enabled: "wind_sensor_enabled",
-				select:  "wind_sensor_select",
-				entity:  "wind_sensor_entity",
-				custom:  "wind_sensor_custom",
-				unit:    "wind_sensor_unit",
-				min:     "wind_sensor_min",
-				max:     "wind_sensor_max",
-			}),
-
-		// Rainfall
-		...getUserInputs(root, e, config, {
-				enabled: "precipitation_sensor_enabled",
-				select:  "precipitation_sensor_select",
-				entity:  "precipitation_sensor_entity",
-				custom:  "precipitation_sensor_custom",
-				unit:    "precipitation_sensor_unit",
-				min:     "precipitation_sensor_min",
-				max:     "precipitation_sensor_max",
-			}),
-
-		// Weather Condition
-		...getUserInputs(root, e, config, {
-				enabled: "weather_conditions_enabled",
-				select:  "weather_conditions_sensor_select",
-				entity:  "weather_conditions_sensor_entity",
-				custom:  "weather_conditions_custom",
-			}),
-
-		// Battery charge %
-		...getUserInputs(root, e, config, {
-				enabled: "battery_charge_sensor_enabled",
-				select:  "battery_charge_sensor_select",
-				entity:  "battery_charge_sensor_entity",
-				custom:  "battery_charge_sensor_custom",
-				unit:    "battery_charge_sensor_unit",
-				min:     "battery_charge_sensor_min",
-				max:     "battery_charge_sensor_max",
-			}),
-
-		// Battery is Plugged in
-		...getUserInputs(root, e, config, {
-				enabled: "battery_state_sensor_enabled",
-				select:  "battery_state_sensor_select",
-				entity:  "battery_state_sensor_entity",
-				custom:  "battery_state_sensor_custom",
-			}),
-
-		// Kiosk Mode
-		...getUserInputs(root, e, config, {
-				enabled: "auto_brightness_enabled",
-				min:     "auto_brightness_min",
-				max:     "auto_brightness_max",
-				kioskAnimations: "auto_brightness_pause_animations",
-				kioskTimeout:    "auto_brightness_timeout_minutes"
-			}),
+		...getUserInputs(shadowRoot, e, config, assistSatelitteKeys),
+		...getUserInputs(shadowRoot, e, config, assistPipelineKeys),
+		...getUserInputs(shadowRoot, e, config, temperatureKeys),
+		...getUserInputs(shadowRoot, e, config, windspeedKeys),
+		...getUserInputs(shadowRoot, e, config, precipitationKeys),
+		...getUserInputs(shadowRoot, e, config, weatherConditionKeys),
+		...getUserInputs(shadowRoot, e, config, batteryChargeKeys),
+		...getUserInputs(shadowRoot, e, config, batteryStateKeys),
+		...getUserInputs(shadowRoot, e, config, autoBrightnessKeys),
 	};
 }
 
@@ -439,352 +451,123 @@ export function readInputs(root, e, config) {
 //                                                                                              #
 //###############################################################################################
 
-
-export function syncAssistStateControls(root, config, satelliteItems) {
-	// Sync assist state controls from the saved config into the DOM.
-	if (!root) {
-		return;
-	}
-
-	var assistStateAutoMood = !!(config && config.assist_satellite_enabled);
-	var assistStateAutoMoodToggle = root.getElementById("assist_satellite_enabled");
-	var satelliteSelect = root.getElementById("assist_satellite_select");
-	var satelliteEntity = root.getElementById("assist_satellite_entity");
-
-	if (assistStateAutoMoodToggle && assistStateAutoMoodToggle.checked !== assistStateAutoMood) {
-		assistStateAutoMoodToggle.checked = assistStateAutoMood;
-	}
-
-	if (satelliteSelect) {
-		satelliteSelect.disabled = !assistStateAutoMood;
-	}
-	if (satelliteEntity) {
-		satelliteEntity.disabled = !assistStateAutoMood;
-	}
-
-	var eid = String((config && config.assist_satellite_entity) || "");
-	var knownSatellite =
-		Array.isArray(satelliteItems) &&
-		satelliteItems.some(function (s) {
-			return s.id === eid && s.id !== "custom";
-		});
-	var satIsCustom = !!(config && config.assist_satellite_custom) || !knownSatellite;
-	var nextSatSelect = satIsCustom ? "custom" : eid;
-
-	if (satelliteSelect && satelliteSelect.value !== nextSatSelect) {
-		satelliteSelect.value = nextSatSelect;
-	}
-	if (
-		satelliteEntity &&
-		satelliteEntity.value !== eid &&
-		(!satIsCustom || !satelliteEntity.matches(":focus-within"))
-	) {
-		satelliteEntity.value = eid;
-	}
-	if (satelliteEntity) {
-		satelliteEntity.disabled = !assistStateAutoMood || !satIsCustom;
+function setEnabledDisabled(elem, key, enabled){
+	if(key){
+		if (elem) {
+			elem.disabled = !enabled;
+		}
 	}
 }
 
-export function syncPipelineControls(root, config, pipelineItems) {
-	// Sync pipeline controls from the saved config into the DOM.
-	if (!root) {
-		return;
-	}
-
-	var dialogueEnabled = !!(config && config.assist_pipeline_enabled);
-	var dialogueEnabledToggle = root.getElementById("assist_pipeline_enabled");
-	var pipelineSelect = root.getElementById("assist_pipeline_select");
-	var pipelineId = root.getElementById("assist_pipeline_entity");
-
-	if (dialogueEnabledToggle && dialogueEnabledToggle.checked !== dialogueEnabled) {
-		dialogueEnabledToggle.checked = dialogueEnabled;
-	}
-
-	if (pipelineSelect) {
-		pipelineSelect.disabled = !dialogueEnabled;
-	}
-	if (pipelineId) {
-		pipelineId.disabled = !dialogueEnabled;
-	}
-
-	var pid = String((config && config.assist_pipeline_entity) || "");
-	var knownPipeline =
-		Array.isArray(pipelineItems) &&
-		pipelineItems.some(function (p) {
-			return p.id === pid && p.id !== "custom";
-		});
-	var pipelineIsCustom = !!(config && config.assist_pipeline_custom) || !knownPipeline;
-	var nextPipelineSelect = pipelineIsCustom ? "custom" : pid;
-
-	if (pipelineSelect && pipelineSelect.value !== nextPipelineSelect) {
-		pipelineSelect.value = nextPipelineSelect;
-	}
-	if (pipelineId && pipelineId.value !== pid && !pipelineId.matches(":focus-within")) {
-		pipelineId.value = pid;
-	}
-	if (pipelineId) {
-		pipelineId.disabled = !dialogueEnabled || !pipelineIsCustom;
+function setNumericValue(elem, key, config){
+	if(key){
+		if(elem){
+			const val = config && config[key];
+			if (elem.value !== val) {
+				elem.value = val === null || typeof val === "undefined" ? "" : String(val);
+			}
+		// 			if (max && max.value !== cfgMax) {
+		// 	max.value = cfgMax === null || typeof cfgMax === "undefined" ? "" : String(cfgMax);
+		// }
+		}
 	}
 }
 
-export function syncConditionControls(root, config, conditionItems) {
-	// Sync weather condition controls from the saved config into the DOM.
-	if (!root) {
-		return;
-	}
-
-	var conditionsEnabled = !!(config && config.weather_conditions_enabled);
-	var conditionsToggle = root.getElementById("weather_conditions_enabled");
-	var conditionsSelect = root.getElementById("weather_conditions_select");
-	var conditionsEntity = root.getElementById("weather_conditions_entity");
-
-	if (conditionsToggle && conditionsToggle.checked !== conditionsEnabled) {
-		conditionsToggle.checked = conditionsEnabled;
-	}
-
-	if (conditionsSelect) {
-		conditionsSelect.disabled = !conditionsEnabled;
-	}
-	if (conditionsEntity) {
-		conditionsEntity.disabled = !conditionsEnabled;
-	}
-
-	var value = String((config && config.weather_conditions) || "");
-	var knownCondition =
-		Array.isArray(conditionItems) &&
-		conditionItems.some(function (c) {
-			return c.id === value && c.id !== "custom";
-		});
-	var isCustom = value.length > 0 && !knownCondition;
-	var nextSelect = isCustom ? "custom" : value;
-
-	if (conditionsSelect && conditionsSelect.value !== nextSelect) {
-		conditionsSelect.value = nextSelect;
-	}
-	if (
-		conditionsEntity &&
-		conditionsEntity.value !== value &&
-		(!isCustom || !conditionsEntity.matches(":focus-within"))
-	) {
-		conditionsEntity.value = value;
-	}
-	if (conditionsEntity) {
-		conditionsEntity.disabled = !conditionsEnabled || !isCustom;
+function setToggleState(elem, key, config){
+	if(key){
+		if(elem){
+			const val = !!(config && config[key]);
+			if (elem.checked !== val) {
+				elem.checked = val;
+			}
+		}
 	}
 }
 
-export function syncAutoBrightnessControls(root, config) {
-	// Sync auto-brightness controls from the saved config into the DOM.
-	if (!root) {
+export function syncInputGroup(shadowRoot, config, items, ids){
+	if (!shadowRoot) {
 		return;
 	}
 
-	var enabled = !!(config && config.auto_brightness_enabled);
-	var toggle = root.getElementById("auto_brightness_enabled");
-	var timeout = root.getElementById("auto_brightness_timeout_minutes");
-	var minBrightness = root.getElementById("auto_brightness_min");
-	var maxBrightness = root.getElementById("auto_brightness_max");
-	var pauseToggle = root.getElementById("auto_brightness_pause_animations_enabled");
+	const enabledKey = ids.enabled ? ids.enabled : false;
+	const selectKey = ids.select ? ids.select : false;
+	const customKey = ids.custom ? ids.custom : false;
+	const entityKey = ids.entity ? ids.entity : false;
+	const unitKey = ids.unit ? ids.unit : false;
+	const minKey = ids.min ? ids.min : false;
+	const maxKey = ids.max ? ids.max : false;
+	const kioskAnimKey = ids.kioskAnimations ? ids.kioskAnimations : false;
+	const kioskTimeoutKey = ids.kioskTimeout ? ids.kioskTimeout : false;
 
-	if (toggle && toggle.checked !== enabled) {
-		toggle.checked = enabled;
+	const elemEnabled      = enabledKey 	 ? shadowRoot.getElementById(enabledKey) : null;
+	const elemSelect       = selectKey 		 ? shadowRoot.getElementById(selectKey) : null;
+	const elemEntity       = entityKey 		 ? shadowRoot.getElementById(entityKey) : null;
+	const elemUnit         = unitKey 		 ? shadowRoot.getElementById(unitKey) : null;
+	const elemMin          = minKey 		 ? shadowRoot.getElementById(minKey) : null;
+	const elemMax          = maxKey 		 ? shadowRoot.getElementById(maxKey) : null;
+	const elemKioskAnims   = kioskAnimKey 	 ? shadowRoot.getElementById(kioskAnimKey) : null;
+	const elemKioskTimeout = kioskTimeoutKey ? shadowRoot.getElementById(kioskTimeoutKey) : null;
+
+	const enabled = !!(config && config[enabledKey]);
+	console.log("enabled", enabled);
+
+	if (elemEnabled && elemEnabled.checked !== enabled) {
+		elemEnabled.checked = enabled;
 	}
+	setEnabledDisabled(elemSelect, 		selectKey, 		enabled);
+	setEnabledDisabled(elemEntity, 		entityKey, 		enabled);
+	setEnabledDisabled(elemUnit, 		unitKey, 		enabled);
+	setEnabledDisabled(elemMin,			minKey,  		enabled);
+	setEnabledDisabled(elemMax, 		maxKey, 		enabled);
+	setEnabledDisabled(elemKioskAnims, 	kioskAnimKey, 	enabled);
+	setEnabledDisabled(elemKioskTimeout,kioskTimeoutKey,enabled);
 
-	if (timeout) timeout.disabled = !enabled;
-	if (minBrightness) minBrightness.disabled = !enabled;
-	if (maxBrightness) maxBrightness.disabled = !enabled;
-	if (pauseToggle) pauseToggle.disabled = !enabled;
+	if(selectKey){
+		if(elemSelect){
+			const eid = String((config && config[entityKey]) || "");
 
-	var timeoutVal = config && config.auto_brightness_timeout_minutes;
-	if (timeout && timeout.value !== timeoutVal) {
-		timeout.value = timeoutVal === null || typeof timeoutVal === "undefined" ? "" : String(timeoutVal);
-	}
+			const knownSelect = Array.isArray(items) && items.some(function (s) {
+					return s.id === eid && s.id !== "custom";
+				});
 
-	var minVal = config && config.auto_brightness_min;
-	if (minBrightness && minBrightness.value !== minVal) {
-		minBrightness.value = minVal === null || typeof minVal === "undefined" ? "" : String(minVal);
-	}
+			const isCustom = !!(config && config[customKey]) || !knownSelect;
+			const nextSelect = isCustom ? "custom" : eid;
 
-	var maxVal = config && config.auto_brightness_max;
-	if (maxBrightness && maxBrightness.value !== maxVal) {
-		maxBrightness.value = maxVal === null || typeof maxVal === "undefined" ? "" : String(maxVal);
-	}
-
-	var pauseVal = !!(config && config.auto_brightness_pause_animations);
-	if (pauseToggle && pauseToggle.checked !== pauseVal) {
-		pauseToggle.checked = pauseVal;
-	}
-}
-
-export function syncWeatherControls(root, config, temperatureItems, windItems, precipitationItems, batteryItems, batteryStateItems) {
-	// Sync all sensor sections.
-	syncSingleWeather(
-		root,
-		config,
-		temperatureItems,
-		{
-			enabled: "temperature_sensor_enabled",
-			select: "temperature_sensor_select",
-			entity: "temperature_sensor_entity",
-			unit: "temperature_sensor_unit",
-			min: "temperature_sensor_min",
-			max: "temperature_sensor_max",
-		},
-		"temperature_sensor_custom",
-		"temperature_sensor_entity",
-		"temperature_sensor_enabled",
-		"temperature_sensor_unit",
-		"temperature_sensor_min",
-		"temperature_sensor_max"
-	);
-
-	syncSingleWeather(
-		root,
-		config,
-		windItems,
-		{
-			enabled: "wind_sensor_enabled",
-			select: "wind_sensor_select",
-			entity: "wind_sensor_entity",
-			unit: "wind_sensor_unit",
-			min: "wind_sensor_min",
-			max: "wind_sensor_max",
-		},
-		"wind_sensor_custom",
-		"wind_sensor_entity",
-		"wind_sensor_enabled",
-		"wind_sensor_unit",
-		"wind_sensor_min",
-		"wind_sensor_max"
-	);
-
-	syncSingleWeather(
-		root,
-		config,
-		precipitationItems,
-		{
-			enabled: "precipitation_sensor_enabled",
-			select: "precipitation_sensor_select",
-			entity: "precipitation_sensor_entity",
-			unit: "precipitation_sensor_unit",
-			min: "precipitation_sensor_min",
-			max: "precipitation_sensor_max",
-		},
-		"precipitation_sensor_custom",
-		"precipitation_sensor_entity",
-		"precipitation_sensor_enabled",
-		"precipitation_sensor_unit",
-		"precipitation_sensor_min",
-		"precipitation_sensor_max"
-	);
-
-	syncSingleWeather(
-		root,
-		config,
-		batteryItems,
-		{
-			enabled: "battery_charge_sensor_enabled",
-			select: "battery_charge_sensor_select",
-			entity: "battery_charge_sensor_entity",
-			unit: "battery_charge_sensor_unit",
-			min: "battery_charge_sensor_min",
-			max: "battery_charge_sensor_max",
-		},
-		"battery_charge_sensor_custom",
-		"battery_charge_sensor_entity",
-		"battery_charge_sensor_enabled",
-		"battery_charge_sensor_unit",
-		"battery_charge_sensor_min",
-		"battery_charge_sensor_max"
-	);
-
-	syncSingleWeather(
-		root,
-		config,
-		batteryStateItems,
-		{
-			enabled: "battery_state_sensor_enabled",
-			select: "battery_state_sensor_select",
-			entity: "battery_state_sensor_entity",
-		},
-		"battery_state_sensor_custom",
-		"battery_state_sensor_entity",
-		"battery_state_sensor_enabled"
-	);
-}
-
-function syncSingleWeather(
-	root,
-	config,
-	items,
-	ids,
-	customFlagKey,
-	entityKey,
-	enabledKey,
-	unitKey,
-	minKey,
-	maxKey
-) {
-	// Push config into a single weather section.
-	if (!root) {
-		return;
-	}
-
-	var enabled = !!(config && config[enabledKey]);
-	var enabledToggle = root.getElementById(ids.enabled);
-	var select = root.getElementById(ids.select);
-	var entity = root.getElementById(ids.entity);
-	var unit = unitKey ? root.getElementById(ids.unit) : null;
-	var min = minKey ? root.getElementById(ids.min) : null;
-	var max = maxKey ? root.getElementById(ids.max) : null;
-
-	if (enabledToggle && enabledToggle.checked !== enabled) {
-		enabledToggle.checked = enabled;
-	}
-
-	if (select) select.disabled = !enabled;
-	if (entity) entity.disabled = !enabled;
-	if (unit) unit.disabled = !enabled;
-	if (min) min.disabled = !enabled;
-	if (max) max.disabled = !enabled;
-
-	var eid = String((config && config[entityKey]) || "");
-	var known =
-		Array.isArray(items) &&
-		items.some(function (s) {
-			return s.id === eid && s.id !== "custom";
-		});
-	var isCustom = !!(config && config[customFlagKey]) || !known;
-	var nextSelect = isCustom ? "custom" : eid;
-
-	if (select && select.value !== nextSelect) {
-		select.value = nextSelect;
-	}
-	if (entity && entity.value !== eid && (!isCustom || !entity.matches(":focus-within"))) {
-		entity.value = eid;
-	}
-	if (entity) {
-		entity.disabled = !enabled || !isCustom;
+			if (elemSelect && elemSelect.value !== nextSelect) {
+				elemSelect.value = nextSelect;
+			}
+			if (elemEntity && elemEntity.value !== eid && (!isCustom || !elemEntity.matches(":focus-within"))) {
+				elemEntity.value = eid;
+			}
+			elemEntity.enabled = enabled && isCustom;
+		}
 	}
 
 	if (unitKey) {
-		var unitVal = String((config && config[unitKey]) || "");
-		if (unit && unit.value !== unitVal) {
-			unit.value = unitVal;
+		if(elemUnit){
+			const unitVal = String((config && config[unitKey]) || "");
+			if (elemUnit.value !== unitVal) {
+				elemUnit.value = unitVal;
+			}
 		}
 	}
 
-	if (minKey) {
-		var cfgMin = config && config[minKey];
-		if (min && min.value !== cfgMin) {
-			min.value = cfgMin === null || typeof cfgMin === "undefined" ? "" : String(cfgMin);
-		}
-	}
-	if (maxKey) {
-		var cfgMax = config && config[maxKey];
-		if (max && max.value !== cfgMax) {
-			max.value = cfgMax === null || typeof cfgMax === "undefined" ? "" : String(cfgMax);
-		}
-	}
+	setNumericValue(elemMin, minKey, config);
+	setNumericValue(elemMax, maxKey, config);
+	setNumericValue(elemKioskTimeout, kioskTimeoutKey, config);
+
+	setToggleState(elemKioskAnims, kioskAnimKey, config);
 }
+
+export function syncInputs(shadowRoot, config, satelliteItems, pipelineItems, temperatureItems, windspeedItems, precipitationItems, weatherConditionItems, batteryChargeItems, batteryStateItems, autoBrightnessItems) {
+	syncInputGroup(shadowRoot, config, satelliteItems, assistSatelitteKeys);
+	syncInputGroup(shadowRoot, config, pipelineItems, assistPipelineKeys);
+	syncInputGroup(shadowRoot, config, temperatureItems, temperatureKeys);
+	syncInputGroup(shadowRoot, config, windspeedItems, windspeedKeys);
+	syncInputGroup(shadowRoot, config, precipitationItems, precipitationKeys);
+	syncInputGroup(shadowRoot, config, weatherConditionItems, weatherConditionKeys);
+	syncInputGroup(shadowRoot, config, batteryChargeItems, batteryChargeKeys);
+	syncInputGroup(shadowRoot, config, batteryStateItems, batteryStateKeys);
+	syncInputGroup(shadowRoot, config, autoBrightnessItems, autoBrightnessKeys);
+}
+
