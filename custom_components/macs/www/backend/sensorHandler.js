@@ -83,8 +83,8 @@ export class SensorHandler {
         this._precipitation = null;
         this._battery = null;
         this._batteryState = null;
-        this._conditions = emptyConditions();
-        this._sensors = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, conditions: null };
+        this._weatherConditions = emptyConditions();
+        this._sensors = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, weather_conditions: null };
         this._lastTemperature = undefined;
         this._lastWindspeed = undefined;
         this._lastPrecipitation = undefined;
@@ -109,15 +109,15 @@ export class SensorHandler {
         const precipitation = this._normalizePrecipitation();
         const battery = this._normalizeBattery();
         const batteryState = this._normalizeBatteryState();
-        const conditions = this._normalizeConditions();
+        const weatherConditions = this._normalizeConditions();
 
-        this._sensors = { temperature, wind, precipitation, battery, battery_state: batteryState, conditions };
+        this._sensors = { temperature, wind, precipitation, battery, battery_state: batteryState, weather_conditions: weatherConditions };
         this._temperature = Number.isFinite(temperature?.normalized) ? temperature.normalized : null;
         this._windspeed = Number.isFinite(wind?.normalized) ? wind.normalized : null;
         this._precipitation = Number.isFinite(precipitation?.normalized) ? precipitation.normalized : null;
         this._battery = Number.isFinite(battery?.normalized) ? battery.normalized : null;
         this._batteryState = typeof batteryState?.normalized === "boolean" ? batteryState.normalized : null;
-        this._conditions = conditions || emptyConditions();
+        this._weatherConditions = weatherConditions || emptyConditions();
 
         return this.getPayload();
     }
@@ -151,7 +151,7 @@ export class SensorHandler {
     _readConditionText(stateObj) {
         if (!stateObj) return "";
         const attrs = stateObj.attributes || {};
-        const candidates = [attrs.condition, attrs.conditions, attrs.weather, stateObj.state];
+        const candidates = [attrs.weatherCondition, attrs.weatherConditions, attrs.weather, stateObj.state];
         for (let i = 0; i < candidates.length; i++) {
             const candidate = candidates[i];
             if (Array.isArray(candidate) && candidate.length > 0) {
@@ -412,17 +412,32 @@ export class SensorHandler {
     }
 
     _normalizeConditions() {
+        debug("Getting weather conditions...");
+
         if (this._config?.weather_conditions_enabled) {
-            const entityId = (this._config.weather_conditions || "").toString().trim();
-            if (!entityId || !this._hass?.states) {
+            debug("Weather Conditions Enabled");
+            
+            const entityId = (this._config.weather_conditions_entity || "").toString().trim();
+            debug("Trying to get results from " + entityId);
+
+            if (!entityId) {
+                debug("warn", "No Entity ID");
                 return emptyConditions();
             }
+
+            if (!this._hass?.states) {
+                debug("warn", "Entity State not Available");
+                return emptyConditions();
+            }
+
             const st = this._hass.states?.[entityId];
             if (!st) {
+                debug("warn", "Unable to get sensor state");
                 return emptyConditions();
             }
             const raw = this._readConditionText(st);
             const text = (raw || "").toString().trim().toLowerCase();
+            debug("Got text from sensor: " + text);
             if (!text || text === "unknown" || text === "unavailable") {
                 return emptyConditions();
             }
@@ -488,12 +503,16 @@ export class SensorHandler {
             debug("condition sensors", JSON.stringify({
                 entityId,
                 raw,
-                conditions: flags,
+                weatherConditions: flags,
             }));
             return flags;
         }
+        else{
+            debug("Weather Conditions Disabled");
+        }
 
         if (!this._hass?.states) {
+            debug("warn", "Hass not ready for weather conditions");
             return emptyConditions();
         }
 
@@ -508,10 +527,12 @@ export class SensorHandler {
         }
         applyDerivedConditions(flags);
         debug("weather condition toggles", JSON.stringify({
-            conditions: flags,
+            weatherConditions: flags,
         }));
         return flags;
     }
+
+
 
     getSensors() {
         debug("getSensors");
@@ -524,7 +545,7 @@ export class SensorHandler {
         this._lastPrecipitation = this._precipitation;
         this._lastBattery = this._battery;
         this._lastBatteryState = this._batteryState;
-        this._lastConditionsSignature = JSON.stringify(this._conditions || emptyConditions());
+        this._lastConditionsSignature = JSON.stringify(this._weatherConditions || emptyConditions());
     }
 
     getPayload() {
@@ -534,7 +555,7 @@ export class SensorHandler {
             precipitation: this._precipitation,
             battery: this._battery,
             battery_state: this._batteryState,
-            conditions: this._conditions,
+            weather_conditions: this._weatherConditions,
         };
     }
 
@@ -569,11 +590,11 @@ export class SensorHandler {
     }
 
     getWeatherConditions() {
-        return this._conditions;
+        return this._weatherConditions;
     }
 
     getWeatherConditionsHasChanged() {
-        const signature = JSON.stringify(this._conditions || emptyConditions());
+        const signature = JSON.stringify(this._weatherConditions || emptyConditions());
         const changed = signature !== this._lastConditionsSignature;
         if (changed) this._lastConditionsSignature = signature;
         return changed;
@@ -616,8 +637,8 @@ export class SensorHandler {
         this._precipitation = null;
         this._battery = null;
         this._batteryState = null;
-        this._conditions = emptyConditions();
-        this._sensors = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, conditions: null };
+        this._weatherConditions = emptyConditions();
+        this._sensors = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, weather_conditions: null };
         this._lastTemperature = undefined;
         this._lastWindspeed = undefined;
         this._lastPrecipitation = undefined;

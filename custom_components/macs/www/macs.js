@@ -15,6 +15,7 @@
  * - bug: deleting min/max doesn't update config
  * - fullscreen kiosk not working on desktop - possible clash with debug div?
  * - kiosk fullscreenmode f11 for browser
+ * - rainy not working
  * 
  * - test non-admin user
  * - change happy trigger from idle to responding. Actually, idle OR responding, whichever comes first.

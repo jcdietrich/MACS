@@ -200,9 +200,9 @@ const applySensorPayload = (sensors) => {
 			weatherFx.setPrecipitation(sensors.precipitation);
 		}
 	}
-	if (typeof sensors.conditions !== "undefined") {
-		if (!warnIfNull("conditions", sensors.conditions) && weatherFx) {
-			weatherFx.setWeatherConditions(sensors.conditions);
+	if (typeof sensors.weather_conditions !== "undefined") {
+		if (!warnIfNull("conditions", sensors.weather_conditions) && weatherFx) {
+			weatherFx.setWeatherConditions(sensors.weather_conditions);
 		}
 	}
 	if (typeof sensors.battery !== "undefined") {
@@ -324,7 +324,7 @@ function handleMessage(payload) {
         return;
     }
     if (payload.type === 'macs:weather_conditions') {
-        if (warnIfNull("conditions", payload.conditions)) return;
+        if (warnIfNull("conditions", payload.weatherconditions)) return;
         if (weatherFx) weatherFx.setWeatherConditions(payload.conditions);
         return;
     }

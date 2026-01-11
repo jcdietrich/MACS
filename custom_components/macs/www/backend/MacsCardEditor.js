@@ -250,7 +250,7 @@ export class MacsCardEditor extends HTMLElement {
 		}
 		let htmlOutput;
 
-		const { satelliteItems, pipelineItems, preferred, temperatureItems, windItems, precipitationItems, conditionItems, batteryItems, batteryStateItems } = await getComboboxItems(this._hass);
+		const { satelliteItems, pipelineItems, preferred, temperatureItems, windItems, precipitationItems, weatherConditionItems, batteryItems, batteryStateItems } = await getComboboxItems(this._hass);
 
 
 		// Build DOM...
@@ -347,7 +347,7 @@ export class MacsCardEditor extends HTMLElement {
 			tRequired: "A sensor that returns weather conditions as foggy, rainy, windy etc.",
 			tOverrides: "When enabled, all of Macs's own weather toggles (switch.macs_weather_conditions_rainy etc) will be ignored.",
 			placeholder: "weather.forecast_home",
-			selectItems: conditionItems,
+			selectItems: weatherConditionItems,
 			selectValue: this._config.weather_conditions ?? "",
 			selectOptions: { allowCustom: true, customFlag: !!this._config.weather_conditions_custom  }
 		});
@@ -429,7 +429,7 @@ export class MacsCardEditor extends HTMLElement {
 		this._temperatureItems = temperatureItems;
 		this._windspeedItems = windItems;
 		this._precipitationItems = precipitationItems;
-		this._weatherConditionItems = conditionItems;
+		this._weatherConditionItems = weatherConditionItems;
 		this._batteryChargeItems = batteryItems;
 		this._batteryStateItems = batteryStateItems;
 		this._autoBrightnessItems = []; // doesn't have a comboxItems
@@ -474,7 +474,6 @@ export class MacsCardEditor extends HTMLElement {
 
 		// Sync UI from config
 		this._sync();
-		//this._pipelinesLoaded = true;
 
 		// If user hasn't set a pipeline yet, pick HA's preferred
 		const currentPid = (this._config.assist_pipeline_entity ?? "").toString().trim();

@@ -367,12 +367,36 @@ export function createDebugger(namespace) {
         }
     }
 
+    const LOG_LEVELS = {
+        info: {
+            label: "INFO",
+            console: console.log,
+            prefix: "[🟢] ‿ [🟢]"
+        },
+        warn: {
+            label: "WARN",
+            console: console.warn,
+            prefix: "[🔵] _ [🔵]"
+        },
+        error: {
+            label: "ERROR",
+            console: console.error,
+            prefix: "[🟣] O [🟣]"
+        }
+    };
+
     const log = (...args) => {
         const enabledNow = isEnabled();
         if (!enabledNow) {
             hideDebug();
             return;
         }
+
+        let level = "info";
+        if (typeof args[0] === "string" && LOG_LEVELS[args[0]]) {
+            level = args.shift();
+        }
+
         const entries = args.map((arg) => ({
             arg,
             text: toUiString(arg)
@@ -391,7 +415,8 @@ export function createDebugger(namespace) {
             showDebug();
             flushQueue();
         }
-        console.log(`[🟢] ‿ [🟢] MACS: ${ns}`, ...args);
+        const { console: consoleFn, prefix } = LOG_LEVELS[level];
+        consoleFn(`${prefix} MACS: ${ns}`, ...args);
 
         // could do [🔵] _ [🔵] for warn, and [🟣] O [🟣] for error
     };

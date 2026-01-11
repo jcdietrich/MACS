@@ -68,7 +68,7 @@ export const DEFAULTS = {
     battery_state_sensor_entity: "",
     battery_state_sensor_custom: false,
     weather_conditions_enabled: false,
-    weather_conditions: "",
+    weather_conditions_entity: "",
     auto_brightness_enabled: false,
     auto_brightness_timeout_minutes: 5,
     auto_brightness_min: 0,

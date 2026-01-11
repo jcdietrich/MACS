@@ -126,7 +126,7 @@ export async function getComboboxItems(hass) {
 	comboxItems.precipitationItems = searchForEntities("sensor", "entries", hass, ["precipitation", "precipitation_intensity", "precipitation_probability"], ["rain", "precip", "precipitation"]);
 
 	// Gather weather entities for weather_condition strings.
-	comboxItems.conditionItems = searchForEntities("weather", "entries", hass);
+	comboxItems.weatherConditionItems = searchForEntities("weather", "entries", hass);
 
 	// Gather likely battery charge % sensors.
 	comboxItems.batteryItems = searchForEntities("sensor", "entries", hass, ["battery"], ["battery", "charge", "batt"]);

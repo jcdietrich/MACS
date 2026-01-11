@@ -414,9 +414,9 @@ export class MacsCard extends HTMLElement {
             this._postToIframe({ type: "macs:precipitation", recipient: "frontend", precipitation });
         }
     }
-    _sendWeatherConditionsToIframe(conditions) {
+    _sendWeatherConditionsToIframe(weatherConditions) {
         if (this._sensorHandler.getWeatherConditionsHasChanged?.()) {
-            this._postToIframe({ type: "macs:weather_conditions", recipient: "frontend", conditions: conditions || {} });
+            this._postToIframe({ type: "macs:weather_conditions", recipient: "frontend", conditions: weatherConditions || {} });
         }
     }
     _sendBatteryToIframe(battery) {
