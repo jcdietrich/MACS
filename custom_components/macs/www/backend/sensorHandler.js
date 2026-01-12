@@ -70,7 +70,12 @@ function normalizeChargingState(value) {
     const raw = value.toString().trim().toLowerCase();
     if (!raw || raw === "unknown" || raw === "unavailable") return null;
     const normalized = raw.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-    if (normalized === "charging") return true;
+    if (normalized === "charging" || normalized === "on" || normalized === "true" || normalized === "plugged") {
+        return true;
+    }
+    if (normalized === "off" || normalized === "false" || normalized === "unplugged") {
+        return false;
+    }
     return false;
 }
 
