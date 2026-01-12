@@ -1,6 +1,6 @@
-# M.A.C.S. – Mood-Aware Character SVG
+# M.A.C.S. - Mood-Aware Character SVG
 
-M.A.C.S. is a playful, expressive, animated companion for Home Assistant. 
+M.A.C.S. is a playful, expressive, animated companion for Home Assistant.
 
 It visualises Assist interactions and broader system context using a living SVG character.
 
@@ -17,23 +17,23 @@ If you find Macs useful, please consider [buying me a coffee](https://buymeacoff
 <br><br>
 
 
-## ✨ What MACS Does
+## What MACS Does
 
 MACS reacts visually to multiple layers of Home Assistant context:
 
-### 🗣️ Assist Interaction
+### Assist Interaction
 - Wake Word Trigger
 - Listening
 - Thinking
 - Responding
 - Confused / Error
 
-### 🌦️ System State Awareness
+### System State Awareness
 - Weather conditions
 - Temperature (ambient or configured sensor)
 - Environmental context (e.g. hot / cold / windy / rain)
 
-### 🏠 Event-Driven Reactions
+### Event-Driven Reactions
 - Motion detection
 - Presence changes
 - Custom HA events
@@ -47,7 +47,7 @@ All of this is expressed through:
 <br><br>
 
 
-## 🎨 Design Philosophy
+## Design Philosophy
 MACS is not a control panel.
 
 It is:
@@ -65,10 +65,10 @@ Perfect for:
 <br><br>
 
 
-## 🤖 Manual & Automation Control
+## Manual & Automation Control
 MACS exposes a custom service: macs.set_mood
 
-This allows any Home Assistant automation to directly control MACS’s mood.
+This allows any Home Assistant automation to directly control MACS's mood.
 
 You can trigger mood changes based on:
 - Motion detection
@@ -82,9 +82,9 @@ This makes MACS fully scriptable and system-driven, not just reactive to Assist.
 <br><br>
 
 
-## 📦 Installation
-- Install the Macs Card. 
-- Obtain the Assistant Pipeline ID. 
+## Installation
+- Install the Macs Card.
+- Obtain the Assistant Pipeline ID.
 - Add the ID to the Macs Card.
 - (HACS instructions coming once published.)
 
@@ -101,22 +101,22 @@ to the display.
 <br><br>
 
 
-## 🎯 Roadmap
-Macs is very much in Beta stage and as of JDecember 29th, 2025, is under heavy development.
+## Roadmap
+Macs is very much in Beta stage and as of December 29th, 2025, is under heavy development.
 
 Feedback is welcome and valuable:
-- Bugs → open an issue
-- Videos/screenshots → massively helpful
-- Platform quirks → especially tablets
+- Bugs -> open an issue
+- Videos/screenshots -> massively helpful
+- Platform quirks -> especially tablets
 
 This project is evolving by use, not speculation.
 <br><br>
 
 
-## 📜 License
+## License
 MIT License  
 Fork it. Modify it. Improve it.  
-Just don’t be a dick.
+Just don't be a dick.
 <br><br>
 
 

@@ -136,7 +136,7 @@ class MacsTemperatureNumber(NumberEntity, RestoreEntity):
     _attr_native_step = 1
     _attr_native_unit_of_measurement = "%"
     _attr_mode = NumberMode.SLIDER
-    _attr_native_value = 0
+    _attr_native_value = 22
 
     async def async_set_native_value(self, value: float) -> None:
         self._attr_native_value = max(0, min(100, value))
