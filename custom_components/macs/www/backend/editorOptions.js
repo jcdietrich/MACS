@@ -132,8 +132,7 @@ export async function getComboboxItems(hass) {
 	comboxItems.batteryItems = searchForEntities("sensor", "entries", hass, ["battery"], ["battery", "charge", "batt"]);
 
 	// Gather likely battery state/is_charging sensors.
-	let batteryStateItems = searchForEntities("sensor", "entries", hass, ["battery", "battery_charging", "power", "plug"], ["battery_state","battery state","is_charging","charging","charge","charge_state","charger","plugged","ac power","power"]);
-	comboxItems.batteryStateItems = batteryStateItems.concat(searchForEntities("sensor", "entries", hass, ["battery", "battery_charging", "power", "plug"], ["battery_state","battery state","is_charging","charging","charge","charge_state","charger","plugged","ac power","power"]));
+	comboxItems.batteryStateItems = searchForEntities("sensor", "entries", hass, ["battery", "battery_charging", "power", "plug"], ["battery_state","battery state","is_charging","charging","charge","charge_state","charger","plugged","ac power","power"]);
 
 	return comboxItems;
 }
@@ -315,7 +314,8 @@ export function readInputs(shadowRoot, event, config) {
 			
 			// Weather Condition
 			weather_conditions_enabled: !!(config && config.weather_conditions_enabled),
-			weather_conditions: String((config && config.weather_conditions) || ""),
+			weather_conditions_entity: String((config && config.weather_conditions_entity) || ""),
+			weather_conditions_custom: !!(config && config.weather_conditions_custom),
 			
 			// Battery charge %
 			battery_charge_sensor_enabled: !!(config && config.battery_charge_sensor_enabled),
@@ -389,7 +389,7 @@ function getUserInputs(shadowRoot, event, config, ids) {
 	if (unitKey) 		  payload[unitKey]			= String(elemUnit ? getComboboxValue(elemUnit, event) : ((config && config[unitKey]) || ""));
 	
 	if (minKey)  		  payload[minKey] 			= getNumberOrDefault(elemMin, minKey);
-	if (maxKey)  	      payload[maxKey] 			= getNumberOrDefault(elemMax, minKey);
+	if (maxKey)  	      payload[maxKey] 			= getNumberOrDefault(elemMax, maxKey);
 	if (kioskTimeoutKey)  payload[kioskTimeoutKey] 	= getNumberOrDefault(elemKioskTimeout, kioskTimeoutKey);
 
 	if (kioskAnimKey)  	  payload[kioskAnimKey] 	= getToggleValue(elemKioskAnims, event, config && config[kioskAnimKey]);
@@ -438,7 +438,7 @@ function getNumberOrDefault(elem, key){
 		if(elem){
 			const val = elem ? elem.value : undefined;
 			if (val === "" || val === null || typeof val === "undefined") {
-				return DEFAULTS.key;
+				return DEFAULTS[key];
 			}
 			return Number(val);
 		}

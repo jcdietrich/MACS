@@ -201,7 +201,7 @@ const applySensorPayload = (sensors) => {
 		}
 	}
 	if (typeof sensors.weather_conditions !== "undefined") {
-		if (!warnIfNull("conditions", sensors.weather_conditions) && weatherFx) {
+		if (!warnIfNull("weather_conditions", sensors.weather_conditions) && weatherFx) {
 			weatherFx.setWeatherConditions(sensors.weather_conditions);
 		}
 	}
@@ -324,8 +324,8 @@ function handleMessage(payload) {
         return;
     }
     if (payload.type === 'macs:weather_conditions') {
-        if (warnIfNull("conditions", payload.weatherconditions)) return;
-        if (weatherFx) weatherFx.setWeatherConditions(payload.conditions);
+        if (warnIfNull("weather_conditions", payload.weather_conditions)) return;
+        if (weatherFx) weatherFx.setWeatherConditions(payload.weather_conditions);
         return;
     }
     if (payload.type === 'macs:turns') {

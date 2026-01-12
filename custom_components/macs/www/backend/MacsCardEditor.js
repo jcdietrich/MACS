@@ -348,7 +348,7 @@ export class MacsCardEditor extends HTMLElement {
 			tOverrides: "When enabled, all of Macs's own weather toggles (switch.macs_weather_conditions_rainy etc) will be ignored.",
 			placeholder: "weather.forecast_home",
 			selectItems: weatherConditionItems,
-			selectValue: this._config.weather_conditions ?? "",
+			selectValue: this._config.weather_conditions_entity ?? "",
 			selectOptions: { allowCustom: true, customFlag: !!this._config.weather_conditions_custom  }
 		});
 
