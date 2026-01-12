@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Editor Options
  * --------------
  * Populates combo boxes for use by the card editor.

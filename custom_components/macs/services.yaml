@@ -1,4 +1,4 @@
-﻿set_mood:
+set_mood:
   name: Set mood
   description: Set Macs mood (updates select.macs_mood).
   fields:

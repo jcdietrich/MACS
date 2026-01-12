@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Shared helpers for normalising values and safely handling URLs
  */
 

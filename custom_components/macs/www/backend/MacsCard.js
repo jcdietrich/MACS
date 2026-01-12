@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MacsCard
  * --------
  * Main Home Assistant Lovelace card implementation for M.A.C.S.

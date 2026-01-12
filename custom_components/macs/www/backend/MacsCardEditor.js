@@ -398,15 +398,15 @@ export class MacsCardEditor extends HTMLElement {
 			minMax: true,
 			customInput: `
 				<div class="row">
-					<label for="auto_brightness_pause_animations_enabled">Pause animations when asleep?</label>
-					<ha-switch id="auto_brightness_pause_animations_enabled"></ha-switch>
+					<label for="auto_brightness_pause_animations">Pause animations when asleep?</label>
+					<ha-switch id="auto_brightness_pause_animations"></ha-switch>
 					<div class="hint always">Reduces power consumption</div>
 				</div>
 				<div class="row">
 					<ha-textfield id="auto_brightness_timeout_minutes" class="fullwidth" label="Screen timeout (minutes)" placeholder="5" type="number" inputmode="decimal" min="2"></ha-textfield>
 				</div>
 			`,
-			extraIds: ["auto_brightness_timeout_minutes", "auto_brightness_pause_animations_enabled"]
+			extraIds: ["auto_brightness_timeout_minutes", "auto_brightness_pause_animations"]
 		});
 
 		const cssUrl = getValidUrl("backend/editor.css");
