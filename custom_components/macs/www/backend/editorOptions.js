@@ -36,6 +36,7 @@ const temperatureKeys = {
 	enabled: "temperature_sensor_enabled",
 	select: "temperature_sensor_select",
 	entity: "temperature_sensor_entity",
+	custom: "temperature_sensor_custom",
 	unit: "temperature_sensor_unit",
 	min: "temperature_sensor_min",
 	max: "temperature_sensor_max"
@@ -46,6 +47,7 @@ const windspeedKeys = {
 	enabled: "wind_sensor_enabled",
 	select: "wind_sensor_select",
 	entity: "wind_sensor_entity",
+	custom: "wind_sensor_custom",
 	unit: "wind_sensor_unit",
 	min: "wind_sensor_min",
 	max: "wind_sensor_max"
@@ -56,6 +58,7 @@ const precipitationKeys = {
 	enabled: "precipitation_sensor_enabled",
 	select: "precipitation_sensor_select",
 	entity: "precipitation_sensor_entity",
+	custom: "precipitation_sensor_custom",
 	unit: "precipitation_sensor_unit",
 	min: "precipitation_sensor_min",
 	max: "precipitation_sensor_max"
@@ -74,6 +77,7 @@ const batteryChargeKeys = {
 	enabled: "battery_charge_sensor_enabled",
 	select: "battery_charge_sensor_select",
 	entity: "battery_charge_sensor_entity",
+	custom: "battery_charge_sensor_custom",
 	unit: "battery_charge_sensor_unit",
 	min: "battery_charge_sensor_min",
 	max: "battery_charge_sensor_max"
@@ -83,7 +87,8 @@ const batteryChargeKeys = {
 const batteryStateKeys = {
 	enabled: "battery_state_sensor_enabled",
 	select: "battery_state_sensor_select",
-	entity: "battery_state_sensor_entity"
+	entity: "battery_state_sensor_entity",
+	custom: "battery_state_sensor_custom"
 };
 
 // Kiosk Mode
@@ -91,7 +96,7 @@ const autoBrightnessKeys = {
 	enabled: "auto_brightness_enabled",
 	min: "auto_brightness_min",
 	max: "auto_brightness_max",
-	kioskAnimations: "auto_brightness_pause_animations_enabled",
+	kioskAnimations: "auto_brightness_pause_animations",
 	kioskTimeout: "auto_brightness_timeout_minutes"
 };
 
