@@ -340,15 +340,17 @@ export function readInputs(shadowRoot, event, config) {
 	}
 
 	return {
-		...getUserInputs(shadowRoot, event, config, assistSatelitteKeys),
-		...getUserInputs(shadowRoot, event, config, assistPipelineKeys),
-		...getUserInputs(shadowRoot, event, config, temperatureKeys),
-		...getUserInputs(shadowRoot, event, config, windspeedKeys),
-		...getUserInputs(shadowRoot, event, config, precipitationKeys),
-		...getUserInputs(shadowRoot, event, config, weatherConditionKeys),
-		...getUserInputs(shadowRoot, event, config, batteryChargeKeys),
-		...getUserInputs(shadowRoot, event, config, batteryStateKeys),
-		...getUserInputs(shadowRoot, event, config, autoBrightnessKeys),
+		...stripEmptyDefaults({
+			...getUserInputs(shadowRoot, event, config, assistSatelitteKeys),
+			...getUserInputs(shadowRoot, event, config, assistPipelineKeys),
+			...getUserInputs(shadowRoot, event, config, temperatureKeys),
+			...getUserInputs(shadowRoot, event, config, windspeedKeys),
+			...getUserInputs(shadowRoot, event, config, precipitationKeys),
+			...getUserInputs(shadowRoot, event, config, weatherConditionKeys),
+			...getUserInputs(shadowRoot, event, config, batteryChargeKeys),
+			...getUserInputs(shadowRoot, event, config, batteryStateKeys),
+			...getUserInputs(shadowRoot, event, config, autoBrightnessKeys),
+		}),
 	};
 }
 
@@ -438,13 +440,28 @@ function getNumberOrDefault(elem, key){
 		if(elem){
 			const val = elem ? elem.value : undefined;
 			if (val === "" || val === null || typeof val === "undefined") {
-				return DEFAULTS[key];
+				return "";
 			}
 			return Number(val);
 		}
 	}
 }
 
+// Remove empty inputs when defaults are non-empty so config falls back cleanly.
+function stripEmptyDefaults(payload) {
+	if (!payload || typeof payload !== "object") {
+		return payload;
+	}
+	Object.keys(payload).forEach((key) => {
+		if (!Object.prototype.hasOwnProperty.call(DEFAULTS, key)) {
+			return;
+		}
+		if (payload[key] === "") {
+			delete payload[key];
+		}
+	});
+	return payload;
+}
 
 
 
