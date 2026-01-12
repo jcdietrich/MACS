@@ -2,96 +2,74 @@
   "entity": {
     "select": {
       "mood": {
-        "name": "Mood",
-        "description": "Ignored when Assist Satellite is enabled. Battery low can also force sad."
+        "name": "Mood"
       },
       "debug": {
-        "name": "Debug",
-        "description": "Controls MACS debug output in the iframe."
+        "name": "Debug"
       }
     },
     "number": {
       "brightness": {
-        "name": "Brightness",
-        "description": "Ignored when Kiosk Mode is enabled."
+        "name": "Brightness"
       },
       "battery_charge": {
-        "name": "Battery Charge",
-        "description": "Ignored when Use Battery Charge Sensor is enabled in the card."
+        "name": "Battery Charge"
       },
       "temperature": {
-        "name": "Temperature",
-        "description": "Ignored when Use Temperature Sensor is enabled in the card."
+        "name": "Temperature"
       },
       "windspeed": {
-        "name": "Wind Speed",
-        "description": "Ignored when Use Wind Sensor is enabled in the card."
+        "name": "Wind Speed"
       },
       "precipitation": {
-        "name": "Precipitation",
-        "description": "Ignored when Use Precipitation Sensor is enabled in the card."
+        "name": "Precipitation"
       }
     },
     "switch": {
       "animations_enabled": {
-        "name": "Animations Enabled",
-        "description": "Ignored when Kiosk Mode is enabled."
+        "name": "Animations Enabled"
       },
       "charging": {
-        "name": "Charging",
-        "description": "Ignored when Use Charging Sensor is enabled in the card."
+        "name": "Charging"
       },
       "weather_conditions_snowy": {
-        "name": "Snowy",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Snowy"
       },
       "weather_conditions_cloudy": {
-        "name": "Cloudy",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Cloudy"
       },
       "weather_conditions_rainy": {
-        "name": "Rainy",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Rainy"
       },
       "weather_conditions_windy": {
-        "name": "Windy",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Windy"
       },
       "weather_conditions_sunny": {
-        "name": "Sunny",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Sunny"
       },
       "weather_conditions_stormy": {
-        "name": "Stormy",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Stormy"
       },
       "weather_conditions_foggy": {
-        "name": "Foggy",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Foggy"
       },
       "weather_conditions_hail": {
-        "name": "Hail",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Hail"
       },
       "weather_conditions_lightning": {
-        "name": "Lightning",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Lightning"
       },
       "weather_conditions_partlycloudy": {
-        "name": "Partly Cloudy",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Partly Cloudy"
       },
       "weather_conditions_pouring": {
-        "name": "Pouring",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Pouring"
       },
       "weather_conditions_clear_night": {
-        "name": "Clear Night",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Clear Night"
       },
       "weather_conditions_exceptional": {
-        "name": "Exceptional",
-        "description": "Ignored when Weather Conditions sensor is enabled in the card."
+        "name": "Exceptional"
       }
     }
   }

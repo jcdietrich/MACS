@@ -6,7 +6,7 @@ MACS_DEVICE_ID = "macs"
 # add a device with entities to the integration UI
 MACS_DEVICE = DeviceInfo(
     identifiers={(DOMAIN, MACS_DEVICE_ID)},
-    name="M.A.C.S.",
+    name="MACS",
     manufacturer="Glyn Davidson",
     model="Mood-Aware Character SVG",
 )
