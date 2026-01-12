@@ -264,3 +264,19 @@ export function normalizeBatteryValue(value, unit, minValue, maxValue) {
     const v = toNumber(value);
     return normalizeRange(v, effectiveMin, effectiveMax);
 }
+
+export function normalizeChargingState(value) {
+    if (value === null || typeof value === "undefined") return null;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    const raw = value.toString().trim().toLowerCase();
+    if (!raw || raw === "unknown" || raw === "unavailable") return null;
+    const normalized = raw.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+    if (normalized === "charging" || normalized === "on" || normalized === "true" || normalized === "plugged") {
+        return true;
+    }
+    if (normalized === "off" || normalized === "false" || normalized === "unplugged") {
+        return false;
+    }
+    return false;
+}

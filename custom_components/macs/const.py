@@ -1,4 +1,4 @@
-﻿from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 
 DOMAIN = "macs"
 MACS_DEVICE_ID = "macs"

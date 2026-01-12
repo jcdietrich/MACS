@@ -4,7 +4,7 @@
  * Normalizes HA sensor states and derives weather condition flags.
  */
 import { TEMPERATURE_ENTITY_ID, WIND_ENTITY_ID, PRECIPITATION_ENTITY_ID, BATTERY_CHARGE_ENTITY_ID, BATTERY_STATE_ENTITY_ID } from "../shared/constants.js";
-import { toNumber, normalizeTemperatureValue, normalizeWindValue, normalizeRainValue, normalizeBatteryValue, normalizeUnit } from "./validators.js";
+import { toNumber, normalizeTemperatureValue, normalizeWindValue, normalizeRainValue, normalizeBatteryValue, normalizeUnit, normalizeChargingState } from "./validators.js";
 import { createDebugger } from "../shared/debugger.js";
 
 const debug = createDebugger(import.meta.url);
@@ -41,6 +41,66 @@ const CONDITION_ENTITY_IDS = {
     exceptional: "switch.macs_weather_conditions_exceptional",
 };
 
+const NUMERIC_SPECS = {
+    temperature: {
+        key: "temperature",
+        enabledKey: "temperature_sensor_enabled",
+        entityKey: "temperature_sensor_entity",
+        unitKey: "temperature_sensor_unit",
+        minKey: "temperature_sensor_min",
+        maxKey: "temperature_sensor_max",
+        manualEntityId: TEMPERATURE_ENTITY_ID,
+        unitKind: "temp",
+        normalize: normalizeTemperatureValue,
+        debugLabel: "temperature",
+    },
+    windspeed: {
+        key: "windspeed",
+        enabledKey: "wind_sensor_enabled",
+        entityKey: "wind_sensor_entity",
+        unitKey: "wind_sensor_unit",
+        minKey: "wind_sensor_min",
+        maxKey: "wind_sensor_max",
+        manualEntityId: WIND_ENTITY_ID,
+        unitKind: "wind",
+        normalize: normalizeWindValue,
+        debugLabel: "windspeed",
+    },
+    precipitation: {
+        key: "precipitation",
+        enabledKey: "precipitation_sensor_enabled",
+        entityKey: "precipitation_sensor_entity",
+        unitKey: "precipitation_sensor_unit",
+        minKey: "precipitation_sensor_min",
+        maxKey: "precipitation_sensor_max",
+        manualEntityId: PRECIPITATION_ENTITY_ID,
+        unitKind: "rain",
+        normalize: normalizeRainValue,
+        debugLabel: "precipitation",
+    },
+    battery: {
+        key: "battery",
+        enabledKey: "battery_charge_sensor_enabled",
+        entityKey: "battery_charge_sensor_entity",
+        unitKey: "battery_charge_sensor_unit",
+        minKey: "battery_charge_sensor_min",
+        maxKey: "battery_charge_sensor_max",
+        manualEntityId: BATTERY_CHARGE_ENTITY_ID,
+        unitKind: "battery",
+        normalize: normalizeBatteryValue,
+        debugLabel: "battery",
+    },
+};
+
+const PAYLOAD_KEYS = [
+    "temperature",
+    "windspeed",
+    "precipitation",
+    "battery",
+    "battery_state",
+    "weather_conditions",
+];
+
 function emptyConditions() {
     const out = {};
     for (let i = 0; i < CONDITION_KEYS.length; i++) {
@@ -63,39 +123,27 @@ function applyDerivedConditions(flags) {
     }
 }
 
-function normalizeChargingState(value) {
-    if (value === null || typeof value === "undefined") return null;
-    if (typeof value === "boolean") return value;
-    if (typeof value === "number") return value !== 0;
-    const raw = value.toString().trim().toLowerCase();
-    if (!raw || raw === "unknown" || raw === "unavailable") return null;
-    const normalized = raw.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-    if (normalized === "charging" || normalized === "on" || normalized === "true" || normalized === "plugged") {
-        return true;
-    }
-    if (normalized === "off" || normalized === "false" || normalized === "unplugged") {
-        return false;
-    }
-    return false;
-}
-
 export class SensorHandler {
     constructor() {
         this._config = null;
         this._hass = null;
-        this._temperature = null;
-        this._windspeed = null;
-        this._precipitation = null;
-        this._battery = null;
-        this._batteryState = null;
-        this._weatherConditions = emptyConditions();
-        this._sensors = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, weather_conditions: null };
-        this._lastTemperature = undefined;
-        this._lastWindspeed = undefined;
-        this._lastPrecipitation = undefined;
-        this._lastBattery = undefined;
-        this._lastBatteryState = undefined;
-        this._lastConditionsSignature = undefined;
+        this._values = {
+            temperature: null,
+            windspeed: null,
+            precipitation: null,
+            battery: null,
+            battery_state: null,
+            weather_conditions: emptyConditions(),
+        };
+        this._sensors = {
+            temperature: null,
+            windspeed: null,
+            precipitation: null,
+            battery: null,
+            battery_state: null,
+            weather_conditions: null,
+        };
+        this._lastValues = {};
     }
 
     setConfig(config) {
@@ -109,20 +157,27 @@ export class SensorHandler {
     update() {
         if (!this._hass) return null;
 
-        const temperature = this._normalizeTemperature();
-        const wind = this._normalizeWind();
-        const precipitation = this._normalizePrecipitation();
-        const battery = this._normalizeBattery();
+        const temperature = this._normalizeNumeric(NUMERIC_SPECS.temperature);
+        const windspeed = this._normalizeNumeric(NUMERIC_SPECS.windspeed);
+        const precipitation = this._normalizeNumeric(NUMERIC_SPECS.precipitation);
+        const battery = this._normalizeNumeric(NUMERIC_SPECS.battery);
         const batteryState = this._normalizeBatteryState();
-        const weatherConditions = this._normalizeConditions();
+        const weatherConditions = this._normalizeWeatherConditions();
 
-        this._sensors = { temperature, wind, precipitation, battery, battery_state: batteryState, weather_conditions: weatherConditions };
-        this._temperature = Number.isFinite(temperature?.normalized) ? temperature.normalized : null;
-        this._windspeed = Number.isFinite(wind?.normalized) ? wind.normalized : null;
-        this._precipitation = Number.isFinite(precipitation?.normalized) ? precipitation.normalized : null;
-        this._battery = Number.isFinite(battery?.normalized) ? battery.normalized : null;
-        this._batteryState = typeof batteryState?.normalized === "boolean" ? batteryState.normalized : null;
-        this._weatherConditions = weatherConditions || emptyConditions();
+        this._sensors = {
+            temperature,
+            windspeed,
+            precipitation,
+            battery,
+            battery_state: batteryState,
+            weather_conditions: weatherConditions,
+        };
+        this._values.temperature = Number.isFinite(temperature?.normalized) ? temperature.normalized : null;
+        this._values.windspeed = Number.isFinite(windspeed?.normalized) ? windspeed.normalized : null;
+        this._values.precipitation = Number.isFinite(precipitation?.normalized) ? precipitation.normalized : null;
+        this._values.battery = Number.isFinite(battery?.normalized) ? battery.normalized : null;
+        this._values.battery_state = typeof batteryState?.normalized === "boolean" ? batteryState.normalized : null;
+        this._values.weather_conditions = weatherConditions || emptyConditions();
 
         return this.getPayload();
     }
@@ -199,52 +254,19 @@ export class SensorHandler {
         return "%";
     }
 
-    _normalizeTemperature() {
-        if (!this._config?.temperature_sensor_enabled) {
-            return this._readManualValue(TEMPERATURE_ENTITY_ID);
+    _resolveUnitForSpec(spec, sensorUnit, configUnit) {
+        if (spec.unitKind === "battery") {
+            return this._resolveBatteryUnit(sensorUnit, configUnit);
         }
-        const entityId = (this._config.temperature_sensor_entity || "").toString().trim();
-        if (!entityId) {
-            return null;
-        }
-        const reading = this._readSensor(entityId);
-        if (!reading || reading.value === null) {
-            return null;
-        }
-        debug("temperature sensor", JSON.stringify({
-            entityId,
-            value: reading.value,
-            unit: reading.unit,
-        }));
-
-        const unit = this._resolveUnit(reading.unit, this._config.temperature_sensor_unit, "temp");
-        const normalized = normalizeTemperatureValue(
-            reading.value,
-            unit,
-            this._config.temperature_sensor_min,
-            this._config.temperature_sensor_max
-        );
-        debug("temperature normalized", JSON.stringify({
-            entityId,
-            unit,
-            min: this._config.temperature_sensor_min,
-            max: this._config.temperature_sensor_max,
-            normalized,
-        }));
-        return {
-            value: reading.value,
-            unit,
-            min: this._config.temperature_sensor_min,
-            max: this._config.temperature_sensor_max,
-            normalized,
-        };
+        return this._resolveUnit(sensorUnit, configUnit, spec.unitKind);
     }
 
-    _normalizeWind() {
-        if (!this._config?.wind_sensor_enabled) {
-            return this._readManualValue(WIND_ENTITY_ID);
+    _normalizeNumeric(spec) {
+        if (!spec) return null;
+        if (!this._config?.[spec.enabledKey]) {
+            return this._readManualValue(spec.manualEntityId);
         }
-        const entityId = (this._config.wind_sensor_entity || "").toString().trim();
+        const entityId = (this._config?.[spec.entityKey] || "").toString().trim();
         if (!entityId) {
             return null;
         }
@@ -252,113 +274,31 @@ export class SensorHandler {
         if (!reading || reading.value === null) {
             return null;
         }
-        debug("wind sensor", JSON.stringify({
+        debug(`${spec.debugLabel} sensor`, JSON.stringify({
             entityId,
             value: reading.value,
             unit: reading.unit,
         }));
 
-        const unit = this._resolveUnit(reading.unit, this._config.wind_sensor_unit, "wind");
-        const normalized = normalizeWindValue(
+        const unit = this._resolveUnitForSpec(spec, reading.unit, this._config?.[spec.unitKey]);
+        const normalized = spec.normalize(
             reading.value,
             unit,
-            this._config.wind_sensor_min,
-            this._config.wind_sensor_max
+            this._config?.[spec.minKey],
+            this._config?.[spec.maxKey]
         );
-        debug("wind normalized", JSON.stringify({
+        debug(`${spec.debugLabel} normalized`, JSON.stringify({
             entityId,
             unit,
-            min: this._config.wind_sensor_min,
-            max: this._config.wind_sensor_max,
+            min: this._config?.[spec.minKey],
+            max: this._config?.[spec.maxKey],
             normalized,
         }));
         return {
             value: reading.value,
             unit,
-            min: this._config.wind_sensor_min,
-            max: this._config.wind_sensor_max,
-            normalized,
-        };
-    }
-
-    _normalizePrecipitation() {
-        if (!this._config?.precipitation_sensor_enabled) {
-            return this._readManualValue(PRECIPITATION_ENTITY_ID);
-        }
-        const entityId = (this._config.precipitation_sensor_entity || "").toString().trim();
-        if (!entityId) {
-            return null;
-        }
-        const reading = this._readSensor(entityId);
-        if (!reading || reading.value === null) {
-            return null;
-        }
-        debug("precipitation sensor", JSON.stringify({
-            entityId,
-            value: reading.value,
-            unit: reading.unit,
-        }));
-
-        const unit = this._resolveUnit(reading.unit, this._config.precipitation_sensor_unit, "rain");
-        const normalized = normalizeRainValue(
-            reading.value,
-            unit,
-            this._config.precipitation_sensor_min,
-            this._config.precipitation_sensor_max
-        );
-        debug("precipitation normalized", JSON.stringify({
-            entityId,
-            unit,
-            min: this._config.precipitation_sensor_min,
-            max: this._config.precipitation_sensor_max,
-            normalized,
-        }));
-        return {
-            value: reading.value,
-            unit,
-            min: this._config.precipitation_sensor_min,
-            max: this._config.precipitation_sensor_max,
-            normalized,
-        };
-    }
-
-    _normalizeBattery() {
-        if (!this._config?.battery_charge_sensor_enabled) {
-            return this._readManualValue(BATTERY_CHARGE_ENTITY_ID);
-        }
-        const entityId = (this._config.battery_charge_sensor_entity || "").toString().trim();
-        if (!entityId) {
-            return null;
-        }
-        const reading = this._readSensor(entityId);
-        if (!reading || reading.value === null) {
-            return null;
-        }
-        debug("battery sensor", JSON.stringify({
-            entityId,
-            value: reading.value,
-            unit: reading.unit,
-        }));
-
-        const unit = this._resolveBatteryUnit(reading.unit, this._config.battery_charge_sensor_unit);
-        const normalized = normalizeBatteryValue(
-            reading.value,
-            unit,
-            this._config.battery_charge_sensor_min,
-            this._config.battery_charge_sensor_max
-        );
-        debug("battery normalized", JSON.stringify({
-            entityId,
-            unit,
-            min: this._config.battery_charge_sensor_min,
-            max: this._config.battery_charge_sensor_max,
-            normalized,
-        }));
-        return {
-            value: reading.value,
-            unit,
-            min: this._config.battery_charge_sensor_min,
-            max: this._config.battery_charge_sensor_max,
+            min: this._config?.[spec.minKey],
+            max: this._config?.[spec.maxKey],
             normalized,
         };
     }
@@ -416,7 +356,7 @@ export class SensorHandler {
         };
     }
 
-    _normalizeConditions() {
+    _normalizeWeatherConditions() {
         debug("Getting weather conditions...");
 
         if (this._config?.weather_conditions_enabled) {
@@ -537,7 +477,19 @@ export class SensorHandler {
         return flags;
     }
 
+    _getSignature(value) {
+        if (value && typeof value === "object") {
+            return JSON.stringify(value);
+        }
+        return value;
+    }
 
+    _hasChanged(key) {
+        const signature = this._getSignature(this._values[key]);
+        const changed = signature !== this._lastValues[key];
+        if (changed) this._lastValues[key] = signature;
+        return changed;
+    }
 
     getSensors() {
         debug("getSensors");
@@ -545,111 +497,96 @@ export class SensorHandler {
     }
 
     syncChangeTracking() {
-        this._lastTemperature = this._temperature;
-        this._lastWindspeed = this._windspeed;
-        this._lastPrecipitation = this._precipitation;
-        this._lastBattery = this._battery;
-        this._lastBatteryState = this._batteryState;
-        this._lastConditionsSignature = JSON.stringify(this._weatherConditions || emptyConditions());
+        PAYLOAD_KEYS.forEach((key) => {
+            this._lastValues[key] = this._getSignature(this._values[key]);
+        });
     }
 
     getPayload() {
         return {
-            temperature: this._temperature,
-            windspeed: this._windspeed,
-            precipitation: this._precipitation,
-            battery: this._battery,
-            battery_state: this._batteryState,
-            weather_conditions: this._weatherConditions,
+            temperature: this._values.temperature,
+            windspeed: this._values.windspeed,
+            precipitation: this._values.precipitation,
+            battery: this._values.battery,
+            battery_state: this._values.battery_state,
+            weather_conditions: this._values.weather_conditions,
         };
     }
 
     getTemperature() {
-        return this._temperature;
+        return this._values.temperature;
     }
 
     getTemperatureHasChanged() {
-        const changed = this._temperature !== this._lastTemperature;
-        if (changed) this._lastTemperature = this._temperature;
-        return changed;
+        return this._hasChanged("temperature");
     }
 
     getWindSpeed() {
-        return this._windspeed;
+        return this._values.windspeed;
     }
 
     getWindSpeedHasChanged() {
-        const changed = this._windspeed !== this._lastWindspeed;
-        if (changed) this._lastWindspeed = this._windspeed;
-        return changed;
+        return this._hasChanged("windspeed");
     }
 
     getPrecipitation() {
-        return this._precipitation;
+        return this._values.precipitation;
     }
 
     getPrecipitationHasChanged() {
-        const changed = this._precipitation !== this._lastPrecipitation;
-        if (changed) this._lastPrecipitation = this._precipitation;
-        return changed;
+        return this._hasChanged("precipitation");
     }
 
     getWeatherConditions() {
-        return this._weatherConditions;
+        return this._values.weather_conditions || emptyConditions();
     }
 
     getWeatherConditionsHasChanged() {
-        const signature = JSON.stringify(this._weatherConditions || emptyConditions());
-        const changed = signature !== this._lastConditionsSignature;
-        if (changed) this._lastConditionsSignature = signature;
-        return changed;
+        return this._hasChanged("weather_conditions");
     }
 
     getBattery() {
-        return this._battery;
+        return this._values.battery;
     }
 
     getBatteryHasChanged() {
-        const changed = this._battery !== this._lastBattery;
-        if (changed) this._lastBattery = this._battery;
-        return changed;
+        return this._hasChanged("battery");
     }
 
     getBatteryState() {
-        return this._batteryState;
+        return this._values.battery_state;
     }
 
     getBatteryStateHasChanged() {
-        const changed = this._batteryState !== this._lastBatteryState;
-        if (changed) this._lastBatteryState = this._batteryState;
-        return changed;
+        return this._hasChanged("battery_state");
     }
 
     resetChangeTracking() {
-        this._lastTemperature = undefined;
-        this._lastWindspeed = undefined;
-        this._lastPrecipitation = undefined;
-        this._lastBattery = undefined;
-        this._lastBatteryState = undefined;
-        this._lastConditionsSignature = undefined;
+        PAYLOAD_KEYS.forEach((key) => {
+            this._lastValues[key] = undefined;
+        });
     }
 
     dispose() {
         this._hass = null;
         this._config = null;
-        this._temperature = null;
-        this._windspeed = null;
-        this._precipitation = null;
-        this._battery = null;
-        this._batteryState = null;
-        this._weatherConditions = emptyConditions();
-        this._sensors = { temperature: null, wind: null, precipitation: null, battery: null, battery_state: null, weather_conditions: null };
-        this._lastTemperature = undefined;
-        this._lastWindspeed = undefined;
-        this._lastPrecipitation = undefined;
-        this._lastBattery = undefined;
-        this._lastBatteryState = undefined;
-        this._lastConditionsSignature = undefined;
+        this._values = {
+            temperature: null,
+            windspeed: null,
+            precipitation: null,
+            battery: null,
+            battery_state: null,
+            weather_conditions: emptyConditions(),
+        };
+        this._sensors = {
+            temperature: null,
+            windspeed: null,
+            precipitation: null,
+            battery: null,
+            battery_state: null,
+            weather_conditions: null,
+        };
+        this._lastValues = {};
     }
 
 
