@@ -4,16 +4,46 @@
  * Coordinates frontend effects, message handling, and runtime setup.
  */
 
-import { MessagePoster } from "../../shared/messagePoster.js";
-import { MessageListener } from "../../shared/messageListener.js";
-import { createBatteryFx } from "./batteryFx.js";
-import { createCursorFx } from "./cursorFx.js";
-import { createKioskFx } from "./kioskFx.js";
-import { createMoodFx } from "./moodFx.js";
-import { createWeatherFx } from "./weatherFx.js";
 
-import { createDebugger } from "../../shared/debugger.js";
+// Add version query param to javascript imports
+
+import { importWithVersion } from "./importHandler.js";
+
+// Import shared helpers + debugger
+const { createDebugger, setDebugOverride } = await importWithVersion("../../shared/debugger.js");
+const { QUERY_PARAMS, getQueryParamOrDefault, loadSharedConstants, getWeatherConditionKeys } = await importWithVersion("./helpers.js");
 const debug = createDebugger(import.meta.url);
+debug("Macs frontend Starting with Query Params:");
+debug(Object.fromEntries(QUERY_PARAMS.entries()));
+
+// Import JS Files
+const { MessagePoster } = await importWithVersion("../../shared/messagePoster.js");
+const { MessageListener } = await importWithVersion("../../shared/messageListener.js");
+await importWithVersion("./assist-bridge.js");
+const { createBatteryFx } = await importWithVersion("./batteryFx.js");
+const { createCursorFx } = await importWithVersion("./cursorFx.js");
+const { createKioskFx } = await importWithVersion("./kioskFx.js");
+const { createIdleFx } = await importWithVersion("./idleFx.js");
+const { createMoodFx } = await importWithVersion("./moodFx.js");
+const { createWeatherFx } = await importWithVersion("./weatherFx.js");
+
+await loadSharedConstants();
+
+const isCardPreview = (() => {
+	const edit = getQueryParamOrDefault("edit");
+	return edit === "1" || edit === "true";
+})();
+
+let weatherFx = null;
+let batteryFx = null;
+let cursorFx = null;
+let idleFx = null;
+let moodFx = null;
+let kioskFx = null;
+
+let animationsPaused = false;
+
+
 
 const messagePoster = new MessagePoster({
 	sender: "frontend",
@@ -40,30 +70,11 @@ const messageListener = new MessageListener({
 });
 let readySent = false;
 
-const IDLE_FLOAT_BASE_VMIN = 1.2;
-const IDLE_FLOAT_MAX_VMIN = 20;
-const IDLE_FLOAT_EXPONENT = 2.2;
-const IDLE_FLOAT_BASE_SECONDS = 9;
-const IDLE_FLOAT_MIN_SECONDS = 1;
-const IDLE_FLOAT_SPEED_EXPONENT = 1.5;
-const IDLE_FLOAT_JITTER_RATIO = 0.25;
 
-
-
-let weatherFx = null;
-let batteryFx = null;
-let cursorFx = null;
-let moodFx = null;
-let kioskFx = null;
-let idleFloatBase = IDLE_FLOAT_BASE_VMIN;
-let idleFloatDuration = IDLE_FLOAT_BASE_SECONDS;
-let idleFloatJitterTimer = null;
-let isEditor = false;
-let animationsPaused = false;
 
 const warnIfNull = (label, value) => {
 	if (value !== null) return false;
-	debug(`<span class="error">${label} is null</span>`);
+	debug("warn", `${label} is null`);
 
 	assistMessagePoster.post({
         type: "macs:turns",
@@ -77,88 +88,7 @@ const warnIfNull = (label, value) => {
 	});
 };
 
-const parseConditionsParam = (value) => {
-	const conditions = {};
-	if (!value) return conditions;
-	value.split(",").forEach((entry) => {
-		const key = entry.trim().toLowerCase();
-		if (key) conditions[key] = true;
-	});
-	return conditions;
-};
 
-const setDebugOverride = (mode) => {
-	if (typeof mode === "undefined") return;
-	if (typeof window !== "undefined") {
-		window.__MACS_DEBUG__ = mode;
-		if (window.dispatchEvent) {
-			window.dispatchEvent(new CustomEvent("macs-debug-update"));
-		}
-	}
-	if (typeof debug?.show === "function") {
-		debug.show();
-	}
-};
-
-
-const applyIdleFloatJitter = () => {
-	const jitter = (Math.random() * 2) - 1;
-	const amp = Math.max(0.1, idleFloatBase * (1 + (jitter * IDLE_FLOAT_JITTER_RATIO)));
-	document.documentElement.style.setProperty('--idle-float-amp', `${amp.toFixed(2)}vmin`);
-	if (idleFloatJitterTimer) {
-		clearTimeout(idleFloatJitterTimer);
-	}
-	idleFloatJitterTimer = setTimeout(applyIdleFloatJitter, idleFloatDuration * 1000);
-};
-
-const handleWindFxChange = (intensity) => {
-	idleFloatBase = IDLE_FLOAT_BASE_VMIN + ((IDLE_FLOAT_MAX_VMIN - IDLE_FLOAT_BASE_VMIN) * Math.pow(intensity, IDLE_FLOAT_EXPONENT));
-	idleFloatDuration = IDLE_FLOAT_BASE_SECONDS - ((IDLE_FLOAT_BASE_SECONDS - IDLE_FLOAT_MIN_SECONDS) * Math.pow(intensity, IDLE_FLOAT_SPEED_EXPONENT));
-	document.documentElement.style.setProperty('--idle-float-duration', `${idleFloatDuration.toFixed(2)}s`);
-	applyIdleFloatJitter();
-};
-
-weatherFx = createWeatherFx({
-	debug,
-	getIsPaused: () => animationsPaused,
-	onWindChange: handleWindFxChange,
-});
-
-const setAnimationsPaused = (paused) => {
-	const next = !!paused;
-	if (animationsPaused === next) return;
-	animationsPaused = next;
-	const body = document.body;
-	if (body) body.classList.toggle("animations-paused", animationsPaused);
-
-	if (animationsPaused) {
-		if (idleFloatJitterTimer) {
-			clearTimeout(idleFloatJitterTimer);
-			idleFloatJitterTimer = null;
-		}
-		if (cursorFx) cursorFx.reset();
-		if (weatherFx) weatherFx.reset();
-		return;
-	}
-
-	applyIdleFloatJitter();
-	if (weatherFx) weatherFx.refresh(true);
-};
-
-cursorFx = createCursorFx();
-moodFx = createMoodFx({
-	isEditor: () => isEditor,
-	onMoodChange: (mood) => {
-		if (cursorFx) cursorFx.setIdleActive(mood === "idle");
-	}
-});
-batteryFx = createBatteryFx();
-kioskFx = createKioskFx({
-	debug,
-	isEditor: () => isEditor,
-	messagePoster,
-	setAnimationsPaused
-});
 
 const applyConfigPayload = (config) => {
 	if (!config || typeof config !== "object") return;
@@ -179,12 +109,13 @@ const applyConfigPayload = (config) => {
 		if (batteryFx) batteryFx.setBatteryStateSensorEnabled(!!config.battery_state_sensor_enabled);
 	}
 	if (typeof config.debug_mode !== "undefined") {
-		setDebugOverride(config.debug_mode);
+		setDebugOverride(config.debug_mode, debug);
 	}
 };
 
 const applySensorPayload = (sensors) => {
 	if (!sensors || typeof sensors !== "object") return;
+	const weatherConditionKeys = getWeatherConditionKeys();
 	if (typeof sensors.temperature !== "undefined") {
 		if (!warnIfNull("temperature", sensors.temperature) && weatherFx) {
 			weatherFx.setTemperature(sensors.temperature);
@@ -200,72 +131,31 @@ const applySensorPayload = (sensors) => {
 			weatherFx.setPrecipitation(sensors.precipitation);
 		}
 	}
-	if (typeof sensors.weather_conditions !== "undefined") {
-		if (!warnIfNull("weather_conditions", sensors.weather_conditions) && weatherFx) {
-			weatherFx.setWeatherConditions(sensors.weather_conditions);
+	if (weatherConditionKeys.length && weatherFx) {
+		const conditions = {};
+		let hasAny = false;
+		weatherConditionKeys.forEach((key) => {
+			if (typeof sensors[key] === "undefined") return;
+			if (warnIfNull(key, sensors[key])) return;
+			conditions[key] = !!sensors[key];
+			hasAny = true;
+		});
+		if (hasAny) {
+			weatherFx.setWeatherConditions(conditions);
 		}
 	}
-	if (typeof sensors.battery !== "undefined") {
-		if (!warnIfNull("battery", sensors.battery) && batteryFx) {
-			batteryFx.setBattery(sensors.battery);
+	if (typeof sensors.battery_charge !== "undefined") {
+		if (!warnIfNull("battery_charge", sensors.battery_charge) && batteryFx) {
+			batteryFx.setBattery(sensors.battery_charge);
 		}
 	}
-	if (typeof sensors.battery_state !== "undefined") {
-		if (!warnIfNull("battery_state", sensors.battery_state) && batteryFx) {
-			batteryFx.setBatteryState(sensors.battery_state);
+	if (typeof sensors.charging !== "undefined") {
+		if (!warnIfNull("charging", sensors.charging) && batteryFx) {
+			batteryFx.setBatteryState(sensors.charging);
 		}
 	}
 };
 
-const qs = new URLSearchParams(location.search);
-isEditor = qs.get('edit') === '1' || qs.get('edit') === 'true';
-if (moodFx) moodFx.setBaseMood(qs.get('mood') || 'idle');
-if (weatherFx) weatherFx.handleResize();
-if (weatherFx) weatherFx.setTemperature(qs.get('temperature') ?? '0');
-if (weatherFx) weatherFx.setWindSpeed(qs.get('windspeed') ?? '0');
-const precipitationParam = qs.get('precipitation');
-if (precipitationParam !== null) {
-	if (weatherFx) weatherFx.setPrecipitation(precipitationParam);
-} else {
-	if (weatherFx) weatherFx.setPrecipitation('0');
-}
-const conditionsParam = qs.get('conditions');
-if (conditionsParam !== null) {
-	if (weatherFx) weatherFx.setWeatherConditions(parseConditionsParam(conditionsParam));
-}
-if (batteryFx) batteryFx.setBattery(qs.get('battery') ?? '0');
-if (kioskFx) {
-	kioskFx.setBrightness(qs.get('brightness') ?? '100');
-	kioskFx.ensureAutoBrightnessDebugTimer();
-	kioskFx.updateAutoBrightnessDebug();
-	kioskFx.initKioskHoldListeners();
-}
-
-const activityEvents = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"];
-activityEvents.forEach((eventName) => {
-	window.addEventListener(eventName, () => {
-		const handled = kioskFx ? kioskFx.registerActivity() : false;
-		if (handled && moodFx) moodFx.resetMoodSequence();
-	}, { passive: true });
-});
-window.addEventListener("pointermove", (event) => {
-	if (cursorFx) cursorFx.handleCursorMove(event.clientX, event.clientY);
-}, { passive: true });
-window.addEventListener("touchmove", (event) => {
-	if (!event.touches || !event.touches.length) return;
-	const touch = event.touches[0];
-	if (cursorFx) cursorFx.handleCursorMove(touch.clientX, touch.clientY);
-}, { passive: true });
-document.addEventListener("visibilitychange", () => {
-	if (!document.hidden) {
-		const handled = kioskFx ? kioskFx.registerActivity() : false;
-		if (handled && moodFx) moodFx.resetMoodSequence();
-	}
-});
-
-window.addEventListener('resize', () => {
-	if (weatherFx) weatherFx.handleResize();
-});
 
 function handleMessage(payload) {
 	if (!payload || typeof payload !== 'object') return;
@@ -324,8 +214,18 @@ function handleMessage(payload) {
         return;
     }
     if (payload.type === 'macs:weather_conditions') {
-        if (warnIfNull("weather_conditions", payload.weather_conditions)) return;
-        if (weatherFx) weatherFx.setWeatherConditions(payload.weather_conditions);
+		const weatherConditionKeys = getWeatherConditionKeys();
+		const conditions = {};
+		let hasAny = false;
+		weatherConditionKeys.forEach((key) => {
+			if (typeof payload[key] === "undefined") return;
+			if (warnIfNull(key, payload[key])) return;
+			conditions[key] = !!payload[key];
+			hasAny = true;
+		});
+		if (hasAny && weatherFx) {
+			weatherFx.setWeatherConditions(conditions);
+		}
         return;
     }
     if (payload.type === 'macs:turns') {
@@ -334,14 +234,14 @@ function handleMessage(payload) {
 		if (moodFx) moodFx.resetMoodSequence();
         return;
     }
-    if (payload.type === 'macs:battery') {
-		if (warnIfNull("battery", payload.battery)) return;
-		if (batteryFx) batteryFx.setBattery(payload.battery ?? '0');
+    if (payload.type === 'macs:battery_charge') {
+		if (warnIfNull("battery_charge", payload.battery_charge)) return;
+		if (batteryFx) batteryFx.setBattery(payload.battery_charge ?? '0');
         return;
     }
-    if (payload.type === 'macs:battery_state') {
-		if (warnIfNull("battery_state", payload.battery_state)) return;
-		if (batteryFx) batteryFx.setBatteryState(payload.battery_state);
+    if (payload.type === 'macs:charging') {
+		if (warnIfNull("charging", payload.charging)) return;
+		if (batteryFx) batteryFx.setBatteryState(payload.charging);
         return;
     }
     if (payload.type === 'macs:brightness') {
@@ -349,6 +249,90 @@ function handleMessage(payload) {
         return;
     }
 }
+
+const setAnimationsPaused = (paused) => {
+	const next = !!paused;
+	if (animationsPaused === next) return;
+	animationsPaused = next;
+	const body = document.body;
+	if (body) body.classList.toggle("animations-paused", animationsPaused);
+	if (idleFx) idleFx.setPaused(animationsPaused);
+
+	if (animationsPaused) {
+		if (cursorFx) cursorFx.reset();
+		if (weatherFx) weatherFx.reset();
+		return;
+	}
+
+	if (weatherFx) weatherFx.refresh(true);
+};
+
+
+
+
+
+
+const initFx = (factory, overrides = {}) => {
+	if (typeof factory !== "function") return null;
+	return factory({
+		debug,
+		isCardPreview: () => isCardPreview,
+		messagePoster,
+		setAnimationsPaused,
+		getIsPaused: () => animationsPaused,
+		...overrides
+	});
+};
+
+debug("Initialising files");
+idleFx = initFx(createIdleFx);
+moodFx = initFx(createMoodFx);
+cursorFx = initFx(createCursorFx);
+weatherFx = initFx(createWeatherFx);
+batteryFx = initFx(createBatteryFx);
+kioskFx = initFx(createKioskFx);
+
+
+
+if (moodFx) {
+	moodFx.setBaseMoodFromQuery();
+	moodFx.setOnMoodChange((mood) => {
+		if (cursorFx) cursorFx.setIdleActive(mood === "idle");
+	});
+}
+
+if (cursorFx) cursorFx.initCursorTracking();
+
+if (weatherFx) {
+	weatherFx.setOnWindChange((intensity) => idleFx?.setWindIntensity(intensity));
+	weatherFx.handleResize();
+	weatherFx.setTemperatureFromQuery();
+	weatherFx.setWindSpeedFromQuery();
+	weatherFx.setPrecipitationFromQuery();
+	weatherFx.setWeatherConditionsFromQuery();
+}
+
+if (batteryFx) batteryFx.setBatteryFromQuery();
+
+if (kioskFx) {
+	kioskFx.setBrightnessFromQuery();
+	kioskFx.ensureAutoBrightnessDebugTimer();
+	kioskFx.updateAutoBrightnessDebug();
+	kioskFx.initKioskHoldListeners();
+	kioskFx.initActivityListeners({
+		onActivity: () => {
+			if (moodFx) moodFx.resetMoodSequence();
+		}
+	});
+}
+
+
+
+window.addEventListener('resize', () => {
+	if (weatherFx) weatherFx.handleResize();
+});
+
+
 
 debug("Macs Frontend Ready");
 debug("Starting Communication with Backend...");

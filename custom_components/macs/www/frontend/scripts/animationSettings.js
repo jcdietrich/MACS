@@ -1,7 +1,7 @@
 /**
- * Weather FX Tweaker
+ * Animation Settings
  * ------------------
- * Constants for tuning weather particle behavior.
+ * Constants for tuning animation and weather particle behavior.
  */
 export const RAIN_MAX_DROPS = 200;
 export const RAIN_MIN_SPEED = 0.8;
@@ -73,4 +73,12 @@ export const LEAF_IMAGE_BASE = "frontend/images/weather/leaves/leaf_";
 
 export const WIND_TILT_MAX = 25;
 export const WIND_TILT_EXPONENT = 2.2;
+
+export const IDLE_FLOAT_BASE_VMIN = 1.2;
+export const IDLE_FLOAT_MAX_VMIN = 20;
+export const IDLE_FLOAT_EXPONENT = 2.2;
+export const IDLE_FLOAT_BASE_SECONDS = 9;
+export const IDLE_FLOAT_MIN_SECONDS = 1;
+export const IDLE_FLOAT_SPEED_EXPONENT = 1.5;
+export const IDLE_FLOAT_JITTER_RATIO = 0.25;
 

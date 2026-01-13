@@ -3,10 +3,13 @@
  * ----------
  * Drives rain, snow, and leaf effects plus related CSS state.
  */
-import { Particle, SVG_NS } from "./particles.js";
-import * as FX_CONFIG from "./weatherFxTweaker.js";
 
-import { createDebugger } from "../../shared/debugger.js";
+import { importWithVersion } from "./importHandler.js";
+
+const { Particle, SVG_NS } = await importWithVersion("./particleFx.js");
+const FX_CONFIG = await importWithVersion("./animationSettings.js");
+const { getQueryParamOrDefault, getWeatherConditionKeys } = await importWithVersion("./helpers.js");
+const { createDebugger } = await importWithVersion("../../shared/debugger.js");
 const debug = createDebugger(import.meta.url);
 
 const clampPercent = (value, fallback = 0) => {
@@ -19,10 +22,30 @@ const clampPercent = (value, fallback = 0) => {
 
 const toIntensity = (value, fallback = 0) => clampPercent(value, fallback) / 100;
 
+const getPrecipitationParam = () => getQueryParamOrDefault("precipitation");
+const getTemperatureParam = () => getQueryParamOrDefault("temperature");
+const getWindSpeedParam = () => getQueryParamOrDefault("windspeed");
+
+const parseWeatherConditionFlag = (value) => {
+	const normalized = (value ?? "").toString().trim().toLowerCase();
+	if (!normalized) return true;
+	if (["1", "true", "yes", "on"].includes(normalized)) return true;
+	if (["0", "false", "no", "off"].includes(normalized)) return false;
+	return true;
+};
+
+const getWeatherConditionsFromQuery = () => {
+	const conditions = {};
+	getWeatherConditionKeys().forEach((key) => {
+		conditions[key] = parseWeatherConditionFlag(getQueryParamOrDefault(key));
+	});
+	return conditions;
+};
+
 export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
 	const log = typeof debug === "function" ? debug : () => {};
 	const isPaused = typeof getIsPaused === "function" ? getIsPaused : () => false;
-	const notifyWind = typeof onWindChange === "function" ? onWindChange : null;
+	let notifyWind = typeof onWindChange === "function" ? onWindChange : null;
 
 	let rainIntensity = -1;
 	let rainViewWidth = 1000;
@@ -287,6 +310,10 @@ export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
 		}
 	};
 
+	const setTemperatureFromQuery = () => {
+		setTemperature(getTemperatureParam());
+	};
+
 	const setWindSpeed = (value) => {
 		const intensity = toIntensity(value);
 		document.documentElement.style.setProperty('--windspeed-intensity', intensity.toString());
@@ -302,9 +329,17 @@ export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
 		updateLeaves(true);
 	};
 
+	const setWindSpeedFromQuery = () => {
+		setWindSpeed(getWindSpeedParam());
+	};
+
 	const setPrecipitation = (value) => {
 		basePrecipIntensity = toIntensity(value);
 		applyPrecipitation();
+	};
+
+	const setPrecipitationFromQuery = () => {
+		setPrecipitation(getPrecipitationParam());
 	};
 
 	const setWeatherConditions = (conditions) => {
@@ -319,6 +354,11 @@ export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
 		});
 		log(`Setting weather conditions to:\n${JSON.stringify(weatherConditions, null, 2)}`);
 		applyPrecipitation();
+	};
+
+	const setWeatherConditionsFromQuery = () => {
+		const conditions = getWeatherConditionsFromQuery();
+		setWeatherConditions(conditions);
 	};
 
 	const refresh = (forceUpdate = false) => {
@@ -339,9 +379,16 @@ export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
 
 	return {
 		setTemperature,
+		setTemperatureFromQuery,
 		setWindSpeed,
+		setWindSpeedFromQuery,
+		setOnWindChange: (handler) => {
+			notifyWind = typeof handler === "function" ? handler : null;
+		},
 		setPrecipitation,
+		setPrecipitationFromQuery,
 		setWeatherConditions,
+		setWeatherConditionsFromQuery,
 		refresh,
 		reset,
 		handleResize,

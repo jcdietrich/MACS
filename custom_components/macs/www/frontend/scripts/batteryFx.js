@@ -4,7 +4,10 @@
  * Handles charging visuals and low-battery dimming.
  */
 
-import { createDebugger } from "../../shared/debugger.js";
+import { importWithVersion } from "./importHandler.js";
+
+const { createDebugger } = await importWithVersion("../../shared/debugger.js");
+const { getQueryParamOrDefault } = await importWithVersion("./helpers.js");
 const debug = createDebugger(import.meta.url);
 
 const LOW_BATTERY_CUTOFF = 20;
@@ -177,6 +180,10 @@ export function createBatteryFx() {
 		applyBatteryDimming(percent);
 	};
 
+	const setBatteryFromQuery = () => {
+		setBattery(getQueryParamOrDefault("battery_charge"));
+	};
+
 	const setBatteryState = (value) => {
 		if (value === null || typeof value === "undefined") {
 			batteryCharging = null;
@@ -197,6 +204,7 @@ export function createBatteryFx() {
 
 	return {
 		setBattery,
+		setBatteryFromQuery,
 		setBatteryState,
 		setBatteryStateSensorEnabled
 	};

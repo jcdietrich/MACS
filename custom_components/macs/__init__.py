@@ -179,6 +179,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     migrate("macs_weather_conditions_clear_night", "switch.macs_weather_conditions_clear_night")
     migrate("macs_weather_conditions_exceptional", "switch.macs_weather_conditions_exceptional")
 
+    # Hide MACS entities from Assist by default (one-time setup).
+    if not entry.options.get("assist_exposure_initialized"):
+        for entity in list(reg.entities.values()):
+            if entity.platform != DOMAIN or entity.config_entry_id != entry.entry_id:
+                continue
+            options = dict(entity.options)
+            conversation = dict(options.get("conversation", {}))
+            if conversation.get("should_expose") is False:
+                continue
+            conversation["should_expose"] = False
+            options["conversation"] = conversation
+            reg.async_update_entity(entity.entity_id, options=options)
+        hass.config_entries.async_update_entry(
+            entry,
+            options={**entry.options, "assist_exposure_initialized": True},
+        )
+
     async def handle_set_mood(call: ServiceCall) -> None:
         mood = str(call.data.get(ATTR_MOOD, "")).strip().lower()
         if mood not in MOODS:

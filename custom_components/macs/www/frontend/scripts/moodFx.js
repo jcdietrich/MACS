@@ -4,7 +4,10 @@
  * Applies mood classes and runs idle->bored->sleep sequence logic.
  */
 
-import { createDebugger } from "../../shared/debugger.js";
+import { importWithVersion } from "./importHandler.js";
+
+const { createDebugger } = await importWithVersion("../../shared/debugger.js");
+const { getQueryParamOrDefault } = await importWithVersion("./helpers.js");
 const debug = createDebugger(import.meta.url);
 
 
@@ -12,9 +15,13 @@ const MOODS = ['bored','confused','happy','idle','listening','sad','sleeping','s
 const MOOD_IDLE_TO_BORED_MS = 30000;
 const MOOD_BORED_TO_SLEEP_MS = 30000;
 
-export function createMoodFx({ isEditor, onMoodChange } = {}) {
-	const getIsEditor = typeof isEditor === "function" ? isEditor : () => false;
-	const notifyMoodChange = typeof onMoodChange === "function" ? onMoodChange : () => {};
+const getMoodParam = () => {
+	return getQueryParamOrDefault("mood") || "idle";
+};
+
+export function createMoodFx({ isCardPreview, onMoodChange } = {}) {
+	const getIsCardPreview = typeof isCardPreview === "function" ? isCardPreview : () => false;
+	let notifyMoodChange = typeof onMoodChange === "function" ? onMoodChange : () => {};
 
 	let baseMood = "idle";
 	let idleSequenceEnabled = false;
@@ -51,7 +58,7 @@ export function createMoodFx({ isEditor, onMoodChange } = {}) {
 
 	const scheduleMoodIdleSequence = () => {
 		clearMoodTimers();
-		if (getIsEditor() || !idleSequenceEnabled) return;
+		if (getIsCardPreview() || !idleSequenceEnabled) return;
 		moodIdleTimer = setTimeout(() => {
 			if (baseMood !== "idle") return;
 			setMood("bored");
@@ -92,6 +99,10 @@ export function createMoodFx({ isEditor, onMoodChange } = {}) {
 		}
 	};
 
+	const setBaseMoodFromQuery = () => {
+		setBaseMood(getMoodParam());
+	};
+
 	const resetMoodSequence = () => {
 		clearMoodTimers();
 		if (baseMood === "idle") {
@@ -104,8 +115,12 @@ export function createMoodFx({ isEditor, onMoodChange } = {}) {
 
 	return {
 		setBaseMood,
+		setBaseMoodFromQuery,
 		setIdleSequenceEnabled,
-		resetMoodSequence
+		resetMoodSequence,
+		setOnMoodChange: (handler) => {
+			notifyMoodChange = typeof handler === "function" ? handler : () => {};
+		}
 	};
 }
 

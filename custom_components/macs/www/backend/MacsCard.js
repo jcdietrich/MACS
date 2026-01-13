@@ -415,18 +415,18 @@ export class MacsCard extends HTMLElement {
         }
     }
     _sendWeatherConditionsToIframe(weatherConditions) {
-        if (this._sensorHandler.getWeatherConditionsHasChanged?.()) {
-            this._postToIframe({ type: "macs:weather_conditions", recipient: "frontend", weather_conditions: weatherConditions || {} });
+        if (!this._sensorHandler.getWeatherConditionsHasChanged?.()) return;
+        const conditions = (weatherConditions && typeof weatherConditions === "object") ? weatherConditions : {};
+        this._postToIframe({ type: "macs:weather_conditions", recipient: "frontend", ...conditions });
+    }
+    _sendBatteryChargeToIframe(batteryCharge) {
+        if (this._sensorHandler.getBatteryChargeHasChanged?.()) {
+            this._postToIframe({ type: "macs:battery_charge", recipient: "frontend", battery_charge: batteryCharge });
         }
     }
-    _sendBatteryToIframe(battery) {
-        if (this._sensorHandler.getBatteryHasChanged?.()) {
-            this._postToIframe({ type: "macs:battery", recipient: "frontend", battery });
-        }
-    }
-    _sendBatteryStateToIframe(state) {
-        if (this._sensorHandler.getBatteryStateHasChanged?.()) {
-            this._postToIframe({ type: "macs:battery_state", recipient: "frontend", battery_state: state });
+    _sendChargingToIframe(charging) {
+        if (this._sensorHandler.getChargingHasChanged?.()) {
+            this._postToIframe({ type: "macs:charging", recipient: "frontend", charging });
         }
     }
     _sendBrightnessToIframe(brightness) {
@@ -634,8 +634,8 @@ export class MacsCard extends HTMLElement {
         this._sendWindSpeedToIframe(this._sensorHandler.getWindSpeed?.());       
         this._sendPrecipitationToIframe(this._sensorHandler.getPrecipitation?.());
         this._sendWeatherConditionsToIframe(this._sensorHandler.getWeatherConditions?.());
-        this._sendBatteryToIframe(this._sensorHandler.getBattery?.());
-        this._sendBatteryStateToIframe(this._sensorHandler.getBatteryState?.());
+        this._sendBatteryChargeToIframe(this._sensorHandler.getBatteryCharge?.());
+        this._sendChargingToIframe(this._sensorHandler.getCharging?.());
     }
 
 
@@ -707,9 +707,9 @@ export class MacsCard extends HTMLElement {
             this._sensorHandler.setHass(hass);
             sensorValues = this._sensorHandler.update?.() || this._sensorHandler.getPayload?.() || null;
         }
-        const batteryActive = Number.isFinite(sensorValues?.battery);
-        const batteryLow = batteryActive && sensorValues.battery <= 20;
-        const batteryCharging = sensorValues?.battery_state === true;
+        const batteryActive = Number.isFinite(sensorValues?.battery_charge);
+        const batteryLow = batteryActive && sensorValues.battery_charge <= 20;
+        const batteryCharging = sensorValues?.charging === true;
 
         // const now = Date.now();
         const overrideMood = this._assistSatelliteOutcome?.getOverrideMood?.();
@@ -731,6 +731,11 @@ export class MacsCard extends HTMLElement {
         } else {
             base.searchParams.delete("v");
         }
+        if (debugMode) {
+            base.searchParams.set("debug", debugMode.toString());
+        } else {
+            base.searchParams.delete("debug");
+        }
         this._pendingState = { mood, brightness, animationsEnabled, sensorValues };
         if (!this._initSent && this._iframeReady && this._iframeLoaded) {
             this._sendInitToIframe(this._pendingState);
@@ -749,8 +754,8 @@ export class MacsCard extends HTMLElement {
             if (sensorValues && Number.isFinite(sensorValues.precipitation)) {
                 base.searchParams.set("precipitation", sensorValues.precipitation.toString());
             }
-            if (sensorValues && Number.isFinite(sensorValues.battery)) {
-                base.searchParams.set("battery", sensorValues.battery.toString());
+            if (sensorValues && Number.isFinite(sensorValues.battery_charge)) {
+                base.searchParams.set("battery_charge", sensorValues.battery_charge.toString());
             }
 
             const src = base.toString();

@@ -8,10 +8,8 @@
 /** 
  * TO-DO
  * --------
- * - Update Custom Integrations examples
  * - thorough test of card editor
  * - leaves only appear at top
- * - bug: deleting min/max doesn't update config
  * - rainy not working
  * 
  * - test non-admin user

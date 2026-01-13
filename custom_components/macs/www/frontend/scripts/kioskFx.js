@@ -6,17 +6,21 @@
 const KIOSK_HOLD_MS = 800;
 const BRIGHTNESS_FADE_SECONDS = 10;
 
-import { createDebugger } from "../../shared/debugger.js";
+
+import { importWithVersion } from "./importHandler.js";
+
+const { createDebugger } = await importWithVersion("../../shared/debugger.js");
+const { getQueryParamOrDefault } = await importWithVersion("./helpers.js");
 const debug = createDebugger(import.meta.url);
 
 export function createKioskFx({
 	debug,
-	isEditor,
+	isCardPreview,
 	messagePoster,
 	setAnimationsPaused
 } = {}) {
 	const log = typeof debug === "function" ? debug : () => {};
-	const getIsEditor = typeof isEditor === "function" ? isEditor : () => false;
+	const getIsCardPreview = typeof isCardPreview === "function" ? isCardPreview : () => false;
 	const applyAnimationsPaused = typeof setAnimationsPaused === "function" ? setAnimationsPaused : () => {};
 	const poster = messagePoster || null;
 
@@ -38,6 +42,7 @@ export function createKioskFx({
 	let lastBrightnessTarget = null;
 	let lastBrightnessTransition = null;
 	let kioskHoldTimer = null;
+	let activityListenersActive = false;
 
 	const clampPercent = (value, fallback = 0) => {
 		const num = Number(value);
@@ -222,7 +227,7 @@ export function createKioskFx({
 	};
 
 	const registerActivity = () => {
-		if (getIsEditor()) return false;
+		if (getIsCardPreview()) return false;
 		if (!autoBrightnessEnabled) return false;
 
 		if (autoBrightnessIdle) {
@@ -272,7 +277,7 @@ export function createKioskFx({
 	};
 
 	const initKioskHoldListeners = () => {
-		if (getIsEditor()) return;
+		if (getIsCardPreview()) return;
 		const target = document.body;
 		if (!target) return;
 		if ("PointerEvent" in window) {
@@ -290,8 +295,33 @@ export function createKioskFx({
 		}
 	};
 
+	const initActivityListeners = ({ onActivity } = {}) => {
+		if (activityListenersActive) return;
+		activityListenersActive = true;
+		const notifyActivity = typeof onActivity === "function" ? onActivity : () => {};
+		const events = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"];
+
+		events.forEach((eventName) => {
+			window.addEventListener(
+				eventName,
+				() => {
+					const handled = registerActivity();
+					if (handled) notifyActivity();
+				},
+				{ passive: true }
+			);
+		});
+
+		document.addEventListener("visibilitychange", () => {
+			if (!document.hidden) {
+				const handled = registerActivity();
+				if (handled) notifyActivity();
+			}
+		});
+	};
+
 	const setAutoBrightnessConfig = (config) => {
-		if (getIsEditor()) {
+		if (getIsCardPreview()) {
 			autoBrightnessEnabled = false;
 			autoBrightnessIdle = false;
 			applyAnimationsPaused(false);
@@ -351,11 +381,17 @@ export function createKioskFx({
 		applyBrightness();
 	};
 
+	const setBrightnessFromQuery = () => {
+		setBrightness(getQueryParamOrDefault("brightness"));
+	};
+
 	return {
 		setAutoBrightnessConfig,
 		setAnimationsToggleEnabled,
 		setBrightness,
+		setBrightnessFromQuery,
 		registerActivity,
+		initActivityListeners,
 		initKioskHoldListeners,
 		ensureAutoBrightnessDebugTimer,
 		updateAutoBrightnessDebug

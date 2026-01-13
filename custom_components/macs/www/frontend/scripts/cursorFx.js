@@ -4,7 +4,10 @@
  * Drives eye and stage offsets based on pointer movement.
  */
 
-import { createDebugger } from "../../shared/debugger.js";
+
+import { importWithVersion } from "./importHandler.js";
+
+const { createDebugger } = await importWithVersion("../../shared/debugger.js");
 const debug = createDebugger(import.meta.url);
 
 const CURSOR_LOOK_IDLE_MS = 5000;
@@ -88,10 +91,28 @@ export function createCursorFx() {
 		setCursorLookActive(false);
 	};
 
+	const initCursorTracking = () => {
+		window.addEventListener(
+			"pointermove",
+			(event) => handleCursorMove(event.clientX, event.clientY),
+			{ passive: true }
+		);
+		window.addEventListener(
+			"touchmove",
+			(event) => {
+				if (!event.touches || !event.touches.length) return;
+				const touch = event.touches[0];
+				handleCursorMove(touch.clientX, touch.clientY);
+			},
+			{ passive: true }
+		);
+	};
+
 	return {
 		handleCursorMove,
 		setIdleActive,
-		reset
+		reset,
+		initCursorTracking
 	};
 }
 

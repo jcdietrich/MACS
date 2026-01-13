@@ -3,8 +3,10 @@
  * -------------
  * Renders Assist conversation messages inside the iframe.
  */
-import { createDebugger } from "../../shared/debugger.js";
-import { MessageListener } from "../../shared/messageListener.js";
+import { importWithVersion } from "./importHandler.js";
+
+const { createDebugger } = await importWithVersion("../../shared/debugger.js");
+const { MessageListener } = await importWithVersion("../../shared/messageListener.js");
 
 const debug = createDebugger(import.meta.url);
 const messageListener = new MessageListener({

@@ -9,10 +9,14 @@
 		(function () {
 			const params = new URLSearchParams(window.location.search || "");
 			const version = params.get("v");
+			const debug = params.get("debug");
 			if (version) {
 				window.__MACS_VERSION__ = version;
 			}
-			const withVersion = (path) => {
+			if (debug !== null) {
+				window.__MACS_DEBUG__ = debug;
+			}
+			window.__MACS_WITH_VERSION__ = (path) => {
 				if (!version) return path;
 				const sep = path.indexOf("?") === -1 ? "?" : "&";
 				return `${path}${sep}v=${encodeURIComponent(version)}`;
@@ -20,23 +24,14 @@
 			const addStyle = (href) => {
 				const link = document.createElement("link");
 				link.rel = "stylesheet";
-				link.href = withVersion(href);
+				link.href = window.__MACS_WITH_VERSION__(href);
 				document.head.appendChild(link);
-			};
-			const addScript = (src) => {
-				const script = document.createElement("script");
-				script.type = "module";
-				script.src = withVersion(src);
-				script.defer = true;
-				document.head.appendChild(script);
 			};
 
 			addStyle("frontend/styles/themes/default.css");
 			addStyle("frontend/styles/base.css");
 			addStyle("frontend/styles/moods.css");
 			addStyle("frontend/styles/weather.css");
-			addScript("frontend/scripts/assist-bridge.js");
-			addScript("frontend/scripts/MacsFrontend.js");
 		})();
 	</script>
 </head>
@@ -275,5 +270,18 @@
 
 	<div id="messages">Error - Unable to connect</div>
 	<div id="debug"></div>
+	<script>
+		(function () {
+			const withVersion = window.__MACS_WITH_VERSION__ || ((path) => path);
+			const addScript = (src) => {
+				const script = document.createElement("script");
+				script.type = "module";
+				script.src = withVersion(src);
+				document.head.appendChild(script);
+			};
+
+			addScript("frontend/scripts/MacsFrontend.js");
+		})();
+	</script>
 </body>
 </html>

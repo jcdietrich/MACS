@@ -4,7 +4,9 @@
  * Generic particle system used by weather effects.
  */
 
-import { createDebugger } from "../../shared/debugger.js";
+import { importWithVersion } from "./importHandler.js";
+
+const { createDebugger } = await importWithVersion("../../shared/debugger.js");
 const debug = createDebugger(import.meta.url);
 
 const SVG_NS = "http://www.w3.org/2000/svg";

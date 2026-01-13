@@ -5,6 +5,19 @@
  */
 import { VERSION } from "./constants.js";
 
+export function setDebugOverride(mode, debugInstance) {
+    if (typeof mode === "undefined") return;
+    if (typeof window !== "undefined") {
+        window.__MACS_DEBUG__ = mode;
+        if (window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent("macs-debug-update"));
+        }
+    }
+    if (debugInstance && typeof debugInstance.show === "function") {
+        debugInstance.show();
+    }
+}
+
 export function createDebugger(namespace) {
     const nsSource = namespace.toString();
     let debugDiv = null;
@@ -71,15 +84,18 @@ export function createDebugger(namespace) {
         if (window.__MACS_DEBUG_TARGETS__ || targetsLoading) return;
         targetsLoading = true;
         try {
-            const url = new URL("/macs/shared/debugTargets.json", window.location.origin);
+            const url = new URL("/macs/shared/constants.json", window.location.origin);
             if (VERSION && VERSION !== "Unknown") {
                 url.searchParams.set("v", VERSION);
             }
             fetch(url.toString(), { cache: "no-store" })
                 .then((resp) => (resp && resp.ok ? resp.json() : null))
                 .then((data) => {
-                    if (Array.isArray(data)) {
-                        window.__MACS_DEBUG_TARGETS__ = data;
+                    const targets = Array.isArray(data)
+                        ? data
+                        : (data && Array.isArray(data.debugTargets) ? data.debugTargets : null);
+                    if (Array.isArray(targets)) {
+                        window.__MACS_DEBUG_TARGETS__ = targets;
                         if (window.dispatchEvent) {
                             window.dispatchEvent(new CustomEvent("macs-debug-update"));
                         }
@@ -363,7 +379,7 @@ export function createDebugger(namespace) {
         const found = targets.some((entry) => tokensIntersect(buildEntryTokens(entry), baseTokens));
         if (!found) {
             missingTargetWarned = true;
-            console.warn(`[MACS] Debug target missing for ${nsDisplay}. Add it to shared/debugTargets.json.`);
+            console.warn(`[MACS] Debug target missing for ${nsDisplay}. Add it to shared/constants.json.`);
         }
     }
 
@@ -387,11 +403,6 @@ export function createDebugger(namespace) {
 
     const log = (...args) => {
         const enabledNow = isEnabled();
-        if (!enabledNow) {
-            hideDebug();
-            return;
-        }
-
         let level = "info";
         if (typeof args[0] === "string" && LOG_LEVELS[args[0]]) {
             level = args.shift();
@@ -411,6 +422,10 @@ export function createDebugger(namespace) {
             : entries.map((entry) => entry.text).join(" ")
         ).trim();
         enqueue(msg);
+        if (!enabledNow) {
+            hideDebug();
+            return;
+        }
         if (enabledNow) {
             showDebug();
             flushQueue();
