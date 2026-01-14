@@ -5,21 +5,30 @@
  */
 
 
-// Add version query param to javascript imports
-
+// Add version query param to javascript imports for cache busting
 import { importWithVersion } from "./importHandler.js";
 
-// Import shared helpers + debugger
-const { createDebugger, setDebugOverride } = await importWithVersion("../../shared/debugger.js");
+// Import query params and shared helpers
 const { QUERY_PARAMS, getQueryParamOrDefault, loadSharedConstants, getWeatherConditionKeys } = await importWithVersion("./helpers.js");
-const debug = createDebugger(import.meta.url);
-
 const paramsString = JSON.stringify(Object.fromEntries(QUERY_PARAMS.entries()), null, 2);
 
+// Create Debugger
+const { createDebugger, setDebugOverride } = await importWithVersion("../../shared/debugger.js");
+const debug = createDebugger(import.meta.url);
+
+
+
+
+//###############################################################################################
+//                                                                                              #
+//                         			STARTUP				                                        #
+//                                                                                              #
+//###############################################################################################
+
+// Add query params to startup debug
 debug("Macs frontend Starting with Query Params:\n" + paramsString);
 
-
-// Import JS Files
+// Import remaining JS Files
 debug("Loading files...");
 const { MessagePoster } = await importWithVersion("../../shared/messagePoster.js");
 const { MessageListener } = await importWithVersion("../../shared/messageListener.js");
@@ -31,7 +40,7 @@ const { createIdleFx } = await importWithVersion("./idleFx.js");
 const { createMoodFx } = await importWithVersion("./moodFx.js");
 const { createWeatherFx } = await importWithVersion("./weatherFx.js");
 
-// load defaults from JSON
+// load default settings from JSON
 await loadSharedConstants();
 
 // Is the iframe being rendered in a card preview (we don't want kiosk mode etc)
@@ -90,7 +99,7 @@ const warnIfNull = (label, value) => {
         recipient: "all",
         turns: [
             {
-                "ts": "2026-01-07T17:45:50.028019+00:00",
+                "ts": Date(),
                 "reply": `Looks like there might be a problem with [${label}]`
             },
         ]
@@ -130,6 +139,72 @@ const applyConfigPayload = (config) => {
 		setDebugOverride(config.debug_mode, debug);
 	}
 };
+
+
+// Initialise each of the animation handlers
+const initFx = (factory, overrides = {}) => {
+	if (typeof factory !== "function") return null;
+	return factory({
+		isCardPreview,
+		messagePoster,
+		setAnimationsPaused,
+		getIsPaused: () => animationsPaused,
+		...overrides
+	});
+};
+idleFx = initFx(createIdleFx);
+moodFx = initFx(createMoodFx);
+cursorFx = initFx(createCursorFx);
+weatherFx = initFx(createWeatherFx);
+batteryFx = initFx(createBatteryFx);
+kioskFx = initFx(createKioskFx);
+
+// Set Mood setings
+if (moodFx) {
+	moodFx.setBaseMoodFromQuery();
+	moodFx.setOnMoodChange((mood) => {
+		if (cursorFx) cursorFx.setIdleActive(mood === "idle");
+	});
+}
+
+// set Cursor settings
+if (cursorFx) cursorFx.initCursorTracking();
+
+// Set Weather settings
+if (weatherFx) {
+	weatherFx.setOnWindChange((intensity) => idleFx?.setWindIntensity(intensity));
+	weatherFx.handleResize();
+	weatherFx.setTemperatureFromQuery();
+	weatherFx.setWindSpeedFromQuery();
+	weatherFx.setPrecipitationFromQuery();
+	weatherFx.setWeatherConditionsFromQuery();
+}
+
+// Set Battery settings
+if (batteryFx) batteryFx.setBatteryFromQuery();
+
+// Set Kiosk Settings
+if (kioskFx) {
+	kioskFx.setBrightnessFromQuery();
+	kioskFx.ensureAutoBrightnessDebugTimer();
+	kioskFx.updateAutoBrightnessDebug();
+	kioskFx.initKioskHoldListeners();
+	kioskFx.initActivityListeners({
+		onActivity: () => {
+			if (moodFx) moodFx.resetMoodSequence();
+		}
+	});
+}
+
+
+
+
+
+//###############################################################################################
+//                                                                                              #
+//                         			RUNTIME				                                        #
+//                                                                                              #
+//###############################################################################################
 
 // Applies sensor values (Used any time a sensor value updates)
 const applySensorPayload = (sensors) => {
@@ -190,97 +265,105 @@ const applySensorPayload = (sensors) => {
 };
 
 
+// Handle update messages fromt he backend
 function handleMessage(payload) {
+	// Make sure we have a valid payload (message)
 	if (!payload || typeof payload !== 'object') return;
 
-	if (payload.type === 'macs:init') {
-		applyConfigPayload(payload.config);
-		if (typeof payload.mood !== "undefined") {
+	switch (payload.type) {
+		// If this is the first load
+		case 'macs:init': {
+			// then apply the config
+			applyConfigPayload(payload.config);
+			if (typeof payload.mood !== "undefined") {
+				if (moodFx) moodFx.setBaseMood(payload.mood || 'idle');
+			}
+			// and the sensor data
+			applySensorPayload(payload.sensors);
+			if (typeof payload.brightness !== "undefined") {
+				if (kioskFx) kioskFx.setBrightness(payload.brightness);
+			}
+			if (typeof payload.animations_enabled !== "undefined") {
+				if (kioskFx) kioskFx.setAnimationsToggleEnabled(!!payload.animations_enabled);
+			}
+			// let the backend know that we're ready for further updates
+			messagePoster.post({ type: "macs:init_ack", recipient: "backend" });
+			return;
+		}
+		// if the settings have changed then reapply the config
+		case 'macs:config': {
+			applyConfigPayload(payload);
+			return;
+		}
+		case 'macs:mood': {
 			if (moodFx) moodFx.setBaseMood(payload.mood || 'idle');
+			if (payload.reset_sleep) {
+				debug("Wakeword: reset sleep timer");
+				if (kioskFx) kioskFx.registerActivity();
+				if (moodFx) moodFx.resetMoodSequence();
+			}
+			return;
 		}
-		applySensorPayload(payload.sensors);
-		if (typeof payload.brightness !== "undefined") {
-			if (kioskFx) kioskFx.setBrightness(payload.brightness);
+		case 'macs:temperature': {
+			if (warnIfNull("temperature", payload.temperature)) return;
+			if (weatherFx) weatherFx.setTemperature(payload.temperature ?? '0');
+			debug("Setting temperature to: " + (payload.temperature ?? '0'));
+			return;
 		}
-		if (typeof payload.animations_enabled !== "undefined") {
-			if (kioskFx) kioskFx.setAnimationsToggleEnabled(!!payload.animations_enabled);
+		case 'macs:windspeed': {
+			if (warnIfNull("windspeed", payload.windspeed)) return;
+			if (weatherFx) weatherFx.setWindSpeed(payload.windspeed ?? '0');
+			debug("Setting windspeed to: " + (payload.windspeed ?? '0'));
+			return;
 		}
-		messagePoster.post({ type: "macs:init_ack", recipient: "backend" });
-		return;
-	}
-
-	if (payload.type === 'macs:config') {
-		applyConfigPayload(payload);
-		return;
-	}
-
-	if (payload.type === 'macs:animations_enabled') {
-		if (kioskFx) kioskFx.setAnimationsToggleEnabled(!!payload.enabled);
-		return;
-	}
-
-    if (payload.type === 'macs:mood') {
-        if (moodFx) moodFx.setBaseMood(payload.mood || 'idle');
-        if (payload.reset_sleep) {
-            debug("Wakeword: reset sleep timer");
+		case 'macs:precipitation': {
+			if (warnIfNull("precipitation", payload.precipitation)) return;
+			if (weatherFx) weatherFx.setPrecipitation(payload.precipitation ?? '0');
+			debug("Setting precipitation to: " + (payload.precipitation ?? '0'));
+			return;
+		}
+		case 'macs:weather_conditions': {
+			const weatherConditionKeys = getWeatherConditionKeys();
+			const conditions = {};
+			let hasAny = false;
+			weatherConditionKeys.forEach((key) => {
+				if (typeof payload[key] === "undefined") return;
+				if (warnIfNull(key, payload[key])) return;
+				conditions[key] = !!payload[key];
+				hasAny = true;
+			});
+			if (hasAny && weatherFx) {
+				weatherFx.setWeatherConditions(conditions);
+			}
+			return;
+		}
+		case 'macs:turns': {
+			debug("Pipeline: reset sleep timer");
 			if (kioskFx) kioskFx.registerActivity();
 			if (moodFx) moodFx.resetMoodSequence();
-        }
-        return;
-    }
-    if (payload.type === 'macs:temperature') {
-        if (warnIfNull("temperature", payload.temperature)) return;
-        if (weatherFx) weatherFx.setTemperature(payload.temperature ?? '0');
-        debug("Setting temperature to: " + (payload.temperature ?? '0'));
-        return;
-    }
-    if (payload.type === 'macs:windspeed') {
-        if (warnIfNull("windspeed", payload.windspeed)) return;
-        if (weatherFx) weatherFx.setWindSpeed(payload.windspeed ?? '0');
-        debug("Setting windspeed to: " + (payload.windspeed ?? '0'));
-        return;
-    }
-    if (payload.type === 'macs:precipitation') {
-        if (warnIfNull("precipitation", payload.precipitation)) return;
-        if (weatherFx) weatherFx.setPrecipitation(payload.precipitation ?? '0');
-        debug("Setting precipitation to: " + (payload.precipitation ?? '0'));
-        return;
-    }
-    if (payload.type === 'macs:weather_conditions') {
-		const weatherConditionKeys = getWeatherConditionKeys();
-		const conditions = {};
-		let hasAny = false;
-		weatherConditionKeys.forEach((key) => {
-			if (typeof payload[key] === "undefined") return;
-			if (warnIfNull(key, payload[key])) return;
-			conditions[key] = !!payload[key];
-			hasAny = true;
-		});
-		if (hasAny && weatherFx) {
-			weatherFx.setWeatherConditions(conditions);
+			return;
 		}
-        return;
-    }
-    if (payload.type === 'macs:turns') {
-        debug("Pipeline: reset sleep timer");
-		if (kioskFx) kioskFx.registerActivity();
-		if (moodFx) moodFx.resetMoodSequence();
-        return;
-    }
-    if (payload.type === 'macs:battery_charge') {
-		if (warnIfNull("battery_charge", payload.battery_charge)) return;
-		if (batteryFx) batteryFx.setBattery(payload.battery_charge ?? '0');
-        return;
-    }
-    if (payload.type === 'macs:charging') {
-		if (warnIfNull("charging", payload.charging)) return;
-		if (batteryFx) batteryFx.setBatteryState(payload.charging);
-        return;
-    }
-    if (payload.type === 'macs:brightness') {
-		if (kioskFx) kioskFx.setBrightness(payload.brightness ?? '100');
-        return;
-    }
+		case 'macs:battery_charge': {
+			if (warnIfNull("battery_charge", payload.battery_charge)) return;
+			if (batteryFx) batteryFx.setBattery(payload.battery_charge ?? '0');
+			return;
+		}
+		case 'macs:charging': {
+			if (warnIfNull("charging", payload.charging)) return;
+			if (batteryFx) batteryFx.setBatteryState(payload.charging);
+			return;
+		}
+		case 'macs:brightness': {
+			if (kioskFx) kioskFx.setBrightness(payload.brightness ?? '100');
+			return;
+		}
+		case 'macs:animations_enabled': {
+			if (kioskFx) kioskFx.setAnimationsToggleEnabled(!!payload.enabled);
+			return;
+		}
+		default:
+			return;
+	}
 }
 
 
@@ -303,69 +386,18 @@ const setAnimationsPaused = (paused) => {
 };
 
 
-
-
-
-const initFx = (factory, overrides = {}) => {
-	if (typeof factory !== "function") return null;
-	return factory({
-		isCardPreview,
-		messagePoster,
-		setAnimationsPaused,
-		getIsPaused: () => animationsPaused,
-		...overrides
-	});
-};
-
-
-idleFx = initFx(createIdleFx);
-moodFx = initFx(createMoodFx);
-cursorFx = initFx(createCursorFx);
-weatherFx = initFx(createWeatherFx);
-batteryFx = initFx(createBatteryFx);
-kioskFx = initFx(createKioskFx);
-
-
-
-if (moodFx) {
-	moodFx.setBaseMoodFromQuery();
-	moodFx.setOnMoodChange((mood) => {
-		if (cursorFx) cursorFx.setIdleActive(mood === "idle");
-	});
-}
-
-if (cursorFx) cursorFx.initCursorTracking();
-
-if (weatherFx) {
-	weatherFx.setOnWindChange((intensity) => idleFx?.setWindIntensity(intensity));
-	weatherFx.handleResize();
-	weatherFx.setTemperatureFromQuery();
-	weatherFx.setWindSpeedFromQuery();
-	weatherFx.setPrecipitationFromQuery();
-	weatherFx.setWeatherConditionsFromQuery();
-}
-
-if (batteryFx) batteryFx.setBatteryFromQuery();
-
-if (kioskFx) {
-	kioskFx.setBrightnessFromQuery();
-	kioskFx.ensureAutoBrightnessDebugTimer();
-	kioskFx.updateAutoBrightnessDebug();
-	kioskFx.initKioskHoldListeners();
-	kioskFx.initActivityListeners({
-		onActivity: () => {
-			if (moodFx) moodFx.resetMoodSequence();
-		}
-	});
-}
-
-
-
 window.addEventListener('resize', () => {
 	if (weatherFx) weatherFx.handleResize();
 });
 
 
+
+
+//###############################################################################################
+//                                                                                              #
+//                         			READY				                                        #
+//                                                                                              #
+//###############################################################################################
 
 debug("Macs Frontend Ready");
 debug("Starting Communication with Backend...");

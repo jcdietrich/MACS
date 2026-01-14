@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.0.4] - 2026-01-14
+- Changed: Code efficiency improvements in frontend.
+- Changed: File-naming for Hacs integration.
+<br><br>
+
+
 ## [v1.0.3] - 2026-01-14
 - New: Kiosk-Mode now gives true fullscreen when viewed in a browser.
 - New: Press escape to exit kiosk-mode.  
