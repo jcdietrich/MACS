@@ -42,8 +42,7 @@ const getWeatherConditionsFromQuery = () => {
 	return conditions;
 };
 
-export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
-	const log = typeof debug === "function" ? debug : () => {};
+export function createWeatherFx({getIsPaused, onWindChange } = {}) {
 	const isPaused = typeof getIsPaused === "function" ? getIsPaused : () => false;
 	let notifyWind = typeof onWindChange === "function" ? onWindChange : null;
 
@@ -352,7 +351,7 @@ export function createWeatherFx({ debug, getIsPaused, onWindChange } = {}) {
 		Object.keys(weatherConditions).forEach(key => {
 			if (weatherConditions[key]) body.classList.add(`weather-${key}`);
 		});
-		log(`Setting weather conditions to:\n${JSON.stringify(weatherConditions, null, 2)}`);
+		debug(`Setting weather conditions to:\n${JSON.stringify(weatherConditions, null, 2)}`);
 		applyPrecipitation();
 	};
 

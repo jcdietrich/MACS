@@ -13,14 +13,7 @@ const { createDebugger } = await importWithVersion("../../shared/debugger.js");
 const { getQueryParamOrDefault } = await importWithVersion("./helpers.js");
 const debug = createDebugger(import.meta.url);
 
-export function createKioskFx({
-	debug,
-	isCardPreview,
-	messagePoster,
-	setAnimationsPaused
-} = {}) {
-	const log = typeof debug === "function" ? debug : () => {};
-	const getIsCardPreview = typeof isCardPreview === "function" ? isCardPreview : () => false;
+export function createKioskFx({isCardPreview, messagePoster, setAnimationsPaused} = {}) {
 	const applyAnimationsPaused = typeof setAnimationsPaused === "function" ? setAnimationsPaused : () => {};
 	const poster = messagePoster || null;
 
@@ -227,7 +220,7 @@ export function createKioskFx({
 	};
 
 	const registerActivity = () => {
-		if (getIsCardPreview()) return false;
+		if (isCardPreview) return false;
 		if (!autoBrightnessEnabled) return false;
 
 		if (autoBrightnessIdle) {
@@ -242,7 +235,7 @@ export function createKioskFx({
 	};
 
 	const sendKioskToggle = () => {
-		log("Kiosk hold: toggling sidebar/navbar");
+		debug("Kiosk hold: toggling sidebar/navbar");
 		if (!poster) return;
 		poster.post({ type: "macs:toggle_kiosk", recipient: "backend" });
 	};
@@ -257,10 +250,10 @@ export function createKioskFx({
 	};
 
 	const startKioskHold = (event) => {
-		if (getIsEditor()) return;
+		if (isCardPreview) return;
 		if (!autoBrightnessEnabled) return;
 		if (isDebugInteraction(event)) return;
-		log("Kiosk hold: start");
+		debug("Kiosk hold: start");
 		if (kioskHoldTimer) clearTimeout(kioskHoldTimer);
 		kioskHoldTimer = setTimeout(() => {
 			kioskHoldTimer = null;
@@ -270,14 +263,14 @@ export function createKioskFx({
 
 	const endKioskHold = () => {
 		if (kioskHoldTimer) {
-			log("Kiosk hold: cancel");
+			debug("Kiosk hold: cancel");
 			clearTimeout(kioskHoldTimer);
 			kioskHoldTimer = null;
 		}
 	};
 
 	const initKioskHoldListeners = () => {
-		if (getIsCardPreview()) return;
+		if (isCardPreview) return;
 		const target = document.body;
 		if (!target) return;
 		if ("PointerEvent" in window) {
@@ -321,7 +314,7 @@ export function createKioskFx({
 	};
 
 	const setAutoBrightnessConfig = (config) => {
-		if (getIsCardPreview()) {
+		if (isCardPreview) {
 			autoBrightnessEnabled = false;
 			autoBrightnessIdle = false;
 			applyAnimationsPaused(false);

@@ -20,7 +20,6 @@ const getMoodParam = () => {
 };
 
 export function createMoodFx({ isCardPreview, onMoodChange } = {}) {
-	const getIsCardPreview = typeof isCardPreview === "function" ? isCardPreview : () => false;
 	let notifyMoodChange = typeof onMoodChange === "function" ? onMoodChange : () => {};
 
 	let baseMood = "idle";
@@ -58,7 +57,7 @@ export function createMoodFx({ isCardPreview, onMoodChange } = {}) {
 
 	const scheduleMoodIdleSequence = () => {
 		clearMoodTimers();
-		if (getIsCardPreview() || !idleSequenceEnabled) return;
+		if (isCardPreview || !idleSequenceEnabled) return;
 		moodIdleTimer = setTimeout(() => {
 			if (baseMood !== "idle") return;
 			setMood("bored");

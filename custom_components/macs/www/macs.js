@@ -8,16 +8,10 @@
 /** 
  * TO-DO
  * --------
- * - thorough test of card editor
  * - leaves only appear at top
- * - rainy not working
- * - weather conditions are being applied before config payload it received. 
- *   maybe, remove config payload, and rely solely on quary params
- *   either that, or remove unneccessary query params. What's need?  version, debug. Is that it?
  * 
  * - test non-admin user
  * - change happy trigger from idle to responding. Actually, idle OR responding, whichever comes first.
- * - update readme screenshot
  * 
  * - rethink debugger. When first created, I thought backend could post to debug div, but it can't because it's in an iframe.
  * - so, use console for backend, and debug div for frontend, makes it much easier to separate then.

@@ -86,7 +86,7 @@ const applyConfigPayload = (payload) => {
   } else {
     maxMessages = MAX_MESSAGES_FALLBACK;
   }
-  debug("Config", { assist_pipeline_entity: injectedPipelineId, max_messages: maxMessages });
+  debug("Received config", { assist_pipeline_entity: injectedPipelineId, max_messages: maxMessages });
 };
 
 const applyTurnsPayload = (turns) => {

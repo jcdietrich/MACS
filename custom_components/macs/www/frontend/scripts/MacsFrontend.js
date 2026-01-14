@@ -309,8 +309,7 @@ const setAnimationsPaused = (paused) => {
 const initFx = (factory, overrides = {}) => {
 	if (typeof factory !== "function") return null;
 	return factory({
-		debug,
-		isCardPreview: () => isCardPreview,
+		isCardPreview,
 		messagePoster,
 		setAnimationsPaused,
 		getIsPaused: () => animationsPaused,
