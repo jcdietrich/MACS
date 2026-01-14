@@ -21,9 +21,18 @@ export const loadSharedConstants = () => {
 	defaultsLoadPromise = (async () => {
 		try {
 			// Fetch the JSON file, disabling cache to ensure fresh data.
-			const url = new URL("/macs/shared/constants.json", window.location.origin);
-			const response = await fetch(url.toString(), { cache: "no-store" });
-			const data = response && response.ok ? await response.json() : null;
+			const baseUrl = new URL("/macs/shared/constants.json", window.location.origin);
+			const response = await fetch(baseUrl.toString(), { cache: "no-store" });
+			let data = response && response.ok ? await response.json() : null;
+			if (!data) {
+				try {
+					const fallbackUrl = new URL("shared/constants.json", window.location.href);
+					const fallbackResponse = await fetch(fallbackUrl.toString(), { cache: "no-store" });
+					data = fallbackResponse && fallbackResponse.ok ? await fallbackResponse.json() : null;
+				} catch (_) {
+					data = null;
+				}
+			}
 
 			// Extract the "defaults" array
 			const defaults = data && typeof data === "object" ? data.defaults : null;

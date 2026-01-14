@@ -38,8 +38,8 @@
 .mood-bored #eyeBezelL{ transform: translate(200px, 260px) rotate(-5deg) translate(-200px, -260px); }
 .mood-bored #eyeBezelR{ transform: translate(400px, 260px) rotate(5deg) translate(-400px, -260px); }
 .mood-bored #brows{ display: block; }
-.mood-bored .browL{ transform: translateX(50px) rotate(-10deg); }
-.mood-bored .browR{ transform: translateX(-50px) rotate(10deg); }
+.mood-bored .browL{ transform: translateX(25px) rotate(-5deg); }
+.mood-bored .browR{ transform: translateX(-30px) rotate(3deg); }
 .mood-bored #mouth-bored{ display:block; fill:none; }
 .mood-bored .iris{ transform: translate(-15px, -15px); }
 

@@ -84,12 +84,24 @@ export function createDebugger(namespace) {
         if (window.__MACS_DEBUG_TARGETS__ || targetsLoading) return;
         targetsLoading = true;
         try {
-            const url = new URL("/macs/shared/constants.json", window.location.origin);
+            const baseUrl = new URL("/macs/shared/constants.json", window.location.origin);
             if (VERSION && VERSION !== "Unknown") {
-                url.searchParams.set("v", VERSION);
+                baseUrl.searchParams.set("v", VERSION);
             }
-            fetch(url.toString(), { cache: "no-store" })
-                .then((resp) => (resp && resp.ok ? resp.json() : null))
+            fetch(baseUrl.toString(), { cache: "no-store" })
+                .then(async (resp) => {
+                    if (resp && resp.ok) return resp.json();
+                    try {
+                        const fallbackUrl = new URL("shared/constants.json", window.location.href);
+                        if (VERSION && VERSION !== "Unknown") {
+                            fallbackUrl.searchParams.set("v", VERSION);
+                        }
+                        const fallbackResp = await fetch(fallbackUrl.toString(), { cache: "no-store" });
+                        return fallbackResp && fallbackResp.ok ? await fallbackResp.json() : null;
+                    } catch (_) {
+                        return null;
+                    }
+                })
                 .then((data) => {
                     const targets = Array.isArray(data)
                         ? data

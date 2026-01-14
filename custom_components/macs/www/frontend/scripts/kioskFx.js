@@ -36,6 +36,7 @@ export function createKioskFx({isCardPreview, messagePoster, setAnimationsPaused
 	let lastBrightnessTransition = null;
 	let kioskHoldTimer = null;
 	let activityListenersActive = false;
+	let kioskHidden = false;
 
 	const clampPercent = (value, fallback = 0) => {
 		const num = Number(value);
@@ -234,10 +235,47 @@ export function createKioskFx({isCardPreview, messagePoster, setAnimationsPaused
 		return true;
 	};
 
+	const toggleSidebar = () => {
+		if (!poster) return;
+		kioskHidden = !kioskHidden;
+		poster.post({ type: "macs:toggle_kiosk", recipient: "backend" });
+	};
+
 	const sendKioskToggle = () => {
 		debug("Kiosk hold: toggling sidebar/navbar");
-		if (!poster) return;
-		poster.post({ type: "macs:toggle_kiosk", recipient: "backend" });
+		toggleFullscreen();
+		toggleSidebar();
+	};
+
+	const toggleFullscreen = () => {
+		if (document.fullscreenElement) {
+			const exit = document.exitFullscreen
+				|| document.webkitExitFullscreen
+				|| document.mozCancelFullScreen
+				|| document.msExitFullscreen;
+			if (!exit) return;
+			try {
+				const result = exit.call(document);
+				if (result && typeof result.catch === "function") {
+					result.catch(() => {});
+				}
+			} catch (_) {}
+			return;
+		}
+
+		const root = document.documentElement;
+		if (!root) return;
+		const request = root.requestFullscreen
+			|| root.webkitRequestFullscreen
+			|| root.mozRequestFullScreen
+			|| root.msRequestFullscreen;
+		if (!request) return;
+		try {
+			const result = request.call(root);
+			if (result && typeof result.catch === "function") {
+				result.catch(() => {});
+			}
+		} catch (_) {}
 	};
 
 	const isDebugInteraction = (event) => {
@@ -286,6 +324,19 @@ export function createKioskFx({isCardPreview, messagePoster, setAnimationsPaused
 			target.addEventListener("mouseup", endKioskHold);
 			target.addEventListener("mouseleave", endKioskHold);
 		}
+
+		window.addEventListener("keydown", (event) => {
+			if (event.key !== "Escape" && event.code !== "Escape") return;
+			if (!document.fullscreenElement) return;
+			sendKioskToggle();
+		});
+
+		document.addEventListener("fullscreenchange", () => {
+			if (document.fullscreenElement) return;
+			if (!kioskHidden) return;
+			debug("Kiosk hold: restore sidebar/navbar");
+			toggleSidebar();
+		});
 	};
 
 	const initActivityListeners = ({ onActivity } = {}) => {
