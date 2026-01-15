@@ -38,6 +38,9 @@ Perfect for:
 - Create a new Dashboard with a Panel (Single Card) Layout.
 - Add the Macs Card to the dashboard.
 - Configure as required.
+
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=glyndavidson&repository=https%3A%2F%2Fgithub.com%2Fglyndavidson%2FMACS)
 <br><br>
 
 
