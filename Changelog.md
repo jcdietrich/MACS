@@ -1,6 +1,11 @@
 # Changelog
 
-## [v1.0.7] - 2026-01-16
+## [v1.0.8] - 2026-01-16
+- Fixed: Entities not being created for new installs
+<br><br>
+
+
+## [v1.0.7] - 2026-01-15
 - Fixed: Support for older Home Assistant Versions.
 <br><br>
 

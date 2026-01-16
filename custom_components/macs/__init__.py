@@ -191,10 +191,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             conversation["should_expose"] = False
             options["conversation"] = conversation
             try:
-                reg.async_update_entity(entity.entity_id, options=options)
-            except TypeError:
-                # Older HA versions don't support the options kwarg here.
-                pass
+                reg.async_update_entity_options(entity.entity_id, DOMAIN, options)
+            except AttributeError:
+                # Older HA versions don't support async_update_entity_options.
+                try:
+                    reg.async_update_entity(entity.entity_id, options=options)
+                except TypeError:
+                    # Older HA versions don't support the options kwarg here.
+                    pass
         hass.config_entries.async_update_entry(
             entry,
             options={**entry.options, "assist_exposure_initialized": True},
