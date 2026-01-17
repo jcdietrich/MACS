@@ -438,14 +438,15 @@ export class MacsCardEditor extends HTMLElement {
 
 		// About/Support toggle
 		const toggle = this.shadowRoot.querySelector(".about-toggle");
-		const arrow = this.shadowRoot.querySelector(".about-arrow");
+		//const arrow = this.shadowRoot.querySelector(".about-arrow");
 		const content = this.shadowRoot.querySelector(".about-content");
 
-		if (toggle && arrow && content) {
+		//if (toggle && arrow && content) {
+		if (toggle && content) {
 			toggle.addEventListener("click", () => {
 				const open = !content.hasAttribute("hidden");
 				content.toggleAttribute("hidden", open);
-				arrow.textContent = open ? ">" : "v";
+				//arrow.textContent = open ? ">" : "v";
 			});
 		}
 

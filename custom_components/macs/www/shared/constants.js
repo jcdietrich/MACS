@@ -170,23 +170,15 @@ export const CARD_EDITOR_ABOUT = `
 		<div class="group">
 			<div class="row about">
 				<div class="about-toggle" tabindex="0" role="button">
-					About M.A.C.S. 
-					<span class="about-arrow">&gt;</span>
+					More...
 				</div>
 			</div>
 			<div class="about-content" hidden>
-				<p>
-					M.A.C.S. is being developed by <strong>Glyn Davidson</strong> (Developer, climber, and chronic tinkerer of occasionally useful tools) in his free time.
-				</p>
-
-				<p class="support">
-					If you find M.A.C.S. useful and would like to encourage its ongoing development with new features and bug fixes, please consider 
-					<br>
-					<ha-icon icon="mdi:coffee"></ha-icon>
-					<a href="https://buymeacoffee.com/glyndavidson" target="_blank" rel="noopener">
-						buying me a coffee
-					</a>.
-				</p>
+				<p>M.A.C.S. is being developed by <strong>Glyn Davidson</strong> (Developer, climber, and chronic tinkerer of occasionally useful tools) in his free time.</p>
+				<p>If you find M.A.C.S. useful and would like to encourage his ongoing development with new features and bug fixes, please consider "buying me a coffee" to support my work.</p>
+                <p><a href="https://buymeacoffee.com/glyndavidson" rel="nofollow" target="_blank"><img src="https://raw.githubusercontent.com/glyndavidson/MACS/main/resources/coffee.png" alt="Buy me a coffee" style="max-width: 100%;"></a></p>
+                <p>For bug-reports or feature-requests, please <a href="https://github.com/glyndavidson/MACS/issues/new" target="_blank">open a new "issue"</a>.</p>
+                <p>For more information, visit <a href="https://github.com/glyndavidson/MACS" target="_blank">Macs's Homepage</a>.</p>
 			</div>
 		</div>
 	`;
