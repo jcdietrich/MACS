@@ -1,7 +1,14 @@
 # Changelog
 
+## [v1.0.9] - 2026-01-
+- Changed: Made support links more visible.
+
+- Fixed: Unhandled promise rejection from stale HA websocket subscription
+<br><br>
+
+
 ## [v1.0.8] - 2026-01-16
-- Fixed: Entities not being created for new installs
+- Fixed: Entities not being created for new installs.
 <br><br>
 
 

@@ -75,7 +75,12 @@ export class AssistPipelineTracker {
 
         try {
             const u = this._unsubStateChanged;
-            if (typeof u === "function") u();
+            if (typeof u === "function") {
+                const result = u();
+                if (result && typeof result.catch === "function") {
+                    result.catch(() => {});
+                }
+            }
         } catch (_) {}
         this._unsubStateChanged = null;
 
@@ -231,7 +236,12 @@ export class AssistPipelineTracker {
             }, "state_changed").then((unsub) => {
                 // If we've been disposed or a newer subscribe attempt happened, immediately clean up.
                 if (this._disposed || token !== this._subToken || !this.pipelineEnabled()) {
-                    try { unsub(); } catch (_) {}
+                    try {
+                        const result = unsub();
+                        if (result && typeof result.catch === "function") {
+                            result.catch(() => {});
+                        }
+                    } catch (_) {}
                     return;
                 }
                 this._unsubStateChanged = unsub;
@@ -246,7 +256,12 @@ export class AssistPipelineTracker {
         if (!shouldSub && this._unsubStateChanged) {
             const u = this._unsubStateChanged;
             if (typeof u === "function") {
-                try { u(); } catch (_) {}
+                try {
+                    const result = u();
+                    if (result && typeof result.catch === "function") {
+                        result.catch(() => {});
+                    }
+                } catch (_) {}
             }
             this._unsubStateChanged = null;
         }

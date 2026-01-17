@@ -183,7 +183,12 @@ export class MacsCard extends HTMLElement {
 
         try {
             const u = this._unsubMessageEvents;
-            if (typeof u === "function") u();
+            if (typeof u === "function") {
+                const result = u();
+                if (result && typeof result.catch === "function") {
+                    result.catch(() => {});
+                }
+            }
         } catch (_) {}
         this._unsubMessageEvents = null;
 
@@ -618,7 +623,12 @@ export class MacsCard extends HTMLElement {
             } catch (_) {}
         }, MACS_MESSAGE_EVENT).then((unsub) => {
             if (token !== this._messageSubToken) {
-                try { unsub(); } catch (_) {}
+                try {
+                    const result = unsub();
+                    if (result && typeof result.catch === "function") {
+                        result.catch(() => {});
+                    }
+                } catch (_) {}
                 return;
             }
             this._unsubMessageEvents = unsub;
