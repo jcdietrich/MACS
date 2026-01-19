@@ -469,6 +469,10 @@ export class MacsCard extends HTMLElement {
         if (e.data.type === "macs:ready") {
             debug("iframe ready");
             this._iframeReady = true;
+            // Treat ready as a fresh iframe session (e.g. after dashboard nav)
+            this._iframeLoaded = true;
+            this._iframeBootstrapped = false;
+            this._initSent = false;
             this._handleIframeReady();
             return;
         }
