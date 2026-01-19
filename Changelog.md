@@ -1,9 +1,10 @@
 # Changelog
 
-## [v1.0.9] - 2026-01-
+## [v1.0.9] - 2026-01-19
 - Changed: Made support links more visible.
 
-- Fixed: Unhandled promise rejection from stale HA websocket subscription
+- Fixed: Config not loading properly when switching between dashboards.
+- Fixed: Unhandled promise rejection from stale HA websocket subscription.
 <br><br>
 
 
