@@ -34,16 +34,15 @@ Perfect for:
 
 
 ## Installation
-- Download the Macs Card via Hacs or by clicking on the link below.
-- After downloading, install the Macs integration via Settings > Devices and Services > Add Integration.
-- Restart Home Assistant
-- Create a new Dashboard with a "Panel (Single Card)" Layout.
-- Hard refresh the page (Ctrl +F5)
-- Add the Macs Card to the dashboard.
-- Configure as required.
-
-
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=glyndavidson&repository=MACS)
+
+1. Download the Macs Card via Hacs or by clicking on the link above.
+2. After downloading, install the Macs integration via Settings > Devices and Services > Add Integration.
+3. Restart Home Assistant as required.
+4. Create a new Dashboard with a "Panel (Single Card)" Layout.
+5. Hard refresh the page (Ctrl +F5).
+6. Add the Macs Card to the dashboard.
+7. Configure as required (See below for further details).
 <br><br>
 
 
