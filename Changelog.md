@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.0.10] - 2026-01-
+- Changed: Updated install instructions.
+<br><br>
+
 ## [v1.0.9] - 2026-01-19
 - Changed: Made support links more visible.
 
