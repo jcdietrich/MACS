@@ -30,12 +30,12 @@
     transform: translateX(20px);
 }
 
-#eyelashL {
+.eyelashL {
   display: block !important;;
   transform: scale(1.83) rotate(10.3deg) translateX(100px) translateY(102px) !important;
 }
 
-#eyelashR {
+.eyelashR {
   display: block !important;;
   transform: scaleX(-1) scale(1.83) rotate(10.3deg) translateX(100px) translateY(102px) !important;
 }
