@@ -3,3 +3,36 @@
 :root {
   --base-hue: 145; /* Emerald Green */
 }
+
+/* 1. Make the eyeballs 20% larger */
+#leftEye .eyeball,
+#rightEye .eyeball {
+  transform: scale(1.2);
+  transform-origin: center;
+}
+
+/* 2. Arch the eyebrows upwards */
+#brows .brow {
+  /* Move them up slightly to make room for the arch */
+  transform: translateY(-10px);
+
+  /* Define the arch animation/state */
+  d: path("M 10,50 Q 50,0 90,50"); /* A generic quadratic curve */
+}
+
+/* We need to position each brow correctly */
+#brows .browL {
+  /* This positions our generic arch path correctly for the left brow */
+  transform: translateY(-20px) translateX(140px) scale(1.2);
+}
+
+#brows .browR {
+  /* This positions our generic arch path correctly for the right brow */
+  transform: translateY(-20px) translateX(390px) scale(1.2);
+}
+
+
+/* 3. Make the mouth path thicker */
+#mouth .mouth {
+  stroke-width: 8px; /* The default is around 4px */
+}
