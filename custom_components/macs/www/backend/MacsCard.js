@@ -336,10 +336,6 @@ export class MacsCard extends HTMLElement {
         this._sensorHandler?.syncChangeTracking?.();
     }
 
-    _sendThemeToIframe(theme) {
-        this._postToIframe({ type: "macs:theme", recipient: "frontend", theme });
-    }
-
     _flushPendingState() {
         const snapshot = this._pendingState;
         if (!snapshot) return;
@@ -347,10 +343,6 @@ export class MacsCard extends HTMLElement {
         if (mood && mood !== this._lastMood) {
             this._lastMood = mood;
             this._sendMoodToIframe(mood);
-        }
-        if (snapshot.theme && snapshot.theme !== this._lastTheme) {
-            this._lastTheme = snapshot.theme;
-            this._sendThemeToIframe(snapshot.theme);
         }
         if (Number.isFinite(snapshot.brightness) && snapshot.brightness !== this._lastBrightness) {
             this._lastBrightness = snapshot.brightness;
@@ -763,54 +755,51 @@ export class MacsCard extends HTMLElement {
         } else {
             base.searchParams.delete("debug");
         }
+
+        // Always include theme, mood, brightness, and sensor data as URL params for initial iframe load/reload.
+        base.searchParams.set("theme", theme);
+        base.searchParams.set("mood", mood);
+        base.searchParams.set("brightness", brightness.toString());
+        if (sensorValues && Number.isFinite(sensorValues.temperature)) {
+            base.searchParams.set("temperature", sensorValues.temperature.toString());
+        }
+        if (sensorValues && Number.isFinite(sensorValues.windspeed)) {
+            base.searchParams.set("windspeed", sensorValues.windspeed.toString());
+        }
+        if (sensorValues && Number.isFinite(sensorValues.precipitation)) {
+            base.searchParams.set("precipitation", sensorValues.precipitation.toString());
+        }
+        if (sensorValues && Number.isFinite(sensorValues.battery_charge)) {
+            base.searchParams.set("battery_charge", sensorValues.battery_charge.toString());
+        }
+
+        const newSrc = base.toString();
+
         this._pendingState = { mood, theme, brightness, animationsEnabled, sensorValues };
 
-        const isFirstLoad = !this._loadedOnce;
-        if (isFirstLoad) {
-            this._loadedOnce = true;
-            this._lastMood = undefined;
-            this._lastTheme = undefined;
-            this._lastBrightness = undefined;
-        }
-
-        // Set iframe url on first load.
-        if (isFirstLoad) {
-            base.searchParams.set("mood", mood);
-            base.searchParams.set("theme", theme);
-            base.searchParams.set("brightness", brightness.toString());
-            if (sensorValues && Number.isFinite(sensorValues.temperature)) {
-                base.searchParams.set("temperature", sensorValues.temperature.toString());
-            }
-            if (sensorValues && Number.isFinite(sensorValues.windspeed)) {
-                base.searchParams.set("windspeed", sensorValues.windspeed.toString());
-            }
-            if (sensorValues && Number.isFinite(sensorValues.precipitation)) {
-                base.searchParams.set("precipitation", sensorValues.precipitation.toString());
-            }
-            if (sensorValues && Number.isFinite(sensorValues.battery_charge)) {
-                base.searchParams.set("battery_charge", sensorValues.battery_charge.toString());
-            }
-
-            const src = base.toString();
-            this._iframe.onload = () => {
-                this._iframeLoaded = true;
-                this._handleIframeReady();
-            };
-
-            if (src !== this._lastSrc) {
-                this._iframeReady = false;
-                this._iframeLoaded = false;
-                this._iframeBootstrapped = false;
-                this._initSent = false;
-                this._iframe.src = src;
-                this._lastSrc = src;
+        // Update iframe src if it has changed.
+        if (newSrc !== this._lastSrc) {
+            debug("Updating iframe src", newSrc);
+            this._iframeReady = false;
+            this._iframeLoaded = false;
+            this._iframeBootstrapped = false;
+            this._initSent = false;
+            this._iframe.src = newSrc;
+            this._lastSrc = newSrc;
+            // On first load, attach onload handler
+            if (!this._loadedOnce) {
+                this._iframe.onload = () => {
+                    this._iframeLoaded = true;
+                    this._handleIframeReady();
+                };
+                this._loadedOnce = true;
             }
         }
 
-
+        // If iframe is bootstrapped, send updates via postMessage.
         if (this._iframeBootstrapped) {
-             // Subsequent updates: only send what changed
-             if (wakewordTriggered) {
+            // Subsequent updates: only send what changed
+            if (wakewordTriggered) {
                 this._lastMood = mood;
                 // Wake-word resets the iframe's idle/sleep timers.
                 this._sendMoodToIframe(mood, { resetSleep: true });
@@ -818,10 +807,11 @@ export class MacsCard extends HTMLElement {
                 this._lastMood = mood;
                 this._sendMoodToIframe(mood);
             }
-            if (theme !== this._lastTheme) {
-                this._lastTheme = theme;
-                this._sendThemeToIframe(theme);
-            }
+            // Theme change is handled by iframe src update, not postMessage.
+            // if (theme !== this._lastTheme) {
+            //     this._lastTheme = theme;
+            //     this._sendThemeToIframe(theme);
+            // }
             this._sendSensorIfChanged();
             if(brightness !== this._lastBrightness) {
                 this._lastBrightness = brightness;
@@ -832,8 +822,8 @@ export class MacsCard extends HTMLElement {
             // keep config/turns fresh
             this._sendConfigToIframe();
             this._sendTurnsToIframe();
-        } else if (this._iframeReady && this._iframeLoaded) {
-            // Send initial state once iframe is ready.
+        } else if (this._iframeReady && this._iframeLoaded && !this._initSent) {
+            // Send initial state once iframe is ready (after its src has been set and loaded).
             this._sendInitToIframe(this._pendingState);
         }
     }

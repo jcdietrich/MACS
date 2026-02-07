@@ -308,33 +308,24 @@ function handleMessage(payload) {
 		case 'macs:init': {
 			// then apply the config
 			applyConfigPayload(payload.config);
-			if (typeof payload.mood !== "undefined") {
-				if (moodFx) moodFx.setBaseMood(payload.mood || 'idle');
-			}
-			if (typeof payload.theme !== "undefined") {
-				setTheme(payload.theme);
-			}
-			// and the sensor data
-			applySensorPayload(payload.sensors);
-			if (typeof payload.brightness !== "undefined") {
-				if (kioskFx) kioskFx.setBrightness(payload.brightness);
-			}
-			if (typeof payload.animations_enabled !== "undefined") {
-				if (kioskFx) kioskFx.setAnimationsToggleEnabled(!!payload.animations_enabled);
-			}
-			// let the backend know that we're ready for further updates
-			messagePoster.post({ type: "macs:init_ack", recipient: "backend" });
-			return;
-		}
-		case 'macs:theme': {
-			setTheme(payload.theme);
-			return;
-		}
-		// if the settings have changed then reapply the config
-		case 'macs:config': {
-			applyConfigPayload(payload);
-			return;
-		}
+			        			if (typeof payload.mood !== "undefined") {
+							if (moodFx) moodFx.setBaseMood(payload.mood || 'idle');
+						}
+						// and the sensor data
+						applySensorPayload(payload.sensors);
+						if (typeof payload.brightness !== "undefined") {
+							if (kioskFx) kioskFx.setBrightness(payload.brightness);
+						}			if (typeof payload.animations_enabled !== "undefined") {
+				        			if (kioskFx) kioskFx.setAnimationsToggleEnabled(!!payload.animations_enabled);
+							}
+							// let the backend know that we're ready for further updates
+							messagePoster.post({ type: "macs:init_ack", recipient: "backend" });
+							return;
+						}
+						// if the settings have changed then reapply the config
+						case 'macs:config': {
+							applyConfigPayload(payload);
+							return;		}
 		case 'macs:mood': {
 			if (moodFx) moodFx.setBaseMood(payload.mood || 'idle');
 			if (payload.reset_sleep) {
