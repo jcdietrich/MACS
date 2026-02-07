@@ -3,12 +3,12 @@
 /* --- Feminine Appearance Overrides --- */
 
 /* 1. Make the eyelashes visible */
-.eyelash {
-  display: initial !important; /* Use !important to override inline style */
-  fill: none;
-  stroke: black;
-  stroke-width: 4px;
-  stroke-linecap: round;
+.eyelashL {
+  display: block !important;
+}
+
+.eyelashR {
+  display: block !important;
 }
 
 /* 2. Make the pupils slightly larger for a 'doe-eyed' look */
