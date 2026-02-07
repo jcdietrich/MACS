@@ -27,8 +27,15 @@
 				link.href = window.__MACS_WITH_VERSION__(href);
 				document.head.appendChild(link);
 			};
+			const addTheme = (theme) => {
+				const themeLink = document.createElement("link");
+				themeLink.rel = "stylesheet";
+				themeLink.id = "macs-theme";
+				themeLink.href = window.__MACS_WITH_VERSION__(`frontend/styles/themes/${theme || "default"}.css`);
+				document.head.appendChild(themeLink);
+			};
 
-			addStyle("frontend/styles/themes/default.css");
+			addTheme(params.get("theme"));
 			addStyle("frontend/styles/base.css");
 			addStyle("frontend/styles/moods.css");
 			addStyle("frontend/styles/weather.css");

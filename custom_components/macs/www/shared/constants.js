@@ -118,6 +118,7 @@ export const BATTERY_CHARGE_UNIT_ITEMS = [
 // HA entity IDs this card listens to
 export const MOOD_ENTITY_ID = "select.macs_mood";
 export const BRIGHTNESS_ENTITY_ID = "number.macs_brightness";
+export const THEME_ENTITY_ID = "select.macs_theme";
 export const TEMPERATURE_ENTITY_ID = "number.macs_temperature";
 export const WIND_ENTITY_ID = "number.macs_windspeed";
 export const PRECIPITATION_ENTITY_ID = "number.macs_precipitation";

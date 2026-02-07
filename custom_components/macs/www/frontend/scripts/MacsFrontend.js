@@ -295,6 +295,14 @@ function handleMessage(payload) {
 	// Make sure we have a valid payload (message)
 	if (!payload || typeof payload !== 'object') return;
 
+	// Sets the theme
+	const setTheme = (theme) => {
+		const themeLink = document.getElementById("macs-theme");
+		if (themeLink) {
+			themeLink.href = window.__MACS_WITH_VERSION__(`frontend/styles/themes/${theme || "default"}.css`);
+		}
+	}
+
 	switch (payload.type) {
 		// If this is the first load
 		case 'macs:init': {
@@ -302,6 +310,9 @@ function handleMessage(payload) {
 			applyConfigPayload(payload.config);
 			if (typeof payload.mood !== "undefined") {
 				if (moodFx) moodFx.setBaseMood(payload.mood || 'idle');
+			}
+			if (typeof payload.theme !== "undefined") {
+				setTheme(payload.theme);
 			}
 			// and the sensor data
 			applySensorPayload(payload.sensors);
@@ -313,6 +324,10 @@ function handleMessage(payload) {
 			}
 			// let the backend know that we're ready for further updates
 			messagePoster.post({ type: "macs:init_ack", recipient: "backend" });
+			return;
+		}
+		case 'macs:theme': {
+			setTheme(payload.theme);
 			return;
 		}
 		// if the settings have changed then reapply the config

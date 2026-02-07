@@ -6,6 +6,9 @@
       },
       "debug": {
         "name": "Debug"
+      },
+      "theme": {
+        "name": "Theme"
       }
     },
     "number": {

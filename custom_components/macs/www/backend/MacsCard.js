@@ -17,7 +17,7 @@
  * and the M.A.C.S. frontend character.
  */
 
-import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, ANIMATIONS_ENTITY_ID, DEBUG_ENTITY_ID, MACS_MESSAGE_EVENT } from "../shared/constants.js";
+import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, THEME_ENTITY_ID, ANIMATIONS_ENTITY_ID, DEBUG_ENTITY_ID, MACS_MESSAGE_EVENT } from "../shared/constants.js";
 import { normMood, normBrightness, safeUrl, getTargetOrigin, assistStateToMood, getValidUrl} from "./validators.js";
 import { SatelliteTracker } from "./assistSatellite.js";
 import { AssistPipelineTracker } from "./assistPipeline.js";
@@ -105,6 +105,7 @@ export class MacsCard extends HTMLElement {
             // keep load/render state
             this._loadedOnce = false;
             this._lastMood = undefined;
+            this._lastTheme = undefined;
             this._lastSrc = undefined;
             this._kioskHidden = false;
             this._isPreview = false;
@@ -306,6 +307,7 @@ export class MacsCard extends HTMLElement {
             recipient: "frontend",
             config,
             mood: snapshot.mood ?? null,
+            theme: snapshot.theme ?? null,
             sensors: snapshot.sensorValues ?? null,
             brightness: Number.isFinite(snapshot.brightness) ? snapshot.brightness : null,
             animations_enabled: typeof snapshot.animationsEnabled === "boolean" ? snapshot.animationsEnabled : null,
@@ -326,11 +328,16 @@ export class MacsCard extends HTMLElement {
         this._lastTurnsSignature = JSON.stringify(turns);
 
         this._lastMood = snapshot.mood;
+        this._lastTheme = snapshot.theme;
         this._lastBrightness = snapshot.brightness;
         this._lastAnimationsEnabled = typeof snapshot.animationsEnabled === "boolean"
             ? snapshot.animationsEnabled
             : this._lastAnimationsEnabled;
         this._sensorHandler?.syncChangeTracking?.();
+    }
+
+    _sendThemeToIframe(theme) {
+        this._postToIframe({ type: "macs:theme", recipient: "frontend", theme });
     }
 
     _flushPendingState() {
@@ -340,6 +347,10 @@ export class MacsCard extends HTMLElement {
         if (mood && mood !== this._lastMood) {
             this._lastMood = mood;
             this._sendMoodToIframe(mood);
+        }
+        if (snapshot.theme && snapshot.theme !== this._lastTheme) {
+            this._lastTheme = snapshot.theme;
+            this._sendThemeToIframe(snapshot.theme);
         }
         if (Number.isFinite(snapshot.brightness) && snapshot.brightness !== this._lastBrightness) {
             this._lastBrightness = snapshot.brightness;
@@ -707,6 +718,8 @@ export class MacsCard extends HTMLElement {
 
         const brightnessState = hass.states[BRIGHTNESS_ENTITY_ID] || null;
         const brightness = normBrightness(brightnessState?.state);
+        const themeState = hass.states[THEME_ENTITY_ID] || null;
+        const theme = themeState?.state || "default";
         const animationsState = hass.states[ANIMATIONS_ENTITY_ID] || null;
         const animationsEnabled = animationsState ? animationsState.state === "on" : true;
         const debugState = hass.states[DEBUG_ENTITY_ID] || null;
@@ -750,7 +763,7 @@ export class MacsCard extends HTMLElement {
         } else {
             base.searchParams.delete("debug");
         }
-        this._pendingState = { mood, brightness, animationsEnabled, sensorValues };
+        this._pendingState = { mood, theme, brightness, animationsEnabled, sensorValues };
         if (!this._initSent && this._iframeReady && this._iframeLoaded) {
             this._sendInitToIframe(this._pendingState);
         }
@@ -758,6 +771,7 @@ export class MacsCard extends HTMLElement {
         if (!this._loadedOnce) {
             // First load: set iframe src and send initial state
             base.searchParams.set("mood", mood);
+            base.searchParams.set("theme", theme);
             base.searchParams.set("brightness", brightness.toString());
             if (sensorValues && Number.isFinite(sensorValues.temperature)) {
                 base.searchParams.set("temperature", sensorValues.temperature.toString());
@@ -789,6 +803,7 @@ export class MacsCard extends HTMLElement {
 
             this._loadedOnce = true;
             this._lastMood = undefined;
+            this._lastTheme = undefined;
             this._lastBrightness = undefined;
         }
         else {
@@ -803,6 +818,10 @@ export class MacsCard extends HTMLElement {
             } else if (mood !== this._lastMood) {
                 this._lastMood = mood;
                 this._sendMoodToIframe(mood);
+            }
+            if (theme !== this._lastTheme) {
+                this._lastTheme = theme;
+                this._sendThemeToIframe(theme);
             }
             this._sendSensorIfChanged();
             if(brightness !== this._lastBrightness) {

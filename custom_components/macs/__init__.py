@@ -165,6 +165,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if legacy_debug:
         reg.async_remove(legacy_debug.entity_id)
     migrate("macs_debug", "select.macs_debug")
+    migrate("macs_theme", "select.macs_theme")
     migrate("macs_weather_conditions_snowy", "switch.macs_weather_conditions_snowy")
     migrate("macs_weather_conditions_cloudy", "switch.macs_weather_conditions_cloudy")
     migrate("macs_weather_conditions_rainy", "switch.macs_weather_conditions_rainy")
