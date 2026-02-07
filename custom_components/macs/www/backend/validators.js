@@ -76,6 +76,10 @@ export function assistStateToMood(state) {
     return "idle";
 }
 
+export function normTheme(v) {
+    return (typeof v === "string" ? v : "default").trim().toLowerCase() || "default";
+}
+
 // ###################################################################################################################//
 //                                                                                                                    //
 //                                              BRIGHTNESS                                                            //

@@ -1,26 +1,35 @@
 :root{
+	/* 
+	  Theme Foundation - All themes inherit from this.
+	  To create a new color theme, create a new CSS file 
+	  and override the --base-hue variable.
+	  e.g. :root { --base-hue: 240; } for blue.
+	*/
+	--base-hue: 177; /* Teal */
+	--glow-hue: calc(var(--base-hue) + 8);
+
 	/* Eyes */
-	--sclera-gradient-shadow: #001d14;
-	--sclera-gradient-fill: #00c7bd;
+	--sclera-gradient-shadow: hsl(var(--base-hue), 100%, 6%);
+	--sclera-gradient-fill: hsl(var(--base-hue), 100%, 39%);
 	--sclera-gradient-highlight: #ffffff;
-	--sclera-outer-glow: #46f6d8;
-	--sclera-inner-glow: #038c7c;
-	--sclera-charging-glow: #5dffe3;
+	--sclera-outer-glow: hsl(var(--base-hue), 89%, 62%);
+	--sclera-inner-glow: hsl(var(--base-hue), 95%, 28%);
+	--sclera-charging-glow: hsl(var(--base-hue), 100%, 68%);
 
 	--iris-fill: #000000;
-	--iris-outer-glow: #46f6d8;
-	--iris-inner-glow: #038c7c;
+	--iris-outer-glow: hsl(var(--base-hue), 89%, 62%);
+	--iris-inner-glow: hsl(var(--base-hue), 95%, 28%);
 
 	--pupil-fill: #ffffff;
-	--pupil-inner-glow: #8cf5ff;
-	--pupil-outer-glow: #8cf5ff;
+	--pupil-inner-glow: hsl(var(--glow-hue), 100%, 77%);
+	--pupil-outer-glow: hsl(var(--glow-hue), 100%, 77%);
 
 	/* Face */
-	--mouth-fill: #6dd3d7;
-	--mouth-glow: #30cfc6;
+	--mouth-fill: hsl(var(--base-hue), 57%, 64%);
+	--mouth-glow: hsl(var(--base-hue), 63%, 50%);
 
-	--brow-fill: #6dd3d7;
-	--brow-glow: #00ffdd;
+	--brow-fill: hsl(var(--base-hue), 57%, 64%);
+	--brow-glow: hsl(var(--base-hue), 100%, 50%);
 
 	/* Tuning knobs */
 	--faceScale: 0.60;

@@ -18,7 +18,7 @@
  */
 
 import { VERSION, DEFAULTS, MOOD_ENTITY_ID, BRIGHTNESS_ENTITY_ID, THEME_ENTITY_ID, ANIMATIONS_ENTITY_ID, DEBUG_ENTITY_ID, MACS_MESSAGE_EVENT } from "../shared/constants.js";
-import { normMood, normBrightness, safeUrl, getTargetOrigin, assistStateToMood, getValidUrl} from "./validators.js";
+import { normMood, normBrightness, normTheme, safeUrl, getTargetOrigin, assistStateToMood, getValidUrl} from "./validators.js";
 import { SatelliteTracker } from "./assistSatellite.js";
 import { AssistPipelineTracker } from "./assistPipeline.js";
 import { SensorHandler } from "./sensorHandler.js";
@@ -37,13 +37,13 @@ const cardCssUrl = getValidUrl("backend/cards.css");
 
 export class MacsCard extends HTMLElement {
     // returns the minimum valid config Home Assistant needs to add the card to a dashboard before the user configures anything.
-    static getStubConfig() { 
-        return { 
-            type: "custom:macs-card", 
-            assist_pipeline_enabled: false, 
-            assist_pipeline_custom: false, 
+    static getStubConfig() {
+        return {
+            type: "custom:macs-card",
+            assist_pipeline_enabled: false,
+            assist_pipeline_custom: false,
             preview_image: DEFAULTS.preview_image
-        }; 
+        };
     }
 
     // create the card editor
@@ -93,7 +93,7 @@ export class MacsCard extends HTMLElement {
 
             // preview image (shown before iframe is ready)
             this._thumb = this._root.querySelector("img.thumb");
-            if (this._thumb) {   
+            if (this._thumb) {
                 if (this._config.preview_image){
                     this._thumb.src = this._config.preview_image.toString();
                 }
@@ -656,7 +656,7 @@ export class MacsCard extends HTMLElement {
         if (!this._sensorHandler) return;
         // Only post deltas to keep iframe traffic minimal.
         this._sendTemperatureToIframe(this._sensorHandler.getTemperature?.());
-        this._sendWindSpeedToIframe(this._sensorHandler.getWindSpeed?.());       
+        this._sendWindSpeedToIframe(this._sensorHandler.getWindSpeed?.());
         this._sendPrecipitationToIframe(this._sensorHandler.getPrecipitation?.());
         this._sendWeatherConditionsToIframe(this._sensorHandler.getWeatherConditions?.());
         this._sendBatteryChargeToIframe(this._sensorHandler.getBatteryCharge?.());
@@ -675,7 +675,7 @@ export class MacsCard extends HTMLElement {
 
         // Always keep hass fresh (safe + cheap)
         this._pipelineTracker?.setHass?.(hass);
-               
+
         // Only re-apply config if the pipeline settings changed since last time we applied it
         const enabled = !!this._config?.assist_pipeline_enabled;
         const pid = this._config?.assist_pipeline_entity || "";
@@ -685,7 +685,7 @@ export class MacsCard extends HTMLElement {
         }
 
         if (this._sensorHandler) this._sensorHandler.setConfig(this._config);
-        
+
 
         //this._ensureSubscriptions();
 
@@ -693,9 +693,11 @@ export class MacsCard extends HTMLElement {
         const moodState = hass.states[MOOD_ENTITY_ID] || null;
         //const mood = normMood(moodState?.state);
         const baseMood = normMood(moodState?.state);
+        const themeState = hass.states[THEME_ENTITY_ID] || null;
+        const theme = normTheme(themeState?.state);
         // Optional: auto mood from selected satellite state
         let assistMood = null;
-        let satState = ""; 
+        let satState = "";
         let wakewordTriggered = false;
         const prevSatState = this._lastAssistSatelliteState;
 
@@ -703,7 +705,7 @@ export class MacsCard extends HTMLElement {
             const satId = (this._config.assist_satellite_entity || "").toString().trim();
             if (satId) {
                 const satStateObj = hass.states[satId] || null;
-                satState = (satStateObj?.state || "").toString().trim().toLowerCase(); 
+                satState = (satStateObj?.state || "").toString().trim().toLowerCase();
                 assistMood = assistStateToMood(satState);
                 const tracker = this._assistSatelliteOutcome;
                 debug(tracker);
@@ -718,8 +720,6 @@ export class MacsCard extends HTMLElement {
 
         const brightnessState = hass.states[BRIGHTNESS_ENTITY_ID] || null;
         const brightness = normBrightness(brightnessState?.state);
-        const themeState = hass.states[THEME_ENTITY_ID] || null;
-        const theme = themeState?.state || "default";
         const animationsState = hass.states[ANIMATIONS_ENTITY_ID] || null;
         const animationsEnabled = animationsState ? animationsState.state === "on" : true;
         const debugState = hass.states[DEBUG_ENTITY_ID] || null;
@@ -764,12 +764,17 @@ export class MacsCard extends HTMLElement {
             base.searchParams.delete("debug");
         }
         this._pendingState = { mood, theme, brightness, animationsEnabled, sensorValues };
-        if (!this._initSent && this._iframeReady && this._iframeLoaded) {
-            this._sendInitToIframe(this._pendingState);
+
+        const isFirstLoad = !this._loadedOnce;
+        if (isFirstLoad) {
+            this._loadedOnce = true;
+            this._lastMood = undefined;
+            this._lastTheme = undefined;
+            this._lastBrightness = undefined;
         }
 
-        if (!this._loadedOnce) {
-            // First load: set iframe src and send initial state
+        // Set iframe url on first load.
+        if (isFirstLoad) {
             base.searchParams.set("mood", mood);
             base.searchParams.set("theme", theme);
             base.searchParams.set("brightness", brightness.toString());
@@ -800,18 +805,12 @@ export class MacsCard extends HTMLElement {
                 this._iframe.src = src;
                 this._lastSrc = src;
             }
-
-            this._loadedOnce = true;
-            this._lastMood = undefined;
-            this._lastTheme = undefined;
-            this._lastBrightness = undefined;
         }
-        else {
-            if (!this._iframeBootstrapped) {
-                return;
-            }
-            // Subsequent updates: only send what changed
-            if (wakewordTriggered) {
+
+
+        if (this._iframeBootstrapped) {
+             // Subsequent updates: only send what changed
+             if (wakewordTriggered) {
                 this._lastMood = mood;
                 // Wake-word resets the iframe's idle/sleep timers.
                 this._sendMoodToIframe(mood, { resetSleep: true });
@@ -833,6 +832,9 @@ export class MacsCard extends HTMLElement {
             // keep config/turns fresh
             this._sendConfigToIframe();
             this._sendTurnsToIframe();
+        } else if (this._iframeReady && this._iframeLoaded) {
+            // Send initial state once iframe is ready.
+            this._sendInitToIframe(this._pendingState);
         }
     }
 
@@ -840,7 +842,6 @@ export class MacsCard extends HTMLElement {
         return 6;
     }
 }
-
 
 
 

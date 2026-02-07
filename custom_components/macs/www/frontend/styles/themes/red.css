@@ -1,29 +1,3 @@
-:root{
-	/* Eyes */
-	--sclera-gradient-shadow: #1d0000;
-	--sclera-gradient-fill: #c70000;
-	--sclera-gradient-highlight: #ffffff;
-	--sclera-outer-glow: #f64646;
-	--sclera-inner-glow: #8c0303;
-	--sclera-charging-glow: #ff5d5d;
-
-	--iris-fill: #000000;
-	--iris-outer-glow: #f64646;
-	--iris-inner-glow: #8c0303;
-
-	--pupil-fill: #ffffff;
-	--pupil-inner-glow: #ff8c8c;
-	--pupil-outer-glow: #ff8c8c;
-
-	/* Face */
-	--mouth-fill: #d36d6d;
-	--mouth-glow: #cf3030;
-
-	--brow-fill: #d36d6d;
-	--brow-glow: #ff0000;
-
-	/* Tuning knobs */
-	--faceScale: 0.60;
-	--brightness-level: 1;
-	--weather-intensity: 0.8;
+:root {
+  --base-hue: 0; /* Red */
 }
