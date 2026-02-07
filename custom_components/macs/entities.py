@@ -756,21 +756,6 @@ class MacsWeatherConditionsExceptionalSwitch(SwitchEntity, RestoreEntity):
         return MACS_DEVICE
 
 
-def _load_themes() -> list[str]:
-    path = Path(__file__).parent / "www" / "frontend" / "styles" / "themes"
-    themes: list[str] = []
-    for f in path.glob("*.css"):
-        themes.append(f.stem)
-    return themes
-
-
-THEMES = _load_themes()
-
-DEFAULT_THEME = _get_default_str("theme", "default")
-if DEFAULT_THEME not in THEMES:
-    DEFAULT_THEME = "default"
-
-
 class MacsThemeSelect(SelectEntity, RestoreEntity):
     _attr_has_entity_name = True
     _attr_name = "Theme"
@@ -778,19 +763,38 @@ class MacsThemeSelect(SelectEntity, RestoreEntity):
     _attr_unique_id = "macs_theme"
     _attr_suggested_object_id = "macs_theme"
     _attr_icon = "mdi:palette"
-    _attr_options = THEMES
-    _attr_current_option = DEFAULT_THEME
     _attr_entity_category = EntityCategory.CONFIG
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._themes = self._load_themes()
+        self._attr_options = self._themes
+        self._attr_current_option = self._get_default_theme()
+
+    def _load_themes(self) -> list[str]:
+        path = Path(__file__).parent / "www" / "frontend" / "styles" / "themes"
+        themes: list[str] = []
+        for f in path.glob("*.css"):
+            themes.append(f.stem)
+        return themes
+
+    def _get_default_theme(self) -> str:
+        default_theme = _get_default_str("theme", "default")
+        if default_theme in self._themes:
+            return default_theme
+        if self._themes:
+            return self._themes[0]
+        return "default"
+
     async def async_select_option(self, option: str) -> None:
-        if option in THEMES:
+        if option in self._themes:
             self._attr_current_option = option
             self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         last_state = await self.async_get_last_state()
-        if last_state and last_state.state in THEMES:
+        if last_state and last_state.state in self._themes:
             self._attr_current_option = last_state.state
 
     @property
