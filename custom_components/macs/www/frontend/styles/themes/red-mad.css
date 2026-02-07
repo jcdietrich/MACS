@@ -1,0 +1,35 @@
+@import url("default.css");
+
+:root {
+  --base-hue: 0; /* Red */
+}
+
+/* --- Angry Expression Overrides --- */
+
+/* 1. Angle the eyebrows down and inwards */
+#brows .browL {
+  transform: translateX(20px) translateY(15px) rotate(15deg);
+  transform-origin: right;
+}
+
+#brows .browR {
+  transform: translateX(-20px) translateY(15px) rotate(-15deg);
+  transform-origin: left;
+}
+
+/* 2. Slightly squint the eyes vertically */
+#leftEye .eyeball,
+#rightEye .eyeball {
+  transform: scaleY(0.9);
+  transform-origin: center;
+}
+
+/* 3. Force the mouth into a "sad" (frown) shape */
+/* This overrides the mood setting for the mouth */
+#mouth .mouth {
+  opacity: 0; /* Hide all mouth shapes */
+}
+#mouth #mouth-sad {
+  opacity: 1; /* Only show the sad/frown mouth */
+  stroke-width: 6px;
+}

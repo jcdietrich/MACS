@@ -1,0 +1,31 @@
+@import url("yellow.css");
+
+/* --- Wall-E Appearance Overrides --- */
+
+/* 1. Reshape the eye bezels to be larger and more rectangular */
+#eyeBezelL,
+#eyeBezelR {
+  /* Scale the whole bezel up, making it wider than it is tall */
+  transform: scale(1.3, 1.1) translateY(10px);
+  transform-origin: center;
+}
+
+/* 2. Enlarge the pupils significantly */
+.pupil {
+  transform: scale(1.8);
+  transform-origin: center;
+}
+
+/* 3. Make the iris smaller to emphasize the large pupil */
+.iris {
+    transform: scale(0.8);
+    transform-origin: center;
+}
+
+/* Optional: Slightly separate the eyes for a wider look */
+#leftEye {
+    transform: translateX(-20px);
+}
+#rightEye {
+    transform: translateX(20px);
+}
