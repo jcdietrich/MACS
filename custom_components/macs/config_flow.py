@@ -27,10 +27,6 @@ class MacsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class MacsOptionsFlow(config_entries.OptionsFlow):
     """Handle MACS options."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry):
-        """Initialize MACS options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Manage the MACS options."""
         if user_input is not None:
