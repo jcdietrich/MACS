@@ -1,4 +1,15 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "enable_shape_extensions": "Enable Shape Extensions"
+        },
+        "description": "Allows themes to add or alter the SVG shapes of the character, such as adding eyelashes. This requires a reload of the integration to apply.",
+        "title": "Macs Theme Options"
+      }
+    }
+  },
   "entity": {
     "select": {
       "mood": {

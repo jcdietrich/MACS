@@ -1,0 +1,18 @@
+@import url("emerald.css");
+
+/* --- Feminine Appearance Overrides --- */
+
+/* 1. Make the eyelashes visible */
+.eyelash {
+  display: initial; /* This overrides the 'display: none' in base.css */
+  fill: none;
+  stroke: black;
+  stroke-width: 4px;
+  stroke-linecap: round;
+}
+
+/* 2. Make the pupils slightly larger for a 'doe-eyed' look */
+.pupil {
+  transform: scale(1.15);
+  transform-origin: center;
+}

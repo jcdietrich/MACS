@@ -12,9 +12,21 @@
 
 /* 2. Enlarge the pupils significantly */
 .pupil {
-  transform: scale(1.8);
-  transform-origin: center;
+    /* 
+      Scale the pupil up.
+      Crucially, the transform-origin is set to the absolute center of the eyeball (e.g., 200 260 for the left eye)
+      This ensures that the pupil and its highlight scale outwards from the correct point,
+      instead of from their own top-left corner.
+    */
+    transform: scale(1.8);
 }
+#leftEye .pupil {
+    transform-origin: 200px 260px;
+}
+#rightEye .pupil {
+    transform-origin: 400px 260px;
+}
+
 
 /* 3. Make the iris smaller to emphasize the large pupil */
 .iris {

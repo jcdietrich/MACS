@@ -755,6 +755,11 @@ export class MacsCard extends HTMLElement {
         } else {
             base.searchParams.delete("debug");
         }
+        if (this._config.enable_shape_extensions) {
+            base.searchParams.set("extensions", "true");
+        } else {
+            base.searchParams.delete("extensions");
+        }
 
         // Always include theme, mood, brightness, and sensor data as URL params for initial iframe load/reload.
         base.searchParams.set("theme", theme);

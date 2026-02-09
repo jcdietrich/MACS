@@ -315,6 +315,11 @@
 			};
 
 			addScript("frontend/scripts/MacsFrontend.js");
+
+			const params = new URLSearchParams(window.location.search || "");
+			if (params.get("extensions") === "true") {
+				addScript("frontend/scripts/extensions.js");
+			}
 		})();
 	</script>
 </body>
